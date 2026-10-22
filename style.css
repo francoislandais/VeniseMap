@@ -1096,3 +1096,13 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 /* boutons précédent/suivant regroupés en bas à droite : le texte du bas à gauche reste libre */
 .in2-nav{justify-content:flex-end!important;gap:8px;padding:0 12px!important}
 .in2-nav button{width:40px!important;height:40px!important;font-size:26px!important}
+
+/* éditeur de mise en page de l'intro (localhost seulement) */
+.in2-ed{position:absolute;left:8px;right:8px;top:calc(6px + var(--safe-t));z-index:20;display:flex;flex-wrap:wrap;gap:6px;align-items:center;pointer-events:none}
+.in2-ed button{pointer-events:auto;font-size:12px;padding:6px 9px;border-radius:10px;background:rgba(20,24,34,.78);color:#fff}
+.in2-ed-tools{display:flex;flex-wrap:wrap;gap:6px;pointer-events:auto}
+.in2-ed em{font-style:normal;font-size:12px;color:#fff;background:rgba(20,24,34,.78);border-radius:8px;padding:4px 8px}.in2-ed em:empty{display:none}
+.in2-editing .in2-s *{cursor:grab}
+.in2-editing .in2-s{user-select:none;-webkit-user-select:none;touch-action:none}
+.in2-sel{outline:2px dashed #e0457b!important;outline-offset:3px}
+.in2-ed.in2-ed-bottom{top:auto;bottom:calc(58px + var(--safe-b))}

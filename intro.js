@@ -187,7 +187,13 @@ function openingShot(d, instant) {
 
 export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (prénom déjà connu, profil inchangé)
   // Introduction : 7 écrans plein page, fondu enchaîné, navigation par toucher ou par les petits boutons précédent / suivant. Images + texte, sans bulle.
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
+    let LAYOUT = {}; try { const r = await fetch("data/intro-layout.json?" + Date.now()); if (r.ok) LAYOUT = await r.json(); } catch {} // réglages de position/taille enregistrés depuis l'éditeur
+    const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q", form: ".in2-form" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt" } };
+    const edKey = (to) => `s${to + 1}`;
+    const elsOf = (d, sc) => { const map = EDITABLE[sc.layout === "hello" || sc.layout === "welcome" ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
+    const applyOne = (e, v) => { if (!v) { e.style.translate = ""; e.style.scale = ""; return; } e.style.translate = `${v.x || 0}vw calc(${v.y || 0} * var(--lh) / 100)`; e.style.scale = v.s && v.s !== 1 ? String(v.s) : ""; };
+    const applyLayout = (d, sc, to) => { const L = LAYOUT[edKey(to)] || {}, els = elsOf(d, sc); for (const k in els) applyOne(els[k], L[k]); };
     let name = opts.replay ? opts.name || "" : "";
     const IMG = (n) => `img/intro/e${n}.webp`;
     const SCREENS = [
@@ -253,7 +259,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       }
       if (to >= SCREENS.length) { if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); } if (opening) opening.skip(); finish(); return; }
       busy = true; setTimeout(() => (busy = false), 450);
-      const sc = SCREENS[to], first = idx === -1, d = build(sc); root.insertBefore(d, root.querySelector(".in2-nav")); idx = to;
+      const sc = SCREENS[to], first = idx === -1, d = build(sc); root.insertBefore(d, root.querySelector(".in2-nav")); idx = to; applyLayout(d, sc, to); if (editing) setTimeout(() => select(null), 0);
       prevBtn.style.visibility = to === 0 ? "hidden" : "visible";
       if (sc.layout === "hello") root.querySelector("#in2-name")?.blur?.();
       d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
@@ -262,9 +268,42 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       const vl = root.querySelector(".in2-veil"); if (sc.layout !== "hello") vl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }); // le tableau reste en permanence ; le voile de lecture n'est que sur l'écran 1
       if (sc.layout === "hello") { opening = openingShot(d, !first); const f = d.querySelector("form"), i = d.querySelector("input"); f.onsubmit = (e) => { e.preventDefault(); go(1); }; }
       else if (sc.button) d.querySelector(".in2-btn").onclick = () => go(to + 1);
-      else setTimeout(() => d.addEventListener("click", (e) => { if (!e.target.closest("input,form,button")) go(to + 1); }), 350);
+      else setTimeout(() => d.addEventListener("click", (e) => { if (!editing && !e.target.closest("input,form,button")) go(to + 1); }), 350);
     };
     prevBtn.onclick = () => go(idx - 1); nextBtn.onclick = () => go(idx + 1);
+    // ───── Éditeur de mise en page (aperçu local uniquement) : on glisse les images et les textes, ± pour la taille, « Enregistrer » écrit data/intro-layout.json ─────
+    let editing = false, selEl = null, selKey = null;
+    const canEdit = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+    const select = (k) => { root.querySelectorAll(".in2-sel").forEach((e) => e.classList.remove("in2-sel")); selKey = k; selEl = null; if (!k) return; const e = elsOf(cur, SCREENS[idx])[k]; if (e) { selEl = e; e.classList.add("in2-sel"); } };
+    const cfgFor = (k) => { const key = edKey(idx); LAYOUT[key] ||= {}; LAYOUT[key][k] ||= { x: 0, y: 0, s: 1 }; return LAYOUT[key][k]; };
+    if (canEdit) {
+      const bar = document.createElement("div"); bar.className = "in2-ed";
+      bar.innerHTML = '<button type="button" data-a="toggle">✎ Mise en page</button><span class="in2-ed-tools" hidden><button data-a="minus">A−</button><button data-a="plus">A+</button><button data-a="reset">Réinit. élément</button><button data-a="flip">⇅</button><button data-a="save">💾 Enregistrer</button><em></em></span>';
+      root.appendChild(bar); const tools = bar.querySelector(".in2-ed-tools"), msg = bar.querySelector("em");
+      const say = (t) => { msg.textContent = t; clearTimeout(say.t); say.t = setTimeout(() => (msg.textContent = ""), 2500); };
+      bar.addEventListener("click", async (e) => {
+        const a = e.target.closest("button")?.dataset.a; if (!a) return;
+        if (a === "toggle") { editing = !editing; root.classList.toggle("in2-editing", editing); tools.hidden = !editing; select(null); return; }
+        if (a === "save") { try { const r = await fetch("api/intro-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(LAYOUT) }); say(r.ok ? "Enregistré ✔ (data/intro-layout.json)" : "Échec : serveur sans --dev ?"); } catch { say("Échec de l'enregistrement"); } return; }
+        if (a === "flip") { bar.classList.toggle("in2-ed-bottom"); return; }
+        if (!selKey) { say("Touche d'abord un élément"); return; }
+        const c = cfgFor(selKey);
+        if (a === "plus") c.s = Math.round((c.s + 0.05) * 100) / 100;
+        if (a === "minus") c.s = Math.max(0.3, Math.round((c.s - 0.05) * 100) / 100);
+        if (a === "reset") { c.x = 0; c.y = 0; c.s = 1; }
+        applyOne(selEl, c);
+      });
+      let drag = null;
+      root.addEventListener("pointerdown", (e) => {
+        if (!editing || e.target.closest(".in2-ed,.in2-nav")) return;
+        const els = elsOf(cur, SCREENS[idx]); let hit = null; for (const k in els) if (els[k].contains(e.target)) hit = k;
+        if (!hit) { select(null); return; }
+        e.preventDefault(); select(hit); const c = cfgFor(hit); drag = { k: hit, x0: e.clientX, y0: e.clientY, cx: c.x, cy: c.y }; root.setPointerCapture?.(e.pointerId);
+      }, true);
+      root.addEventListener("pointermove", (e) => { if (!drag) return; const c = cfgFor(drag.k); c.x = Math.round((drag.cx + ((e.clientX - drag.x0) / innerWidth) * 100) * 100) / 100; c.y = Math.round((drag.cy + ((e.clientY - drag.y0) / lockedH) * 100) * 100) / 100; applyOne(selEl, c); });
+      const end = () => { drag = null; }; root.addEventListener("pointerup", end); root.addEventListener("pointercancel", end);
+      root.addEventListener("click", (e) => { if (editing && !e.target.closest(".in2-ed,.in2-nav")) { e.stopPropagation(); e.preventDefault(); } }, true);
+    }
     go(0);
   });
 }
