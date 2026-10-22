@@ -176,11 +176,12 @@ function openingShot(d) {
     const anims = [];
     const A = (el, kf, o) => { const a = el.animate(kf, { fill: "forwards", easing: "ease-in-out", ...o }); anims.push(a); return a; };
     const wide = innerWidth / innerHeight > 1.3; // écran large : le recadrage est faible, le mouvement est surtout un zoom
-    A(bg, [{ backgroundPosition: wide ? "50% 0%" : "0% 50%", transform: "scale(1.18)" }, { backgroundPosition: wide ? "50% 70%" : "62% 50%", transform: "scale(1)" }], { duration: 5600, easing: "cubic-bezier(.4,.1,.25,1)" });
-    A(veil, [{ opacity: 0 }, { opacity: 1 }], { duration: 1600, delay: 4300 });
-    A(img, [{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 900, delay: 5200 });
-    A(hi, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: 5700 });
-    const last = A(bot, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: 6500 });
+    bg.style.transformOrigin = wide ? "30% 45%" : "30% 42%";
+    A(bg, [{ backgroundPosition: wide ? "50% 40%" : "46% 40%", transform: wide ? "scale(1.55)" : "scale(1.75)" }, { backgroundPosition: wide ? "50% 50%" : "10% 50%", transform: "scale(1)" }], { duration: 6200, easing: "cubic-bezier(.35,.1,.2,1)" });
+    A(veil, [{ opacity: 0 }, { opacity: 1 }], { duration: 1600, delay: 4700 });
+    A(img, [{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 900, delay: 5700 });
+    A(hi, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: 6200 });
+    const last = A(bot, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: 7000 });
     let done = false; const end = () => { if (done) return; done = true; d.removeEventListener("pointerdown", skip); anims.forEach((a) => { try { a.finish(); } catch {} }); res(); };
     const skip = (e) => { if (e.target.closest("input,form,button")) return; end(); };
     d.addEventListener("pointerdown", skip); last.onfinish = end;
@@ -222,7 +223,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
       cur = d;
       incoming.onfinish = async () => {
-        if (sc.layout === "hello") await openingShot(d); // travelling sur la peinture, puis voile, puis Corto et la question
+        if (sc.layout === "hello") await openingShot(d); // dézoom sur la peinture, puis voile, puis Corto et la question
         const go = () => { d.removeEventListener("click", tap); res(); };
         const tap = (e) => { if (e.target.closest("input,form,button")) return; go(); };
         if (sc.input) { const f = d.querySelector("form"), i = d.querySelector("input"); setTimeout(() => i.focus(), 50); f.onsubmit = (e) => { e.preventDefault(); const v = i.value.trim(); if (v) { name = v; go(); } else i.focus(); }; }
