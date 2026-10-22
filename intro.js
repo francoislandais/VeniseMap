@@ -176,8 +176,8 @@ function openingShot(d) {
     const anims = [];
     const A = (el, kf, o) => { const a = el.animate(kf, { fill: "forwards", easing: "ease-in-out", ...o }); anims.push(a); return a; };
     const wide = innerWidth / innerHeight > 1.3; // écran large : le recadrage est faible, le mouvement est surtout un zoom
-    bg.style.transformOrigin = wide ? "30% 45%" : "30% 42%";
-    A(bg, [{ backgroundPosition: wide ? "50% 40%" : "46% 40%", transform: wide ? "scale(1.55)" : "scale(1.75)" }, { backgroundPosition: wide ? "50% 50%" : "10% 50%", transform: "scale(1)" }], { duration: 6200, easing: "cubic-bezier(.35,.1,.2,1)" });
+    bg.style.transformOrigin = wide ? "45% 45%" : "55% 42%";
+    A(bg, [{ backgroundPosition: wide ? "50% 40%" : "64% 40%", transform: wide ? "scale(1.55)" : "scale(1.75)" }, { backgroundPosition: wide ? "50% 50%" : "10% 50%", transform: "scale(1)" }], { duration: 6200, easing: "cubic-bezier(.35,.1,.2,1)" });
     A(veil, [{ opacity: 0 }, { opacity: 1 }], { duration: 1600, delay: 4700 });
     A(img, [{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 900, delay: 5700 });
     A(hi, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: 6200 });
