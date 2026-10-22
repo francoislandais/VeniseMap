@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0e5a6e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Livre du Lion">
+<title>Le Livre du Lion</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="map" aria-label="Carte de Venise"></div>
+
+<div id="me-badge" class="me-badge" hidden></div>
+<header id="hud">
+  <button id="hud-kids" class="hud-kids" aria-label="Équipe"></button>
+  <button id="hud-score" class="hud-score" aria-label="Points"></button>
+</header>
+<button id="next" class="next" hidden></button>
+<button id="bridge-btn" class="bridge-btn" aria-label="Je suis sur un pont"><svg viewBox="0 0 48 48" width="30" height="30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 26 Q24 8 44 26"/><path d="M4 30h40"/><path d="M12 30v8M24 30v8M36 30v8"/><path d="M5 42q4-3 8 0t8 0 8 0 8 0 6 0" stroke-width="2.4"/></svg></button>
+
+<section id="v-days" class="view" hidden></section>
+<section id="v-bridges" class="view" hidden></section>
+<section id="v-photos" class="view" hidden></section>
+<section id="v-trophies" class="view" hidden></section>
+<section id="v-dev" class="view" hidden></section>
+<section id="v-settings" class="view" hidden></section>
+
+<div id="up-bar" class="up-bar" hidden>
+  <div class="up-top"><button id="up-me" class="up-me" aria-label="Modifier mon profil"></button></div>
+  <div class="up-tabs"><button data-tab="days">Défis</button><button data-tab="bridges">Ponts</button><button data-tab="photos">Photos</button><button data-tab="trophies">Trophées</button><button data-tab="settings">Réglages</button><button data-tab="dev" id="tab-dev" hidden>Dév.</button></div>
+</div>
+
+<div id="sheet" class="sheet" hidden></div>
+<div id="quest" class="quest" hidden></div>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<canvas id="fx"></canvas>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

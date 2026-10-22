@@ -1,0 +1,247 @@
+// Identification : Corto Maltese demande ton nom, tu choisis un emblème ou tu te prends en photo.
+import { AVATARS } from "./data.js";
+
+const PKEY = "vq_profile";
+export const loadProfile = () => { try { const p = JSON.parse(localStorage.getItem(PKEY)); return p && p.name ? p : null; } catch { return null; } };
+export const saveProfile = (p) => { try { localStorage.setItem(PKEY, JSON.stringify(p)); } catch {} };
+export const clearProfile = () => { try { localStorage.removeItem(PKEY); } catch {} };
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const CORTO = "img/corto-face.webp";
+
+/* ───────── Portrait : visage mis en valeur, arrière-plan flouté, découpe ronde ───────── */
+export async function portrait(src, S = 200) {
+  const w = src.naturalWidth || src.videoWidth || src.width, h = src.naturalHeight || src.videoHeight || src.height;
+  const side = Math.min(w, h);
+  let sx = (w - side) / 2, sy = (h - side) / 2, sw = side;
+  // Si le navigateur sait détecter un visage (Chrome Android, selon la version), on recadre dessus.
+  if ("FaceDetector" in window) {
+    try {
+      const f = (await new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 }).detect(src))[0];
+      if (f) {
+        const b = f.boundingBox, s = Math.min(Math.max(b.width * 2.2, 96), side);
+        sw = s; sx = Math.min(Math.max(b.x + b.width / 2 - s / 2, 0), w - s); sy = Math.min(Math.max(b.y + b.height / 2 - s * 0.52, 0), h - s);
+      }
+    } catch {}
+  }
+  const mk = (n) => { const c = document.createElement("canvas"); c.width = c.height = n; return c; };
+  const out = mk(S), c = out.getContext("2d");
+  c.drawImage(src, sx, sy, sw, sw, 0, 0, S, S);
+  // Copie floue (réduction puis agrandissement) fondue vers les bords : le centre reste net.
+  const t1 = mk(48), t2 = mk(S);
+  t1.getContext("2d").drawImage(out, 0, 0, 48, 48);
+  const c2 = t2.getContext("2d"); c2.imageSmoothingQuality = "high"; c2.drawImage(t1, 0, 0, S, S);
+  const g = c2.createRadialGradient(S / 2, S * 0.46, S * 0.22, S / 2, S * 0.46, S * 0.62);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,1)");
+  c2.globalCompositeOperation = "destination-in"; c2.fillStyle = g; c2.fillRect(0, 0, S, S);
+  c.drawImage(t2, 0, 0);
+  // Découpe en cercle
+  const fin = mk(S), f = fin.getContext("2d");
+  f.beginPath(); f.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); f.closePath(); f.clip(); f.drawImage(out, 0, 0);
+  const du = fin.toDataURL("image/webp", 0.88);
+  return du.startsWith("data:image/webp") ? du : fin.toDataURL("image/png"); // Safari ne sait pas encoder le WebP
+}
+
+/* ───────── Découpe de la tête : segmentation « selfie » MediaPipe, sur l'appareil (modèle de 250 Ko + wasm hébergés dans vendor/mediapipe) ───────── */
+let segP = null;
+function getSegmenter() {
+  return (segP ||= (async () => {
+    const mod = await import("./vendor/mediapipe/vision_bundle.mjs");
+    const files = await mod.FilesetResolver.forVisionTasks("vendor/mediapipe");
+    return mod.ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: "vendor/mediapipe/selfie_segmenter.tflite" }, runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
+  })().catch((e) => { segP = null; throw e; }));
+}
+// Renvoie une image WebP/PNG au fond transparent (tête et épaules, bas fondu), ou lève une erreur si la découpe échoue.
+export async function cutout(src, S = 256) {
+  const w = src.naturalWidth || src.videoWidth || src.width, h = src.naturalHeight || src.videoHeight || src.height;
+  const k = Math.min(1, 512 / Math.max(w, h)), W = Math.round(w * k), H = Math.round(h * k);
+  const base = document.createElement("canvas"); base.width = W; base.height = H; base.getContext("2d").drawImage(src, 0, 0, W, H);
+  const seg = await getSegmenter(), res = seg.segment(base);
+  const m = res.confidenceMasks[res.confidenceMasks.length - 1], mw = m.width, mh = m.height, f = m.getAsFloat32Array();
+  // sens du masque : la personne est au centre du cadre, le fond sur les bords
+  let ctr = 0, edge = 0, nc = 0, ne = 0;
+  for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { const v = f[y * mw + x], cx = Math.abs(x / mw - 0.5), cy = Math.abs(y / mh - 0.5); if (cx < 0.2 && cy < 0.25) { ctr += v; nc++; } else if (cx > 0.4 || cy > 0.45) { edge += v; ne++; } }
+  const inv = ctr / nc < edge / ne;
+  const mk = (n, hh = n) => { const c = document.createElement("canvas"); c.width = n; c.height = hh; return c; };
+  const mc = mk(mw, mh), mx = mc.getContext("2d"), id = mx.createImageData(mw, mh);
+  let minX = mw, maxX = 0, minY = mh, maxY = 0;
+  for (let i = 0; i < mw * mh; i++) {
+    let v = inv ? 1 - f[i] : f[i]; v = Math.min(1, Math.max(0, (v - 0.3) / 0.4)); // franchit le contour
+    id.data[i * 4 + 3] = Math.round(v * 255);
+    if (v > 0.5) { const x = i % mw, y = (i / mw) | 0; if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+  }
+  if (maxX - minX < mw * 0.12 || maxY - minY < mh * 0.12) throw new Error("personne introuvable");
+  mx.putImageData(id, 0, 0);
+  m.close && m.close();
+  // image pleine résolution * masque adouci
+  const full = mk(mw, mh), fx = full.getContext("2d"); fx.drawImage(base, 0, 0, mw, mh);
+  fx.globalCompositeOperation = "destination-in"; fx.filter = "blur(1.2px)"; fx.drawImage(mc, 0, 0); fx.filter = "none";
+  // cadrage : tête et épaules (haut de la silhouette, ~1,15 fois sa largeur), bas fondu en ovale
+  const bw = maxX - minX, bh = Math.min(maxY - minY, bw * 1.15), pad = bw * 0.05;
+  const sx = Math.max(0, minX - pad), sy = Math.max(0, minY - pad), sw = Math.min(mw - sx, bw + 2 * pad), sh = Math.min(mh - sy, bh + pad);
+  const sc = S / Math.max(sw, sh), ow = Math.round(sw * sc), oh = Math.round(sh * sc);
+  const out = mk(ow, oh), ox = out.getContext("2d"); ox.imageSmoothingQuality = "high"; ox.drawImage(full, sx, sy, sw, sh, 0, 0, ow, oh);
+  const fade = mk(ow, oh), gx = fade.getContext("2d"), g = gx.createRadialGradient(ow / 2, oh * 0.38, Math.min(ow, oh) * 0.28, ow / 2, oh * 0.45, Math.max(ow, oh) * 0.62);
+  g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(0.7, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  gx.fillStyle = g; gx.fillRect(0, 0, ow, oh);
+  ox.globalCompositeOperation = "destination-in"; ox.drawImage(fade, 0, 0);
+  const du = out.toDataURL("image/webp", 0.9);
+  return du.startsWith("data:image/webp") ? du : out.toDataURL("image/png");
+}
+
+/* ───────── Cadrage standard : ovale du visage + haut des épaules ─────────
+   Toutes les photos de profil ont la même mise en page (FRAME 300×400) : le visage est dans l'ovale FACE (fractions du cadre).
+   Les tenues de grade s'y posent donc toujours au même endroit, sans deviner où est la tête. */
+export const FRAME = { w: 300, h: 400 };
+export const FACE = { cx: 0.5, cy: 0.4, w: 0.46, h: 0.52 }; // ovale de départ (plus petit : on voit mieux les épaules). Chaque photo mémorise l'ovale utilisé (frameSpec) : c'est lui qui règle la pose des tenues.
+// Géométrie du cadre mémorisée avec la photo : si l'ovale change un jour, les anciennes photos gardent leurs proportions.
+export const frameSpec = () => ({ v: 1, cx: FACE.cx, cy: FACE.cy, w: FACE.w, h: FACE.h });
+export function frameShot(src) { // recadre au format 3:4 (centre), comme l'aperçu de la caméra
+  const w = src.naturalWidth || src.videoWidth || src.width, h = src.naturalHeight || src.videoHeight || src.height;
+  const sw = Math.min(w, (h * 3) / 4), sh = (sw * 4) / 3, sx = (w - sw) / 2, sy = (h - sh) / 2;
+  const c = document.createElement("canvas"); c.width = FRAME.w; c.height = FRAME.h; const x = c.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(src, sx, sy, sw, sh, 0, 0, FRAME.w, FRAME.h); return c;
+}
+const fadeBottom = (c) => { const x = c.getContext("2d"), g = x.createLinearGradient(0, c.height * 0.86, 0, c.height); g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.globalCompositeOperation = "destination-in"; const cv = document.createElement("canvas"); cv.width = c.width; cv.height = c.height; const y = cv.getContext("2d"); const gg = y.createLinearGradient(0, 0, 0, c.height); gg.addColorStop(0, "rgba(0,0,0,1)"); gg.addColorStop(0.86, "rgba(0,0,0,1)"); gg.addColorStop(1, "rgba(0,0,0,0)"); y.fillStyle = gg; y.fillRect(0, 0, c.width, c.height); x.drawImage(cv, 0, 0); x.globalCompositeOperation = "source-over"; };
+const toUrl = (c) => { const du = c.toDataURL("image/webp", 0.9); return du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); };
+// Détourage sans recadrage : on garde exactement la mise en page du cadre (le visage reste dans l'ovale).
+export async function cutoutFramed(frame) {
+  const seg = await getSegmenter(), res = seg.segment(frame);
+  const m = res.confidenceMasks[res.confidenceMasks.length - 1], mw = m.width, mh = m.height, f = m.getAsFloat32Array();
+  let ctr = 0, edge = 0, nc = 0, ne = 0;
+  for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { const v = f[y * mw + x], cx = Math.abs(x / mw - 0.5), cy = Math.abs(y / mh - 0.4); if (cx < 0.15 && cy < 0.15) { ctr += v; nc++; } else if (cx > 0.4 || cy > 0.55) { edge += v; ne++; } }
+  const inv = ctr / nc < edge / ne, mc = document.createElement("canvas"); mc.width = mw; mc.height = mh; const mx = mc.getContext("2d"), id = mx.createImageData(mw, mh); let cnt = 0;
+  for (let i = 0; i < mw * mh; i++) { let v = inv ? 1 - f[i] : f[i]; v = Math.min(1, Math.max(0, (v - 0.3) / 0.4)); id.data[i * 4 + 3] = Math.round(v * 255); if (v > 0.5) cnt++; }
+  if (cnt < mw * mh * 0.12) throw new Error("personne introuvable");
+  mx.putImageData(id, 0, 0); m.close && m.close();
+  const out = document.createElement("canvas"); out.width = FRAME.w; out.height = FRAME.h; const x = out.getContext("2d"); x.drawImage(frame, 0, 0);
+  x.globalCompositeOperation = "destination-in"; x.filter = "blur(1.2px)"; x.drawImage(mc, 0, 0, FRAME.w, FRAME.h); x.filter = "none"; x.globalCompositeOperation = "source-over";
+  fadeBottom(out); return toUrl(out);
+}
+export function framedFallback(frame) { // sans segmentation : photo cadrée dans un grand ovale adouci
+  const out = document.createElement("canvas"); out.width = FRAME.w; out.height = FRAME.h; const x = out.getContext("2d"); x.drawImage(frame, 0, 0);
+  const m = document.createElement("canvas"); m.width = FRAME.w; m.height = FRAME.h; const y = m.getContext("2d"); y.filter = "blur(10px)"; y.fillStyle = "#000"; y.beginPath(); y.ellipse(FRAME.w / 2, FRAME.h * 0.56, FRAME.w * 0.46, FRAME.h * 0.46, 0, 0, Math.PI * 2); y.fill();
+  x.globalCompositeOperation = "destination-in"; x.drawImage(m, 0, 0); x.globalCompositeOperation = "source-over"; return toUrl(out);
+}
+
+/* ───────── Caméra ───────── */
+export function selfie() {
+  return new Promise((resolve) => {
+    const cam = document.createElement("div"); cam.className = "cam";
+    cam.innerHTML = `<p class="cam-t">Place ton visage dans l'ovale, épaules en bas</p>
+      <div class="cam-ring cam-frame"><video autoplay playsinline muted></video><img class="cam-prev" alt="" hidden><i class="cam-oval" style="left:${(FACE.cx - FACE.w / 2) * 100}%;top:${(FACE.cy - FACE.h / 2) * 100}%;width:${FACE.w * 100}%;height:${FACE.h * 100}%"></i><svg class="cam-sh" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M2 100 C 6 84, 24 80, 36 80 L 64 80 C 76 80, 94 84, 98 100" fill="none" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 2.5"/></svg></div>
+      <p class="cam-err" hidden></p>
+      <div class="cam-bar"><button class="cam-btn" data-x>Annuler</button><button class="cam-shot" data-shot aria-label="Prendre la photo"></button>
+        <label class="cam-btn">Une photo<input type="file" accept="image/*" capture="user" hidden data-file></label></div>
+      <div class="cam-bar" data-ok hidden><button class="cam-btn" data-again>Refaire</button><button class="cam-go" data-use>C'est moi !</button></div>`;
+    document.body.appendChild(cam);
+    const video = cam.querySelector("video"), prev = cam.querySelector(".cam-prev"), err = cam.querySelector(".cam-err");
+    let stream = null, result = null;
+    const stop = () => { try { stream && stream.getTracks().forEach((t) => t.stop()); } catch {} };
+    const done = (v) => { stop(); cam.remove(); resolve(v); };
+    const show = async (srcEl) => {
+      cam.querySelector(".cam-t").textContent = "Je découpe ta tête…"; cam.classList.add("busy");
+      const fr = frameShot(srcEl); try { result = { photo: await cutoutFramed(fr), cut: true, frame: frameSpec() }; } catch (e) { result = { photo: framedFallback(fr), cut: true, frame: frameSpec() }; } // repli : photo cadrée dans un ovale adouci
+      cam.classList.remove("busy"); prev.src = result.photo; prev.classList.toggle("cut", result.cut); prev.hidden = false; video.hidden = true;
+      cam.querySelectorAll(".cam-bar")[0].hidden = true; cam.querySelector("[data-ok]").hidden = false; cam.querySelector(".cam-t").textContent = "Voilà ta tête de marin !";
+    };
+    cam.querySelector("[data-x]").onclick = () => done(null);
+    cam.querySelector("[data-use]").onclick = () => done(result);
+    cam.querySelector("[data-again]").onclick = () => { prev.hidden = true; video.hidden = false; cam.querySelectorAll(".cam-bar")[0].hidden = false; cam.querySelector("[data-ok]").hidden = true; cam.querySelector(".cam-t").textContent = "Place ton visage dans le cercle"; };
+    cam.querySelector("[data-shot]").onclick = async () => {
+      if (!video.videoWidth) return;
+      const c = document.createElement("canvas"); c.width = video.videoWidth; c.height = video.videoHeight;
+      const x = c.getContext("2d"); x.translate(c.width, 0); x.scale(-1, 1); x.drawImage(video, 0, 0); // effet miroir, comme l'aperçu
+      await show(c);
+    };
+    cam.querySelector("[data-file]").onchange = (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const im = new Image(), u = URL.createObjectURL(f);
+      im.onload = async () => { await show(im); URL.revokeObjectURL(u); }; im.src = u;
+    };
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 960 } }, audio: false })
+        .then((s) => { stream = s; video.srcObject = s; })
+        .catch(() => { err.textContent = "Je n'ai pas accès à la caméra. Tu peux choisir une photo, ou annuler."; err.hidden = false; cam.querySelector("[data-shot]").hidden = true; });
+    } else { err.textContent = "La caméra n'est pas disponible ici. Choisis une photo."; err.hidden = false; cam.querySelector("[data-shot]").hidden = true; }
+  });
+}
+
+/* ───────── Écran d'identification ───────── */
+export function runIntro() {
+  return new Promise(async (resolve) => {
+    const root = document.createElement("div"); root.className = "intro";
+    root.innerHTML = `<div class="in-face" style="background-image:url(${CORTO})"></div><div class="in-chat" id="in-chat"></div><div class="in-input" id="in-input"></div>`;
+    document.body.appendChild(root);
+    const chat = root.querySelector("#in-chat"), inp = root.querySelector("#in-input");
+    const scroll = () => chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+    const add = (cls, html) => { const d = document.createElement("div"); d.className = "msg " + cls; d.innerHTML = html; chat.appendChild(d); d.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 260 }); scroll(); return d; };
+    const say = async (text, ms = 800) => {
+      const d = add("fc", '<span class="m-face"></span><div class="m-bubble typing"><i></i><i></i><i></i></div>');
+      await sleep(ms); const b = d.querySelector(".m-bubble"); b.classList.remove("typing"); b.textContent = text; scroll(); await sleep(350);
+    };
+    const me = (html) => add("mine", `<div class="m-bubble mine">${html}</div>`);
+    const ask = (render) => new Promise((res) => { inp.innerHTML = ""; render(inp, (v) => { inp.innerHTML = ""; res(v); }); });
+
+    await sleep(500);
+    await say("Salut, étranger. Moi, c'est Corto Maltese.", 900);
+    await say("Dis-moi, comment tu t'appelles ?", 900);
+    const name = await ask((box, done) => {
+      box.innerHTML = `<form class="in-form"><input class="t" id="in-name" maxlength="30" autocomplete="off" placeholder="Ton nom ou celui de ta bande"><button class="in-send" aria-label="Envoyer">➤</button></form>`;
+      const f = box.querySelector("form"), i = box.querySelector("input");
+      setTimeout(() => i.focus(), 100);
+      f.onsubmit = (e) => { e.preventDefault(); const v = i.value.trim(); if (v) done(v); };
+    });
+    me(esc(name));
+    await say(`Enchanté, ${name} !`, 800);
+    await say("Choisis ton emblème, ou prends-toi en photo.", 900);
+    let profile = null;
+    while (!profile) {
+      const choice = await ask((box, done) => {
+        box.innerHTML = `<div class="in-grid">${AVATARS.map((a) => `<button data-a="${a}">${a}</button>`).join("")}</div><button class="in-photo" data-photo>📷 Me prendre en photo</button>`;
+        box.querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => done({ avatar: b.dataset.a })));
+        box.querySelector("[data-photo]").onclick = async () => { const p = await selfie(); if (p) done({ photo: p.photo, cut: p.cut, frame: p.frame }); };
+      });
+      profile = { name, ...choice };
+    }
+    me(profile.photo ? `<img class="in-ph${profile.cut ? " cut" : ""}${profile.frame ? " frame" : ""}" src="${profile.photo}" alt="">` : profile.avatar);
+    saveProfile(profile);
+    await say(`Bienvenue, ${name}. L'aventure va commencer…`, 900);
+    await say("Voici Venise.", 800);
+    await sleep(700);
+    root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 800, fill: "forwards" }).onfinish = () => { root.remove(); resolve(profile); };
+  });
+}
+
+/* ───────── Corto parle (message ponctuel par-dessus la carte) ───────── */
+export function cortoSays(text) {
+  document.querySelectorAll(".corto-say").forEach((e) => e.remove());
+  const d = document.createElement("div"); d.className = "corto-say";
+  d.innerHTML = `<div class="msg fc"><span class="m-face"></span><div class="m-bubble">${esc(text)}</div></div><button class="cs-ok">OK</button>`;
+  document.body.appendChild(d);
+  d.animate([{ opacity: 0, transform: "translateY(20px)" }, { opacity: 1, transform: "none" }], { duration: 300 });
+  d.querySelector(".cs-ok").onclick = () => d.remove();
+  setTimeout(() => d.isConnected && d.remove(), 9000);
+}
+
+/* ───────── Modifier son profil : nom, pictogramme ou nouvelle photo ───────── */
+export function editProfile(cur) {
+  return new Promise((resolve) => {
+    let photo = cur.photo || null, cutP = !!cur.cut, frameP = cur.frame || null, avatar = cur.avatar || null;
+    const root = document.createElement("div"); root.className = "pf";
+    root.innerHTML = `<div class="pf-card"><h3>Ton profil</h3><div class="pf-cur" id="pf-cur"></div>
+      <input class="t" id="pf-name" maxlength="30" autocomplete="off" value="${esc(cur.name)}" placeholder="Ton nom">
+      <p class="pf-l">Choisis un pictogramme</p><div class="in-grid">${AVATARS.map((a) => `<button type="button" data-a="${a}">${a}</button>`).join("")}</div>
+      <button type="button" class="in-photo" data-photo>📷 Prendre une nouvelle photo</button>
+      <div class="pf-bar"><button type="button" class="cam-btn" data-x>Annuler</button><button type="button" class="cam-go" data-ok>Valider</button></div></div>`;
+    document.body.appendChild(root);
+    const cur$ = root.querySelector("#pf-cur"), name = root.querySelector("#pf-name");
+    const show = () => { cur$.innerHTML = photo ? `<img class="in-ph${cutP ? " cut" : ""}${frameP ? " frame" : ""}" src="${photo}" alt="">` : `<span class="pf-em">${avatar || "🙂"}</span>`; };
+    show();
+    root.querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => { avatar = b.dataset.a; photo = null; show(); }));
+    root.querySelector("[data-photo]").onclick = async () => { const p = await selfie(); if (p) { photo = p.photo; cutP = p.cut; frameP = p.frame || null; show(); } };
+    const done = (v) => { root.remove(); resolve(v); };
+    root.querySelector("[data-x]").onclick = () => done(null);
+    root.querySelector("[data-ok]").onclick = () => { const n = name.value.trim(); if (!n) { name.focus(); return; } const p = { name: n }; if (photo) { p.photo = photo; if (cutP) p.cut = true; if (frameP) p.frame = true; } else p.avatar = avatar || "🙂"; done(p); };
+  });
+}

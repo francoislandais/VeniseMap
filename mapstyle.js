@@ -1,0 +1,120 @@
+import { STADIA_KEY } from "./config.js";
+
+// Carte du Livre du Lion : aquarelle Stamen (Stadia Maps) en fond, enrichie de calques dessinés à partir d'OpenFreeMap (bâtiments,
+// rues, noms de monuments classés par importance) et de petits canaux peints (data/petits-canaux.json).
+const isLocal = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+export const useStamen = !!STADIA_KEY || isLocal;
+export const WC_URL = `https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}@2x.jpg${STADIA_KEY ? "?api_key=" + STADIA_KEY : ""}`;
+export const OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const OFM_TILEJSON = "https://tiles.openfreemap.org/planet";
+export const FONTS = ["Noto Sans Bold", "Noto Sans Italic"];
+
+const INK = "#6b4535", WATER = "#2f7fae";
+const POI = ["in", ["get", "class"], ["literal", ["place_of_worship", "museum", "monument", "castle", "attraction", "theatre", "library", "town_hall", "college"]]];
+// motifs dessinés par le code : papier, vaguelettes, arbres (pour garder un rendu net aux forts zooms)
+function mk(w, h, draw) { const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d"); draw(x, w, h); return x.getImageData(0, 0, w, h); }
+function rnd(seed) { let s = seed; return () => ((s = (s * 16807) % 2147483647) / 2147483647); }
+const patterns = {
+  paper: () => mk(128, 128, (x, w, h) => { x.fillStyle = "#f3dfc0"; x.fillRect(0, 0, w, h); const r = rnd(7);
+    for (let i = 0; i < 900; i++) { x.fillStyle = `rgba(150,95,50,${0.05 + r() * 0.08})`; x.fillRect(r() * w, r() * h, 1 + r() * 2, 1 + r() * 2); }
+    for (let i = 0; i < 16; i++) { x.strokeStyle = "rgba(160,110,60,.07)"; x.lineWidth = 0.8; x.beginPath(); const a = r() * w, b = r() * h; x.moveTo(a, b); x.quadraticCurveTo(a + 10 + r() * 14, b + r() * 8 - 4, a + 22 + r() * 20, b + r() * 12 - 6); x.stroke(); } }),
+  waves: () => mk(512, 512, (x, w, h) => {
+    x.fillStyle = "#56cfdf"; x.fillRect(0, 0, w, h); const r = rnd(5);
+    x.filter = "blur(18px)";
+    for (let i = 0; i < 110; i++) { const px = r() * w, py = r() * h, rad = 26 + r() * 52, light = r() > 0.45;
+      for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) { x.beginPath(); x.arc(px + ox, py + oy, rad, 0, 7); x.fillStyle = light ? `rgba(170,236,242,${0.10 + r() * 0.1})` : `rgba(40,160,200,${0.05 + r() * 0.06})`; x.fill(); } }
+    x.filter = "none"; x.lineCap = "round";
+    for (let i = 0; i < 70; i++) { const px = r() * w, py = r() * h, L = 12 + r() * 14; x.lineWidth = 1.5; x.strokeStyle = i % 3 ? "rgba(240,252,255,.7)" : "rgba(20,120,165,.3)";
+      for (const ox of [-w, 0, w]) { x.beginPath(); x.moveTo(px + ox, py); x.quadraticCurveTo(px + ox + L / 4, py - 3, px + ox + L / 2, py); x.quadraticCurveTo(px + ox + (3 * L) / 4, py + 3, px + ox + L, py); x.stroke(); } }
+  }),
+  // lavis fin : mouchetures douces et vaguelettes, à poser par-dessus l'eau pour que même un canal étroit garde sa texture d'aquarelle
+  lavis: () => mk(224, 224, (x, w, h) => { const r = rnd(21);
+    x.filter = "blur(5px)";
+    for (let i = 0; i < 70; i++) { const px = r() * w, py = r() * h, rad = 6 + r() * 12, light = r() > 0.42;
+      for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) { x.beginPath(); x.arc(px + ox, py + oy, rad, 0, 7); x.fillStyle = light ? `rgba(215,247,250,${0.1 + r() * 0.1})` : `rgba(28,140,185,${0.06 + r() * 0.07})`; x.fill(); } }
+    x.filter = "none"; x.lineCap = "round";
+    for (let i = 0; i < 24; i++) { const px = r() * w, py = r() * h, L = 9 + r() * 10; x.lineWidth = 1.4; x.strokeStyle = i % 3 ? "rgba(245,253,255,.7)" : "rgba(25,115,160,.3)";
+      for (const ox of [-w, 0, w]) { x.beginPath(); x.moveTo(px + ox, py); x.quadraticCurveTo(px + ox + L / 4, py - 2.6, px + ox + L / 2, py); x.quadraticCurveTo(px + ox + (3 * L) / 4, py + 2.6, px + ox + L, py); x.stroke(); } }
+  }),
+  trees: () => mk(44, 44, (x, w, h) => { x.fillStyle = "#cfe2b6"; x.fillRect(0, 0, w, h); const r = rnd(11);
+    for (let i = 0; i < 5; i++) { const px = 6 + r() * (w - 12), py = 6 + r() * (h - 12), sz = 4 + r() * 3.5; x.beginPath(); x.arc(px, py, sz, 0, 7); x.fillStyle = "#8fbf6c"; x.fill(); x.strokeStyle = "#4f7f3f"; x.lineWidth = 1; x.stroke(); } }),
+};
+const ZF = ["interpolate", ["linear"], ["zoom"], 16.2, 1, 17.4, 0];   // l'aquarelle (nette jusqu'à ~z16) s'efface
+const CANAL = ["in", ["get", "class"], ["literal", ["river", "canal", "dock", "stream"]]];
+const ZI = ["interpolate", ["linear"], ["zoom"], 16.2, 0, 17.4, 1];
+const ZW = ["interpolate", ["linear"], ["zoom"], 16.3, 0, 16.9, 1];   // l'eau vectorielle ne remplace l'aquarelle de Stamen qu'une fois le zoom fort ; elle est pleine avant la fin du fondu   // le dessin vectoriel net prend le relais
+// Hiérarchie : l'importance d'un monument = nombre de langues dans lesquelles OpenStreetMap connaît son nom
+// (un site célèbre en a beaucoup, un détail de quartier aucune). Plus on zoome, plus les paliers s'ouvrent.
+const LANGS = ["ja", "zh", "ru", "fr", "es", "de", "pl", "pt", "tr", "he", "ko", "ar", "it", "nl", "uk", "ca", "hu", "cs", "sv", "fi"];
+const SCORE = ["+", ...LANGS.map((l) => ["case", ["has", "name:" + l], 1, 0])];
+const TIERS = [[18, 99, 14.4], [15, 18, 15.2], [12, 15, 15.9], [9, 12, 16.6], [6, 9, 17.2], [3, 6, 17.8], [0, 3, 18.4]]; // [score min, score max, zoom minimal]
+// MapLibre place les symboles de la couche la plus haute en premier : on ajoute donc les paliers du moins important au plus important.
+const MONUMENTS = [...TIERS].reverse().flatMap(([lo, hi, mz], k) => {
+  const f = ["all", POI, [">=", SCORE, lo], ["<", SCORE, hi]];
+  return [
+    { id: "mon-nom" + k, type: "symbol", source: "ofm", "source-layer": "poi", minzoom: mz, filter: f,
+      layout: { "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]], "text-font": ["Noto Sans Bold"], "text-size": ["interpolate", ["linear"], ["zoom"], 14.5, 11, 18, 14], "text-anchor": "top", "text-offset": [0, 0.5], "text-max-width": 7, "text-padding": 38, "symbol-sort-key": ["-", 0, ["+", ["*", 3, SCORE], ["match", ["get", "class"], ["place_of_worship", "castle"], 2, ["museum", "monument"], 1, 0]]] },
+      paint: { "text-color": "#7a2a18", "text-halo-color": "#fff3dd", "text-halo-width": 1.8 } },
+  ];
+});
+const layers = [
+  { id: "papier", type: "background", paint: { "background-pattern": "paper" } },
+  { id: "aquarelle", type: "raster", source: "wc", paint: { "raster-opacity": useStamen ? ZF : 1 } },
+  { id: "parcs", type: "fill", source: "ofm", "source-layer": "park", paint: { "fill-pattern": "trees", "fill-opacity": ZI } },
+  { id: "parcs2", type: "fill", source: "ofm", "source-layer": "landcover", filter: ["in", "class", "grass", "wood"], paint: { "fill-pattern": "trees", "fill-opacity": ZI } },
+  // Mer, lagune, Grand Canal : tuiles Stamen d'origine ; ma peinture (OpenFreeMap) ne les remplace qu'à fort zoom, quand l'aquarelle devient floue.
+  { id: "eau-nette", type: "fill", source: "ofm", "source-layer": "water", paint: { "fill-pattern": "waves", "fill-opacity": ZW } },
+  { id: "eau-lavis", type: "fill", source: "ofm", "source-layer": "water", paint: { "fill-pattern": "lavis", "fill-opacity": ZW } },
+  // Petits canaux (largeur < ~24 m, que Stamen ne dessine pas) : toujours peints par mes soins, à tout zoom, avec un liseré sombre.
+  { id: "canal-eau", type: "fill", source: "petits", paint: { "fill-pattern": "waves" } },
+  { id: "canal-lavis", type: "fill", source: "petits", paint: { "fill-pattern": "lavis" } },
+];
+if (true) layers.push(
+  { id: "bat-bas", type: "fill", source: "ofm", "source-layer": "building", minzoom: 12.5, maxzoom: 15.6, paint: { "fill-color": "#d9a27c", "fill-opacity": ["interpolate", ["linear"], ["zoom"], 12.5, 0.55, 15, 0.55, 15.6, 0] } },
+  { id: "rues-bas", type: "line", source: "ofm", "source-layer": "transportation", minzoom: 13, maxzoom: 15, filter: ["in", "class", "path", "pedestrian", "minor", "service", "tertiary", "secondary", "primary"], paint: { "line-color": "#fff6e4", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 0.4, 15, 0.8], "line-opacity": 0.9 } },
+  { id: "bat-fond", type: "fill", source: "ofm", "source-layer": "building", minzoom: 15, paint: { "fill-color": "#e2ab84", "fill-opacity": ["interpolate", ["linear"], ["zoom"], 16.2, 0, 17.4, 0.55] } },
+  // contours « au crayon » : le trait droit d'OpenFreeMap reste dessous, très léger (trait de construction) ; par-dessus, le contour ondulé à la main (tools/wobble_buildings.py)
+  { id: "bat-trait", type: "line", source: "ofm", "source-layer": "building", minzoom: 15, paint: { "line-color": INK, "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.4, 18, 0.9], "line-opacity": 0.28 } },
+  { id: "bat-crayon", type: "line", source: "crayon", minzoom: 15, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": INK, "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.55, 18, 1.5], "line-opacity": 0.8 } },
+);
+if (true) layers.push(
+  { id: "rues-bord", type: "line", source: "ofm", "source-layer": "transportation", minzoom: 15, filter: ["in", "class", "path", "pedestrian", "minor", "service", "track", "tertiary", "secondary", "primary"], paint: { "line-color": "#9c6f55", "line-width": ["interpolate", ["linear"], ["zoom"], 15, 1.0, 18, 4.2], "line-opacity": 0.5 } },
+  { id: "rues", type: "line", source: "ofm", "source-layer": "transportation", minzoom: 15, filter: ["in", "class", "path", "pedestrian", "minor", "service", "track", "tertiary", "secondary", "primary"], paint: { "line-color": "#fff6e4", "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.6, 18, 2.8] } },
+);
+if (true) layers.push(
+  { id: "noms-rues", type: "symbol", source: "ofm", "source-layer": "transportation_name", minzoom: 17.3, layout: { "symbol-placement": "line", "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]], "text-font": ["Noto Sans Italic"], "text-size": 11 }, paint: { "text-color": "#5a3b2c", "text-halo-color": "#f7eddc", "text-halo-width": 1.5 } },
+  { id: "noms-eau", type: "symbol", source: "ofm", "source-layer": "waterway", minzoom: 17.0, layout: { "symbol-spacing": 700, "text-padding": 60, "symbol-placement": "line", "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]], "text-font": ["Noto Sans Italic"], "text-size": 12, "text-letter-spacing": 0.15 }, paint: { "text-color": "#1f5f8a", "text-halo-color": "#e9f3f8", "text-halo-width": 1.5 } },
+  { id: "noms-eau2", type: "symbol", source: "ofm", "source-layer": "water_name", layout: { "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]], "text-font": ["Noto Sans Italic"], "text-size": 13, "text-letter-spacing": 0.2, "text-padding": 90 }, paint: { "text-color": "#1f5f8a", "text-halo-color": "#e9f3f8", "text-halo-width": 1.5 } },
+  ...MONUMENTS,
+);
+
+export function createMap(container, { center, zoom, minZoom = 11, maxZoom = 19 }) {
+  const map = new maplibregl.Map({
+    container, center, zoom, minZoom, maxZoom, maxBounds: [[12.24, 45.36], [12.47, 45.55]], dragRotate: false, pitchWithRotate: false, touchPitch: false, attributionControl: false,
+    style: {
+      version: 8, glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+      sources: {
+        wc: useStamen
+          ? { type: "raster", tiles: [WC_URL], tileSize: 256, maxzoom: 16, attribution: "Stamen Design (CC BY 4.0) · © OpenStreetMap" }
+          : { type: "raster", tiles: [OSM_URL], tileSize: 256, maxzoom: 19, attribution: "© OpenStreetMap" },
+        ofm: { type: "vector", url: OFM_TILEJSON, attribution: "OpenFreeMap © OpenMapTiles" },
+        petits: { type: "geojson", data: "data/petits-canaux.json" },
+        crayon: { type: "geojson", data: "data/batiments-crayon.json", tolerance: 0, buffer: 8 },
+      },
+      layers,
+    },
+  });
+  // Si Stadia refuse la clé (401/403), on bascule automatiquement sur les tuiles OpenStreetMap standard.
+  let fellBack = false;
+  map.on("error", (e) => {
+    const st = e && e.error && e.error.status;
+    if (!fellBack && e.sourceId === "wc" && useStamen && (st === 401 || st === 402 || st === 403 || st === 429)) {
+      fellBack = true; console.warn("Aquarelle Stamen refusée (clé ou domaine) : repli sur OpenStreetMap");
+      map.getSource("wc").setTiles([OSM_URL]); map.setPaintProperty("aquarelle", "raster-opacity", 1);
+    }
+  });
+  map.touchZoomRotate.disableRotation();
+  map.on("styleimagemissing", (e) => { if (patterns[e.id]) map.addImage(e.id, patterns[e.id](), { pixelRatio: 2 }); });
+  map.on("load", () => { for (const k of Object.keys(patterns)) if (!map.hasImage(k)) map.addImage(k, patterns[k](), { pixelRatio: 2 }); map.setPaintProperty("papier", "background-pattern", "paper"); });
+  return map;
+}
