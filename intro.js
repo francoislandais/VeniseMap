@@ -192,7 +192,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const IMG = (n) => `img/intro/e${n}.webp`;
     const SCREENS = [
       { img: 1, layout: "hello", hello: "Eh oh, bien le bonjour !", text: () => "Comment t'appelles-tu ?", input: true },
-      { img: 2, layout: "bottom", text: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour. Je m'appelle Corto Maltese. J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires.` },
+      { img: 2, layout: "welcome", head: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour. Je m'appelle Corto Maltese.`, text: () => "J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires." },
       { img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
       { img: 4, layout: "bottom", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.\n\nEs-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
       { img: 5, layout: "center-top", text: () => "Parfait, alors c'est décidé ! Mon bateau sera bientôt amarré à l'embarcadère de Santo Spirito. Retrouvons-nous là-bas quand tu seras prêt." },
@@ -214,6 +214,10 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       const txt = esc(sc.text()).replace(/\n\n/g, "<br><br>");
       if (sc.layout === "hello") { // écran 1 : Corto à gauche ; à droite le salut (sur une ligne, à hauteur de son visage), la question et le champ prénom
         d.innerHTML = `<div class="hl-wrap"><div class="hl-top"><img class="hl-img" style="opacity:0" src="${IMG(sc.img)}" alt=""><div class="hl-col" style="opacity:0"><p class="hl-hi">${esc(sc.hello)}</p><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Valider">›</button></form></div></div></div>`;
+        return d;
+      }
+      if (sc.layout === "welcome") { // écran 2 : Corto joyeux en haut qui se présente ; l'aquarelle serrée en bas en pleine largeur (haut fondu) avec la suite du texte posée dessus
+        d.innerHTML = `<div class="wl-top"><img class="wl-face" src="img/corto-content.webp" alt=""><p>${esc(sc.head())}</p></div><img class="wl-img" src="${IMG(sc.img)}" alt=""><div class="wl-mid"><p>${esc(sc.text())}</p></div>`;
         return d;
       }
       d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
