@@ -274,7 +274,9 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     // ───── Éditeur de mise en page (aperçu local uniquement) : on glisse les images et les textes, ± pour la taille, « Enregistrer » écrit data/intro-layout.json ─────
     let editing = false, selEl = null, selKey = null;
     const canEdit = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
-    const select = (k) => { root.querySelectorAll(".in2-sel").forEach((e) => e.classList.remove("in2-sel")); selKey = k; selEl = null; if (!k) return; const e = elsOf(cur, SCREENS[idx])[k]; if (e) { selEl = e; e.classList.add("in2-sel"); } };
+    const handle = document.createElement("div"); handle.className = "in2-handle"; handle.hidden = true; root.appendChild(handle);
+    const placeHandle = () => { if (!selEl || !editing) { handle.hidden = true; return; } const r = selEl.getBoundingClientRect(); handle.style.left = Math.min(innerWidth - 14, r.right) + "px"; handle.style.top = Math.min(lockedH - 14, r.bottom) + "px"; handle.hidden = false; };
+    const select = (k) => { root.querySelectorAll(".in2-sel").forEach((e) => e.classList.remove("in2-sel")); selKey = k; selEl = null; if (k) { const e = elsOf(cur, SCREENS[idx])[k]; if (e) { selEl = e; e.classList.add("in2-sel"); } } placeHandle(); };
     const cfgFor = (k) => { const key = edKey(idx); LAYOUT[key] ||= {}; LAYOUT[key][k] ||= { x: 0, y: 0, s: 1 }; return LAYOUT[key][k]; };
     if (canEdit) {
       const bar = document.createElement("div"); bar.className = "in2-ed";
@@ -291,18 +293,26 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         if (a === "plus") c.s = Math.round((c.s + 0.05) * 100) / 100;
         if (a === "minus") c.s = Math.max(0.3, Math.round((c.s - 0.05) * 100) / 100);
         if (a === "reset") { c.x = 0; c.y = 0; c.s = 1; }
-        applyOne(selEl, c);
+        applyOne(selEl, c); placeHandle();
       });
       let drag = null;
       root.addEventListener("pointerdown", (e) => {
-        if (!editing || e.target.closest(".in2-ed,.in2-nav")) return;
+        if (!editing || e.target.closest(".in2-ed,.in2-nav,.in2-handle")) return;
         const els = elsOf(cur, SCREENS[idx]); let hit = null; // l'élément éditable le plus en avant sous le doigt (images comprises, même sous un bloc de texte)
         for (const t of document.elementsFromPoint(e.clientX, e.clientY)) { for (const k in els) if (els[k].contains(t)) { hit = k; break; } if (hit) break; }
         if (!hit) { select(null); return; }
         e.preventDefault(); select(hit); const c = cfgFor(hit); drag = { k: hit, x0: e.clientX, y0: e.clientY, cx: c.x, cy: c.y }; root.setPointerCapture?.(e.pointerId);
       }, true);
-      root.addEventListener("pointermove", (e) => { if (!drag) return; const c = cfgFor(drag.k); c.x = Math.round((drag.cx + ((e.clientX - drag.x0) / innerWidth) * 100) * 100) / 100; c.y = Math.round((drag.cy + ((e.clientY - drag.y0) / lockedH) * 100) * 100) / 100; applyOne(selEl, c); });
-      const end = () => { drag = null; }; root.addEventListener("pointerup", end); root.addEventListener("pointercancel", end);
+      // Redimensionner : tirer la poignée ronde (coin bas-droit de l'élément), pincer à deux doigts, ou molette
+      let rs = null; const pinch = new Map(); const clampS = (v) => Math.max(0.2, Math.min(5, Math.round(v * 100) / 100));
+      handle.addEventListener("pointerdown", (e) => { if (!selEl) return; e.preventDefault(); e.stopPropagation(); const r = selEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; rs = { cx, cy, d0: Math.hypot(e.clientX - cx, e.clientY - cy) || 1, s0: cfgFor(selKey).s }; handle.setPointerCapture?.(e.pointerId); });
+      handle.addEventListener("pointermove", (e) => { if (!rs) return; const c = cfgFor(selKey); c.s = clampS(rs.s0 * (Math.hypot(e.clientX - rs.cx, e.clientY - rs.cy) / rs.d0)); applyOne(selEl, c); placeHandle(); });
+      handle.addEventListener("pointerup", () => { rs = null; }); handle.addEventListener("pointercancel", () => { rs = null; });
+      root.addEventListener("pointerdown", (e) => { if (editing && selEl) { pinch.set(e.pointerId, [e.clientX, e.clientY]); if (pinch.size === 2) { const p = [...pinch.values()]; pinch.base = { d: Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]) || 1, s: cfgFor(selKey).s }; drag = null; } } }, true);
+      root.addEventListener("pointermove", (e) => { if (!pinch.has(e.pointerId)) return; pinch.set(e.pointerId, [e.clientX, e.clientY]); if (pinch.size === 2 && pinch.base) { const p = [...pinch.values()], c = cfgFor(selKey); c.s = clampS(pinch.base.s * (Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]) / pinch.base.d)); applyOne(selEl, c); placeHandle(); } });
+      root.addEventListener("wheel", (e) => { if (!editing || !selEl) return; e.preventDefault(); const c = cfgFor(selKey); c.s = clampS(c.s * (e.deltaY < 0 ? 1.05 : 0.95)); applyOne(selEl, c); placeHandle(); }, { passive: false });
+      root.addEventListener("pointermove", (e) => { if (!drag) return; const c = cfgFor(drag.k); c.x = Math.round((drag.cx + ((e.clientX - drag.x0) / innerWidth) * 100) * 100) / 100; c.y = Math.round((drag.cy + ((e.clientY - drag.y0) / lockedH) * 100) * 100) / 100; applyOne(selEl, c); placeHandle(); });
+      const end = () => { drag = null; rs = null; pinch.clear(); }; root.addEventListener("pointerup", end); root.addEventListener("pointercancel", end);
       root.addEventListener("click", (e) => { if (editing && !e.target.closest(".in2-ed,.in2-nav")) { e.stopPropagation(); e.preventDefault(); } }, true);
     }
     go(0);
