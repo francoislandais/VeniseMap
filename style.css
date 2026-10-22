@@ -1096,8 +1096,3 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 /* boutons précédent/suivant regroupés en bas à droite : le texte du bas à gauche reste libre */
 .in2-nav{justify-content:flex-end!important;gap:8px;padding:0 12px!important}
 .in2-nav button{width:40px!important;height:40px!important;font-size:26px!important}
-/* une seule taille de texte dans toute l'introduction (ancre : « Enchanté… Laisse-moi me présenter ») */
-.in2,.in2-end{--fs:clamp(19px,5.6vw,28px)}
-.in2 .wl-top p,.in2 .wl-name,.in2 .wl-mid p,.in2 .in2-txt p,.in2 .hl-hi,.in2 .hl-q,.in2 .in2-btn,.in2-end p{font-size:var(--fs)!important;line-height:1.28!important;font-weight:400!important}
-.in2 .in2-s.hello .in2-form input{font-size:var(--fs)!important}
-.in2 .hl-hi{white-space:normal!important}
