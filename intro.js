@@ -168,10 +168,10 @@ export function selfie() {
 }
 
 /* ───────── Écran d'identification ───────── */
-export function runIntro() {
+export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (prénom déjà connu, profil inchangé)
   // Introduction : 7 écrans plein page qui s'enchaînent en fondu, après un toucher (ou la saisie du prénom). Images + texte, sans bulle.
   return new Promise(async (resolve) => {
-    let name = "";
+    let name = opts.replay ? opts.name || "" : "";
     const IMG = (n) => `img/intro/e${n}.webp`;
     // layout : "side" (image à gauche, texte à droite + champ prénom), "bottom"/"top" (image pleine page, texte en bas / en haut), "center" (image centrée sans cadre)
     const SCREENS = [
@@ -188,7 +188,7 @@ export function runIntro() {
     const build = (sc) => {
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
       const txt = esc(sc.text()).replace(/\n\n/g, "<br><br>");
-      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.input ? '<form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom"><button aria-label="Continuer">➤</button></form>' : sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : '<span class="in2-hint">toucher pour continuer</span>'}</div>`;
+      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.input ? `<form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form>` : sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : '<span class="in2-hint">toucher pour continuer</span>'}</div>`;
       const im = d.querySelector(".in2-img"); // image à sa proportion réelle, contenue dans la page (le fondu des bords suit l'image elle-même)
       if (sc.layout === "bottom" || sc.layout === "top") { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, innerHeight / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
       return d;
@@ -208,8 +208,8 @@ export function runIntro() {
     });
     for (const sc of SCREENS) await show(sc);
     // Écran 7 : l'écran s'efface et révèle la carte pour la première fois ; Corto parle en bas.
-    const profile = { name, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
-    saveProfile(profile);
+    const profile = opts.replay ? null : { name, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
+    if (profile) saveProfile(profile);
     resolve(profile);
     const msg = document.createElement("div"); msg.className = "in2-end";
     msg.innerHTML = `<p>En attendant notre rencontre, je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt=""><span class="in2-hint">toucher pour continuer</span>`;

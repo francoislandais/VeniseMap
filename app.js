@@ -1829,7 +1829,7 @@ function renderSettings() {
   const inst = $("#inst", v); if (inst) inst.onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall = null; renderSettings(); };
   $("#syncnow", v).onclick = sync;
   $("#chteam", v).onclick = async () => { try { localStorage.removeItem(TEAMKEY); } catch {} TEAM = null; await joinGame(); await sync(); if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); } refreshAll(); renderSettings(); };
-  $("#intro", v).onclick = showIntro;
+  $("#intro", v).onclick = () => { setTab("map"); runIntro({ replay: true, name: PROFILE && PROFILE.name }); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
   $("#devtog", v).onchange = (e) => { try { if (e.target.checked) localStorage.setItem("vq_dev", "1"); else localStorage.removeItem("vq_dev"); } catch {} location.reload(); };
   $("#reset", v).onclick = () => {
     if (!confirm("Effacer TOUTE la progression (points, lettres, collections) ?")) return;
