@@ -175,7 +175,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const IMG = (n) => `img/intro/e${n}.webp`;
     // layout : "side" (image à gauche, texte à droite + champ prénom), "bottom"/"top" (image pleine page, texte en bas / en haut), "center" (image centrée sans cadre)
     const SCREENS = [
-      { img: 1, layout: "side", text: () => "Eh oh, bien le bonjour ! Comment t'appelles-tu, jeune aventurier ?", input: true },
+      { img: 1, layout: "hello", hello: "Eh oh, bien le bonjour !", text: () => "Comment t'appelles-tu, jeune aventurier ?", input: true },
       { img: 2, layout: "bottom", text: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour. Je m'appelle Corto Maltese. J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires.` },
       { img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
       { img: 4, layout: "bottom", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.\n\nEs-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
@@ -188,6 +188,10 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const build = (sc) => {
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
       const txt = esc(sc.text()).replace(/\n\n/g, "<br><br>");
+      if (sc.layout === "hello") { // écran 1 : Corto grand à gauche avec son salut, la question et le champ prénom en dessous (tout tient dans l'écran, quelle que soit sa taille)
+        d.innerHTML = `<div class="hl-top"><img class="hl-img" src="${IMG(sc.img)}" alt=""><p class="hl-hi">${esc(sc.hello)}</p></div><div class="hl-bot"><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form></div>`;
+        return d;
+      }
       d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.input ? `<form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form>` : sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : '<span class="in2-hint">toucher pour continuer</span>'}</div>`;
       const im = d.querySelector(".in2-img"); // image à sa proportion réelle, contenue dans la page (le fondu des bords suit l'image elle-même)
       if (sc.layout === "bottom" || sc.layout === "top") { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, innerHeight / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
