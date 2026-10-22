@@ -1084,3 +1084,12 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .wl-img{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:var(--iw);height:var(--ih);-webkit-mask-image:linear-gradient(to bottom,transparent 0,rgba(0,0,0,.55) 22%,#000 50%);mask-image:linear-gradient(to bottom,transparent 0,rgba(0,0,0,.55) 22%,#000 50%);pointer-events:none}
 .wl-mid{position:absolute;left:0;right:0;bottom:calc(var(--ih) * .74);padding:0 clamp(16px,6vw,32px);max-width:560px;margin:0 auto;box-sizing:border-box}
 .wl-mid p{margin:0;font-size:clamp(17px,5vw,24px);line-height:1.32;color:#1d2230;text-shadow:0 0 12px rgba(243,234,215,.98),0 0 4px rgba(243,234,215,.98),0 0 2px rgba(243,234,215,.98)}
+
+/* écran 2 (v2) : visage de Corto en fondu, nom en grand, Corto de l'aquarelle recadré à droite (sans bateau), texte à gauche */
+.in2-s.welcome{--iw:min(60vw,calc(var(--lh) * .27),340px)}
+.wl-face{-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent 100%);mask-image:linear-gradient(to bottom,#000 55%,transparent 100%);filter:none!important}
+.wl-top{max-width:560px}
+.wl-name{position:absolute;left:0;right:0;top:calc(var(--safe-t) + clamp(14px,3%,30px) + clamp(84px,25vw,140px) + clamp(6px,1.4dvh,16px));margin:0 auto;padding:0 clamp(16px,6vw,32px);max-width:560px;box-sizing:border-box;font-size:clamp(28px,9vw,46px);line-height:1.1;font-weight:600;color:#1d2230;text-shadow:0 0 12px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
+.wl-img{left:auto!important;right:0;transform:none!important;width:var(--iw)!important;height:auto!important;aspect-ratio:390/687;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 24%),linear-gradient(to right,transparent 0,#000 30%);-webkit-mask-composite:source-in;mask-image:linear-gradient(to bottom,transparent 0,#000 24%),linear-gradient(to right,transparent 0,#000 30%);mask-composite:intersect}
+.wl-mid{left:0!important;right:auto!important;bottom:calc(10px + var(--safe-b) + 54px)!important;width:calc(100% - var(--iw) * .94);padding:0 0 0 clamp(16px,6vw,32px)!important;margin:0!important}
+.wl-mid p{font-size:clamp(15px,4.4vw,22px)!important}
