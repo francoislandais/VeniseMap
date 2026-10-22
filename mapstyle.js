@@ -73,9 +73,7 @@ if (true) layers.push(
   { id: "bat-bas", type: "fill", source: "ofm", "source-layer": "building", minzoom: 12.5, maxzoom: 15.6, paint: { "fill-color": "#d9a27c", "fill-opacity": ["interpolate", ["linear"], ["zoom"], 12.5, 0.55, 15, 0.55, 15.6, 0] } },
   { id: "rues-bas", type: "line", source: "ofm", "source-layer": "transportation", minzoom: 13, maxzoom: 15, filter: ["in", "class", "path", "pedestrian", "minor", "service", "tertiary", "secondary", "primary"], paint: { "line-color": "#fff6e4", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 0.4, 15, 0.8], "line-opacity": 0.9 } },
   { id: "bat-fond", type: "fill", source: "ofm", "source-layer": "building", minzoom: 15, paint: { "fill-color": "#e2ab84", "fill-opacity": ["interpolate", ["linear"], ["zoom"], 16.2, 0, 17.4, 0.55] } },
-  // contours « au crayon » : le trait droit d'OpenFreeMap reste dessous, très léger (trait de construction) ; par-dessus, le contour ondulé à la main (tools/wobble_buildings.py)
-  { id: "bat-trait", type: "line", source: "ofm", "source-layer": "building", minzoom: 15, paint: { "line-color": INK, "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.4, 18, 0.9], "line-opacity": 0.28 } },
-  { id: "bat-crayon", type: "line", source: "crayon", minzoom: 15, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": INK, "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.55, 18, 1.5], "line-opacity": 0.8 } },
+  { id: "bat-trait", type: "line", source: "ofm", "source-layer": "building", minzoom: 15, paint: { "line-color": INK, "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.5, 18, 1.4], "line-opacity": 0.85 } },
 );
 if (true) layers.push(
   { id: "rues-bord", type: "line", source: "ofm", "source-layer": "transportation", minzoom: 15, filter: ["in", "class", "path", "pedestrian", "minor", "service", "track", "tertiary", "secondary", "primary"], paint: { "line-color": "#9c6f55", "line-width": ["interpolate", ["linear"], ["zoom"], 15, 1.0, 18, 4.2], "line-opacity": 0.5 } },
@@ -99,7 +97,6 @@ export function createMap(container, { center, zoom, minZoom = 11, maxZoom = 19 
           : { type: "raster", tiles: [OSM_URL], tileSize: 256, maxzoom: 19, attribution: "© OpenStreetMap" },
         ofm: { type: "vector", url: OFM_TILEJSON, attribution: "OpenFreeMap © OpenMapTiles" },
         petits: { type: "geojson", data: "data/petits-canaux.json" },
-        crayon: { type: "geojson", data: "data/batiments-crayon.json", tolerance: 0, buffer: 8 },
       },
       layers,
     },
