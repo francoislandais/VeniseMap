@@ -169,47 +169,54 @@ export function selfie() {
 
 /* ───────── Écran d'identification ───────── */
 export function runIntro() {
+  // Introduction : 7 écrans plein page qui s'enchaînent en fondu, après un toucher (ou la saisie du prénom). Images + texte, sans bulle.
   return new Promise(async (resolve) => {
-    const root = document.createElement("div"); root.className = "intro";
-    root.innerHTML = `<div class="in-face" style="background-image:url(${CORTO})"></div><div class="in-chat" id="in-chat"></div><div class="in-input" id="in-input"></div>`;
-    document.body.appendChild(root);
-    const chat = root.querySelector("#in-chat"), inp = root.querySelector("#in-input");
-    const scroll = () => chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
-    const add = (cls, html) => { const d = document.createElement("div"); d.className = "msg " + cls; d.innerHTML = html; chat.appendChild(d); d.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 260 }); scroll(); return d; };
-    const say = async (text, ms = 800) => {
-      const d = add("fc", '<span class="m-face"></span><div class="m-bubble typing"><i></i><i></i><i></i></div>');
-      await sleep(ms); const b = d.querySelector(".m-bubble"); b.classList.remove("typing"); b.textContent = text; scroll(); await sleep(350);
+    let name = "";
+    const IMG = (n) => `img/intro/e${n}.webp`;
+    // layout : "side" (image à gauche, texte à droite + champ prénom), "bottom"/"top" (image pleine page, texte en bas / en haut), "center" (image centrée sans cadre)
+    const SCREENS = [
+      { img: 1, layout: "side", text: () => "Eh oh, bien le bonjour ! Comment t'appelles-tu, jeune aventurier ?", input: true },
+      { img: 2, layout: "bottom", text: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour. Je m'appelle Corto Maltese. J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires.` },
+      { img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
+      { img: 4, layout: "bottom", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.\n\nEs-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
+      { img: 5, layout: "center-top", text: () => "Parfait, alors c'est décidé ! Mon bateau sera bientôt amarré à l'embarcadère de Santo Spirito. Retrouvons-nous là-bas quand tu seras prêt." },
+      { img: 5, layout: "center-bottom", text: () => "Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller." },
+    ];
+    SCREENS.forEach((sc) => { const i = new Image(); i.src = IMG(sc.img); }); // préchargées
+    const root = document.createElement("div"); root.className = "in2"; document.body.appendChild(root);
+    let cur = null;
+    const build = (sc) => {
+      const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
+      const txt = esc(sc.text()).replace(/\n\n/g, "<br><br>");
+      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.input ? '<form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom"><button aria-label="Continuer">➤</button></form>' : sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : '<span class="in2-hint">toucher pour continuer</span>'}</div>`;
+      const im = d.querySelector(".in2-img"); // image à sa proportion réelle, contenue dans la page (le fondu des bords suit l'image elle-même)
+      if (sc.layout === "bottom" || sc.layout === "top") { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, innerHeight / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
+      return d;
     };
-    const me = (html) => add("mine", `<div class="m-bubble mine">${html}</div>`);
-    const ask = (render) => new Promise((res) => { inp.innerHTML = ""; render(inp, (v) => { inp.innerHTML = ""; res(v); }); });
-
-    await sleep(500);
-    await say("Salut, étranger. Moi, c'est Corto Maltese.", 900);
-    await say("Dis-moi, comment tu t'appelles ?", 900);
-    const name = await ask((box, done) => {
-      box.innerHTML = `<form class="in-form"><input class="t" id="in-name" maxlength="30" autocomplete="off" placeholder="Ton nom ou celui de ta bande"><button class="in-send" aria-label="Envoyer">➤</button></form>`;
-      const f = box.querySelector("form"), i = box.querySelector("input");
-      setTimeout(() => i.focus(), 100);
-      f.onsubmit = (e) => { e.preventDefault(); const v = i.value.trim(); if (v) done(v); };
+    const show = (sc) => new Promise((res) => {
+      const d = build(sc); root.appendChild(d);
+      const incoming = d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, fill: "forwards", easing: "ease-in-out" });
+      if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
+      cur = d;
+      incoming.onfinish = () => {
+        const go = () => { d.removeEventListener("click", tap); res(); };
+        const tap = (e) => { if (e.target.closest("input,form,button")) return; go(); };
+        if (sc.input) { const f = d.querySelector("form"), i = d.querySelector("input"); setTimeout(() => i.focus(), 50); f.onsubmit = (e) => { e.preventDefault(); const v = i.value.trim(); if (v) { name = v; go(); } else i.focus(); }; }
+        else if (sc.button) d.querySelector(".in2-btn").onclick = go;
+        else setTimeout(() => d.addEventListener("click", tap), 350);
+      };
     });
-    me(esc(name));
-    await say(`Enchanté, ${name} !`, 800);
-    await say("Choisis ton emblème, ou prends-toi en photo.", 900);
-    let profile = null;
-    while (!profile) {
-      const choice = await ask((box, done) => {
-        box.innerHTML = `<div class="in-grid">${AVATARS.map((a) => `<button data-a="${a}">${a}</button>`).join("")}</div><button class="in-photo" data-photo>📷 Me prendre en photo</button>`;
-        box.querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => done({ avatar: b.dataset.a })));
-        box.querySelector("[data-photo]").onclick = async () => { const p = await selfie(); if (p) done({ photo: p.photo, cut: p.cut, frame: p.frame }); };
-      });
-      profile = { name, ...choice };
-    }
-    me(profile.photo ? `<img class="in-ph${profile.cut ? " cut" : ""}${profile.frame ? " frame" : ""}" src="${profile.photo}" alt="">` : profile.avatar);
+    for (const sc of SCREENS) await show(sc);
+    // Écran 7 : l'écran s'efface et révèle la carte pour la première fois ; Corto parle en bas.
+    const profile = { name, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
     saveProfile(profile);
-    await say(`Bienvenue, ${name}. L'aventure va commencer…`, 900);
-    await say("Voici Venise.", 800);
-    await sleep(700);
-    root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 800, fill: "forwards" }).onfinish = () => { root.remove(); resolve(profile); };
+    resolve(profile);
+    const msg = document.createElement("div"); msg.className = "in2-end";
+    msg.innerHTML = `<p>En attendant notre rencontre, je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt=""><span class="in2-hint">toucher pour continuer</span>`;
+    msg.style.opacity = 0; document.body.appendChild(msg);
+    root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1400, fill: "forwards", easing: "ease-in-out" }).onfinish = () => root.remove();
+    msg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 700, fill: "forwards" });
+    setTimeout(() => msg.addEventListener("click", () => msg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).onfinish = () => msg.remove()), 1800);
   });
 }
 
