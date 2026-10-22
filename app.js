@@ -436,7 +436,7 @@ function walkerAt(W, t = nowMs()) { return adjAll(t)[W.id] || rawAt(W, t); }
 // Le décalage d'esquive entre personnages est lissé dans le temps : si deux personnages se croisent, l'un glisse sur le côté au lieu de sauter.
 function smoothAdj(W, now) {
   const r = rawAt(W, now), a = adjAll(now)[W.id] || r, ox = (a.lon - r.lon) * KX, oy = (a.lat - r.lat) * KY; W.so = W.so || { x: 0, y: 0 };
-  W.so.x += (ox - W.so.x) * 0.12; W.so.y += (oy - W.so.y) * 0.12;
+  const kk = ecoOn() ? 3 : 1; W.so.x += (ox - W.so.x) * Math.min(0.5, 0.12 * kk); W.so.y += (oy - W.so.y) * Math.min(0.5, 0.12 * kk);
   return { lat: r.lat + W.so.y / KY, lon: r.lon + W.so.x / KX, shore: r.shore };
 }
 function dogeMsg(txt) { // message de Corto en bas de l'écran (Corto joyeux sous un grand texte), fermé par un toucher n'importe où
@@ -537,7 +537,12 @@ async function startWalker(W) {
   W.marker = new maplibregl.Marker({ element: el, anchor: "bottom", subpixelPositioning: true }).setLngLat([d.lon, d.lat]).addTo(map);
 }
 let walkLast = 0;
+// Mode éco : les personnages ne sont recalculés que 20 fois par seconde (au lieu de chaque image) ; tout le reste est inchangé.
+const ecoOn = () => { try { return localStorage.getItem("vq_eco") === "1"; } catch { return false; } };
+let walkPrev = 0;
 function walkTick(ts) {
+  if (ecoOn() && ts - walkPrev < 49) { requestAnimationFrame(walkTick); return; } // saute les images intermédiaires (≈ 20 images/s sur un écran 60 Hz)
+  const eco = ecoOn(), k = walkPrev ? Math.min(3, Math.max(1, (ts - walkPrev) / 16.7)) : 1; walkPrev = ts; // k : lissages recalés sur le temps réel écoulé
   const now = nowMs();
   for (const W of WALKERS) if (W.motion && W.marker) { const v = motionSpeed(W.motion, now) / W.motion.cruise, c = W.marker.getElement().classList; c.toggle("flying", v > 0.2); c.toggle("landed", v <= 0.2); }
   for (const W of WALKERS) if (W.marker) W.marker.getElement().classList.toggle("angry", !!W.huff && now - W.huff.t0 < (DEV ? 5 : 60) * 1000); // fâché : éclair et halo rouge : 5 s en mode dev, 1 min en réel
@@ -549,14 +554,14 @@ function walkTick(ts) {
     if (n > 0.04) { // à l'arrêt (posé) il garde son dernier cap
       if (Math.abs(dx) > 0.25 * n) W.left = dx < 0;
       const tgt = Math.max(-38, Math.min(38, (W.left ? Math.atan2(-dy, -dx) : Math.atan2(dy, dx)) * 57.2958));
-      W.ang += (tgt - W.ang) * 0.1;
+      W.ang += (tgt - W.ang) * Math.min(0.5, 0.1 * k);
     }
     W.turnEl.style.transform = `rotate(${W.ang.toFixed(1)}deg)`; W.flipEl.classList.toggle("left", W.left);
   }
   requestAnimationFrame(walkTick);
 }
 Promise.all(WALKERS.map(startWalker)).then(() => requestAnimationFrame(walkTick));
-window.__doge = () => walkerAt(WALKERS[0]); window.__monte = () => walkerAt(WALKERS[1]); window.__walkerAt = (i, t) => walkerAt(WALKERS[i], t); window.__WK = WALKERS; window.__marc = () => walkerAt(WALKERS[2]); window.__lion = () => walkerAt(WALKERS[4]); window.__gond = () => walkerAt(WALKERS[3]);
+window.__walkTick = walkTick; window.__doge = () => walkerAt(WALKERS[0]); window.__monte = () => walkerAt(WALKERS[1]); window.__walkerAt = (i, t) => walkerAt(WALKERS[i], t); window.__WK = WALKERS; window.__marc = () => walkerAt(WALKERS[2]); window.__lion = () => walkerAt(WALKERS[4]); window.__gond = () => walkerAt(WALKERS[3]);
 const pinEls = {};
 // Icônes dessinées à la place de la pastille photo (fond transparent) ; w = largeur en px (à régler ici), ratio = largeur/hauteur de l'image.
 const PLACE_ICONS = { frari: { src: "img/places/frari-icon.webp", w: 48, ratio: 1 } };
@@ -1803,11 +1808,13 @@ function renderSettings() {
     <h3>👫 Les joueurs</h3>${S.kids.map((k, i) => `<div class="card"><input class="t" data-name="${i}" placeholder="Prénom du joueur ${i + 1}" value="${esc(k.name)}"><div class="avs" data-av="${i}">${AVATARS.map((a) => `<button class="${a === k.avatar ? "on" : ""}" data-a="${a}">${a}</button>`).join("")}</div></div>`).join("")}${S.kids.length < 6 ? '<button class="btn ghost" id="addp">➕ Ajouter un joueur</button>' : ""}
     <h3>🗺️ Carte hors-ligne</h3><div class="card"><p class="muted">Télécharge la carte de Venise avant de partir pour qu'elle marche sans réseau (environ 12 Mo : mieux vaut être en Wi-Fi).</p><button class="btn blue wide" id="dl" style="margin-top:8px">⬇️ Télécharger la carte</button><div class="bar" style="margin-top:8px"><i id="dlbar" style="width:0"></i></div><p class="muted" id="dltxt"></p></div>
     <h3>☁️ Équipe et synchronisation</h3><div class="card"><p><b>${esc(S.teamName || (TEAM && TEAM.team) || "")}</b></p><p>${esc(syncStatus)}</p><button class="btn ghost" id="chteam" style="margin:0 6px 6px 0">Changer d'équipe ou de code</button><button class="btn ghost" id="syncnow" style="margin-top:6px">Synchroniser maintenant</button></div>
+    <h3>🔋 Mode éco</h3><div class="card"><p class="muted">Les personnages bougent à 20 images par seconde au lieu de 60 : moins de batterie, plus de fluidité sur un vieux téléphone ou iPad. Le reste ne change pas.</p><button class="btn ghost" id="eco"></button></div>
     <h3>🖥️ Plein écran</h3><div class="card"><p class="muted">Cache les barres du téléphone (dont la barre blanche du bas). Glisse depuis le bord de l'écran pour les revoir un instant.</p><button class="btn ghost" id="fs"></button></div>
     <h3>📲 Installer l'appli</h3><div class="card">${installHtml()}</div>
     <h3>📷 Crédits photos</h3><details class="card"><summary>Photos de Wikimedia Commons</summary><div id="credits" class="muted" style="margin-top:8px"></div></details>
     <h3>🔧 Parents</h3><div class="card"><button class="btn ghost" id="intro">📖 Revoir l'histoire</button> <button class="btn ghost" id="reset" style="margin-top:6px">🗑️ Tout recommencer</button><label class="chk" style="margin-top:8px"><input type="checkbox" id="devtog" ${DEV && !QS.has("fake") ? "checked" : ""}> <span>Mode développeur : déplacer le bateau</span></label></div>
     <p class="muted" style="text-align:center;margin-top:16px">Le Livre du Lion · V1 · Carte : aquarelle Stamen Design (CC BY 4.0), Stadia Maps, OpenFreeMap, OpenMapTiles · données © contributeurs OpenStreetMap</p>`;
+  { const eb = $("#eco", v); if (eb) { const lab = () => (eb.textContent = ecoOn() ? "Mode éco : activé (toucher pour désactiver)" : "Mode éco : désactivé (toucher pour activer)"); lab(); eb.onclick = () => { try { localStorage.setItem("vq_eco", ecoOn() ? "0" : "1"); } catch {} lab(); toast(ecoOn() ? "Mode éco activé" : "Mode éco désactivé"); }; } }
   { const fb = $("#fs", v); if (fb) { const de = document.documentElement;
     if (!de.requestFullscreen && !de.webkitRequestFullscreen) { fb.disabled = true; fb.textContent = "Plein écran indisponible sur cet appareil"; }
     else { const lab = () => (fb.textContent = fsPref() ? "Plein écran : activé (toucher pour désactiver)" : "Plein écran : désactivé (toucher pour activer)"); lab();
