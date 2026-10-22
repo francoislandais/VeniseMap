@@ -1091,5 +1091,8 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .wl-top{max-width:560px}
 .wl-name{position:absolute;left:0;right:0;top:calc(var(--safe-t) + clamp(14px,3%,30px) + clamp(84px,25vw,140px) + clamp(22px,3.4dvh,40px));margin:0 auto;padding:0 clamp(16px,6vw,32px);max-width:560px;box-sizing:border-box;font-size:clamp(28px,9vw,46px);line-height:1.1;font-weight:400;color:#1d2230;text-shadow:0 0 12px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
 .wl-img{left:auto!important;right:0;transform:none!important;width:var(--iw)!important;height:auto!important;aspect-ratio:390/687;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 24%),linear-gradient(to right,transparent 0,#000 30%);-webkit-mask-composite:source-in;mask-image:linear-gradient(to bottom,transparent 0,#000 24%),linear-gradient(to right,transparent 0,#000 30%);mask-composite:intersect}
-.wl-mid{left:0!important;right:auto!important;bottom:calc(10px + var(--safe-b) + 38px)!important;width:calc(100% - var(--iw) * .94);padding:0 0 0 clamp(16px,6vw,32px)!important;margin:0!important}
+.wl-mid{left:0!important;right:auto!important;bottom:calc(10px + var(--safe-b) + 6px)!important;width:calc(100% - var(--iw) * .94);padding:0 0 0 clamp(16px,6vw,32px)!important;margin:0!important}
 .wl-mid p{font-size:clamp(15px,4.4vw,22px)!important}
+/* boutons précédent/suivant regroupés en bas à droite : le texte du bas à gauche reste libre */
+.in2-nav{justify-content:flex-end!important;gap:8px;padding:0 12px!important}
+.in2-nav button{width:40px!important;height:40px!important;font-size:26px!important}
