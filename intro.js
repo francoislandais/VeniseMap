@@ -203,13 +203,18 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       { img: 5, layout: "center-bottom", text: () => "Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller." },
     ];
     SCREENS.forEach((sc) => { const i = new Image(); i.src = IMG(sc.img); }); // préchargées
-    const root = document.createElement("div"); root.className = "in2"; document.body.appendChild(root);
+    // Verrou d'écran : la hauteur est figée à celle du départ (le clavier ne change plus la mise en page) ; le clavier ne rétrécit que la vue visible.
+    const meta = document.querySelector('meta[name="viewport"]'), metaOld = meta && meta.content;
+    if (meta) meta.content = metaOld + ", interactive-widget=resizes-visual";
+    const lockedH = Math.round(window.visualViewport ? Math.max(visualViewport.height, innerHeight) : innerHeight);
+    const root = document.createElement("div"); root.className = "in2"; root.style.height = lockedH + "px"; root.style.setProperty("--lh", lockedH + "px"); document.body.appendChild(root);
+    const restore = () => { if (meta) meta.content = metaOld; };
     let cur = null;
     const build = (sc) => {
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
       const txt = esc(sc.text()).replace(/\n\n/g, "<br><br>");
       if (sc.layout === "hello") { // écran 1 : Corto grand à gauche avec son salut, la question et le champ prénom en dessous (tout tient dans l'écran, quelle que soit sa taille)
-        d.innerHTML = `<div class="in2-bg"></div><div class="in2-veil"></div><div class="hl-wrap"><div class="hl-top"><img class="hl-img" src="${IMG(sc.img)}" alt=""><p class="hl-hi">${esc(sc.hello)}</p></div><div class="hl-bot"><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form></div></div>`;
+        d.innerHTML = `<div class="in2-bg"></div><div class="in2-veil"></div><div class="hl-wrap"><div class="hl-top"><img class="hl-img" style="opacity:0" src="${IMG(sc.img)}" alt=""><p class="hl-hi" style="opacity:0">${esc(sc.hello)}</p></div><div class="hl-bot" style="opacity:0"><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form></div></div>`;
         return d;
       }
       d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.input ? `<form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form>` : sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : '<span class="in2-hint">toucher pour continuer</span>'}</div>`;
@@ -219,7 +224,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     };
     const show = (sc) => new Promise((res) => {
       const d = build(sc); root.appendChild(d);
-      const incoming = d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, fill: "forwards", easing: "ease-in-out" });
+      const incoming = d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" ? 1 : 700, fill: "forwards", easing: "ease-in-out" });
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
       cur = d;
       incoming.onfinish = async () => {
@@ -231,11 +236,22 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         else setTimeout(() => d.addEventListener("click", tap), 350);
       };
     });
+    const vv = window.visualViewport;
+    const lift = () => { // remonte le contenu juste assez pour que le champ reste visible au-dessus du clavier
+      const wrap = root.querySelector(".hl-wrap"), inp = root.querySelector("#in2-name"); if (!wrap || !inp || !vv) return;
+      const kb = Math.max(0, lockedH - vv.height - vv.offsetTop); wrap.style.transition = "transform .25s ease-out";
+      if (!kb) { wrap.style.transform = ""; return; }
+      const prev = wrap.style.transform; wrap.style.transform = ""; const bottom = inp.getBoundingClientRect().bottom + 18, free = lockedH - kb; wrap.style.transform = prev;
+      wrap.style.transform = `translateY(${-Math.max(0, Math.round(bottom - free))}px)`;
+    };
+    if (vv) { vv.addEventListener("resize", lift); vv.addEventListener("scroll", lift); }
+    root.addEventListener("focusin", () => setTimeout(lift, 120)); root.addEventListener("focusout", () => setTimeout(lift, 120));
     for (const sc of SCREENS) await show(sc);
+    if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
     // Écran 7 : l'écran s'efface et révèle la carte pour la première fois ; Corto parle en bas.
     const profile = opts.replay ? null : { name, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
     if (profile) saveProfile(profile);
-    resolve(profile);
+    resolve(profile); restore();
     const msg = document.createElement("div"); msg.className = "in2-end";
     msg.innerHTML = `<p>En attendant notre rencontre, je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt=""><span class="in2-hint">toucher pour continuer</span>`;
     msg.style.opacity = 0; document.body.appendChild(msg);
