@@ -1106,3 +1106,8 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .in2-editing .in2-s{user-select:none;-webkit-user-select:none;touch-action:none}
 .in2-sel{outline:2px dashed #e0457b!important;outline-offset:3px}
 .in2-ed.in2-ed-bottom{top:auto;bottom:calc(58px + var(--safe-b))}
+
+/* en édition : les images sont attrapables (sauf le tableau de fond) et les blocs de texte ne masquent plus ce qui est dessous */
+.in2-editing .in2-s img{pointer-events:auto!important}
+.in2-editing .in2-txt,.in2-editing .wl-mid,.in2-editing .wl-top,.in2-editing .hl-col{pointer-events:none}
+.in2-editing .in2-txt p,.in2-editing .in2-txt button,.in2-editing .wl-mid p,.in2-editing .wl-top p,.in2-editing .hl-hi,.in2-editing .hl-q,.in2-editing .in2-form{pointer-events:auto}

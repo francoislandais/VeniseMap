@@ -296,7 +296,8 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       let drag = null;
       root.addEventListener("pointerdown", (e) => {
         if (!editing || e.target.closest(".in2-ed,.in2-nav")) return;
-        const els = elsOf(cur, SCREENS[idx]); let hit = null; for (const k in els) if (els[k].contains(e.target)) hit = k;
+        const els = elsOf(cur, SCREENS[idx]); let hit = null; // l'élément éditable le plus en avant sous le doigt (images comprises, même sous un bloc de texte)
+        for (const t of document.elementsFromPoint(e.clientX, e.clientY)) { for (const k in els) if (els[k].contains(t)) { hit = k; break; } if (hit) break; }
         if (!hit) { select(null); return; }
         e.preventDefault(); select(hit); const c = cfgFor(hit); drag = { k: hit, x0: e.clientX, y0: e.clientY, cx: c.x, cy: c.y }; root.setPointerCapture?.(e.pointerId);
       }, true);
