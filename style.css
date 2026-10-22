@@ -1114,3 +1114,5 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 
 .in2-handle{position:absolute;z-index:21;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:#e0457b;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.5);cursor:nwse-resize;touch-action:none}
 .in2-handle[hidden]{display:none}
+
+.in2-editing .in2-txted{pointer-events:auto!important;user-select:text;-webkit-user-select:text;touch-action:auto;cursor:text;outline:2px solid #3b82f6;outline-offset:3px;white-space:pre-wrap}

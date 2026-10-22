@@ -193,7 +193,12 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const edKey = (to) => `s${to + 1}`;
     const elsOf = (d, sc) => { const map = EDITABLE[sc.layout === "hello" || sc.layout === "welcome" ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     const applyOne = (e, v) => { if (!v) { e.style.translate = ""; e.style.scale = ""; return; } e.style.translate = `${v.x || 0}vw calc(${v.y || 0} * var(--lh) / 100)`; e.style.scale = v.s && v.s !== 1 ? String(v.s) : ""; };
-    const applyLayout = (d, sc, to) => { const L = LAYOUT[edKey(to)] || {}, els = elsOf(d, sc); for (const k in els) applyOne(els[k], L[k]); };
+    // Textes modifiables : réglages dans LAYOUT._t[sN][clé] ; « {nom} » est remplacé par le prénom
+    const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", mid: ".wl-mid p" }, other: { txt: ".in2-txt p", btn: ".in2-btn" } };
+    const textsOf = (d, sc) => { const map = TEXTSEL[sc.layout === "hello" || sc.layout === "welcome" ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
+    const htmlOf = (t) => esc(String(t).replace(/\{nom\}/g, name)).replace(/\n/g, "<br>");
+    const applyTexts = (d, sc, to) => { const T = (LAYOUT._t || {})[edKey(to)] || {}, els = textsOf(d, sc); for (const k in els) if (typeof T[k] === "string") els[k].innerHTML = htmlOf(T[k]); };
+    const applyLayout = (d, sc, to) => { applyTexts(d, sc, to); const L = LAYOUT[edKey(to)] || {}, els = elsOf(d, sc); for (const k in els) applyOne(els[k], L[k]); };
     let name = opts.replay ? opts.name || "" : "";
     const IMG = (n) => `img/intro/e${n}.webp`;
     const SCREENS = [
@@ -273,20 +278,31 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     prevBtn.onclick = () => go(idx - 1); nextBtn.onclick = () => go(idx + 1);
     // ───── Éditeur de mise en page (aperçu local uniquement) : on glisse les images et les textes, ± pour la taille, « Enregistrer » écrit data/intro-layout.json ─────
     let editing = false, selEl = null, selKey = null;
-    const canEdit = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+    const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+    let devTok = ""; try { const u = new URL(location.href), t = u.searchParams.get("dev"); if (t) { localStorage.setItem("vq_dev", t); u.searchParams.delete("dev"); history.replaceState(null, "", u); } devTok = localStorage.getItem("vq_dev") || ""; } catch {}
+    const canEdit = local || !!devTok; // en local : toujours ; sur le téléphone : après avoir ouvert une fois l'adresse ?dev=CODE
     const handle = document.createElement("div"); handle.className = "in2-handle"; handle.hidden = true; root.appendChild(handle);
     const placeHandle = () => { if (!selEl || !editing) { handle.hidden = true; return; } const r = selEl.getBoundingClientRect(); handle.style.left = Math.min(innerWidth - 14, r.right) + "px"; handle.style.top = Math.min(lockedH - 14, r.bottom) + "px"; handle.hidden = false; };
     const select = (k) => { root.querySelectorAll(".in2-sel").forEach((e) => e.classList.remove("in2-sel")); selKey = k; selEl = null; if (k) { const e = elsOf(cur, SCREENS[idx])[k]; if (e) { selEl = e; e.classList.add("in2-sel"); } } placeHandle(); };
     const cfgFor = (k) => { const key = edKey(idx); LAYOUT[key] ||= {}; LAYOUT[key][k] ||= { x: 0, y: 0, s: 1 }; return LAYOUT[key][k]; };
+    let txtEd = null; const stopText = () => { if (!txtEd) return; for (const [, e] of txtEd) { e.contentEditable = "false"; e.removeAttribute("contenteditable"); e.classList.remove("in2-txted"); e.oninput = null; } txtEd = null; getSelection()?.removeAllRanges(); };
     if (canEdit) {
       const bar = document.createElement("div"); bar.className = "in2-ed";
-      bar.innerHTML = '<button type="button" data-a="toggle">✎ Mise en page</button><span class="in2-ed-tools" hidden><button data-a="minus">A−</button><button data-a="plus">A+</button><button data-a="reset">Réinit. élément</button><button data-a="flip">⇅</button><button data-a="save">💾 Enregistrer</button><em></em></span>';
+      bar.innerHTML = '<button type="button" data-a="toggle">✎ Mise en page</button><span class="in2-ed-tools" hidden><button data-a="minus">A−</button><button data-a="plus">A+</button><button data-a="text">✎ Texte</button><button data-a="reset">Réinit. élément</button><button data-a="flip">⇅</button><button data-a="save">💾 Enregistrer</button><em></em></span>';
       root.appendChild(bar); const tools = bar.querySelector(".in2-ed-tools"), msg = bar.querySelector("em");
       const say = (t) => { msg.textContent = t; clearTimeout(say.t); say.t = setTimeout(() => (msg.textContent = ""), 2500); };
       bar.addEventListener("click", async (e) => {
         const a = e.target.closest("button")?.dataset.a; if (!a) return;
-        if (a === "toggle") { editing = !editing; root.classList.toggle("in2-editing", editing); tools.hidden = !editing; select(null); return; }
-        if (a === "save") { try { const r = await fetch("api/intro-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(LAYOUT) }); say(r.ok ? "Enregistré ✔ (data/intro-layout.json)" : "Échec : serveur sans --dev ?"); } catch { say("Échec de l'enregistrement"); } return; }
+        if (a === "toggle") { stopText(); editing = !editing; root.classList.toggle("in2-editing", editing); tools.hidden = !editing; select(null); return; }
+        if (a === "save") { try { const r = await fetch("api/intro-layout", { method: "POST", headers: { "Content-Type": "application/json", "X-Dev-Token": devTok }, body: JSON.stringify(LAYOUT) }); if (r.status === 403 && !local) { try { localStorage.removeItem("vq_dev"); } catch {} } say(r.ok ? "Enregistré ✔ (centralisé)" : "Échec : code refusé ou serveur sans --dev"); } catch { say("Échec de l'enregistrement"); } return; }
+        if (a === "text") {
+          if (txtEd) { stopText(); return; }
+          if (!selKey) { say("Touche d'abord un texte"); return; }
+          const te = textsOf(cur, SCREENS[idx]), keys = selKey === "txt" ? ["txt", "btn"] : selKey === "head" || selKey === "name" || selKey === "mid" || selKey === "hi" || selKey === "q" ? [selKey] : [];
+          const els = keys.map((k) => [k, te[k]]).filter((x) => x[1]); if (!els.length) { say("Pas de texte ici"); return; }
+          txtEd = els; for (const [k, e] of els) { e.contentEditable = "plaintext-only"; e.classList.add("in2-txted"); e.oninput = () => { const T = ((LAYOUT._t ||= {})[edKey(idx)] ||= {}); let v = e.innerText.replace(/\n{3,}/g, "\n\n").replace(/\n$/, ""); if (name && SCREENS[idx].layout === "welcome" && k === "head") v = v.split(name).join("{nom}"); T[k] = v; }; }
+          els[0][1].focus(); say("Écris, puis ✎ Texte pour finir"); return;
+        }
         if (a === "flip") { bar.classList.toggle("in2-ed-bottom"); return; }
         if (!selKey) { say("Touche d'abord un élément"); return; }
         const c = cfgFor(selKey);
@@ -297,6 +313,8 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       });
       let drag = null;
       root.addEventListener("pointerdown", (e) => {
+        if (txtEd && e.target.closest("[contenteditable]")) return; // on tape dans le texte : pas de glisser
+        if (txtEd) stopText();
         if (!editing || e.target.closest(".in2-ed,.in2-nav,.in2-handle")) return;
         const els = elsOf(cur, SCREENS[idx]); let hit = null; // l'élément éditable le plus en avant sous le doigt (images comprises, même sous un bloc de texte)
         for (const t of document.elementsFromPoint(e.clientX, e.clientY)) { for (const k in els) if (els[k].contains(t)) { hit = k; break; } if (hit) break; }
