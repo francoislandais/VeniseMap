@@ -559,7 +559,7 @@ Promise.all(WALKERS.map(startWalker)).then(() => requestAnimationFrame(walkTick)
 window.__doge = () => walkerAt(WALKERS[0]); window.__monte = () => walkerAt(WALKERS[1]); window.__walkerAt = (i, t) => walkerAt(WALKERS[i], t); window.__WK = WALKERS; window.__marc = () => walkerAt(WALKERS[2]); window.__lion = () => walkerAt(WALKERS[4]); window.__gond = () => walkerAt(WALKERS[3]);
 const pinEls = {};
 // Icônes dessinées à la place de la pastille photo (fond transparent) ; w = largeur en px (à régler ici), ratio = largeur/hauteur de l'image.
-const PLACE_ICONS = { frari: { src: "img/places/frari-icon.webp", w: 78, ratio: 413 / 420 } };
+const PLACE_ICONS = { frari: { src: "img/places/frari-icon.webp", w: 48, ratio: 1 } };
 function renderMap() {
   PLACES.forEach((p) => {
     let el = pinEls[p.id];

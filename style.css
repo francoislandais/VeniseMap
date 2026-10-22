@@ -995,8 +995,7 @@ img.cut.outfit{object-fit:contain!important;object-position:50% 50%!important}
 .dev-menu b{font-size:12px;color:#7a6a50;text-transform:uppercase;letter-spacing:.06em}
 .dev-menu button{text-align:left;padding:9px 12px;border-radius:12px;background:#e4eef8;color:#1f3a52;font-size:15px}
 
-/* pastille remplacée par une icône dessinée (fond transparent) : même clic, taille réglable via PLACE_ICONS */
-.pin.has-icon{width:var(--iw,70px);height:var(--ih,70px)}
-.pin-in.icon{width:var(--iw,70px)!important;height:var(--ih,70px)!important;margin:calc(var(--ih,70px) / -2 + 22px) 0 0 calc(var(--iw,70px) / -2 + 22px)!important;border-radius:0!important;border:0!important;background:var(--img) center/contain no-repeat!important;box-shadow:none!important;overflow:visible!important;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
-.pin-in.icon.seen{filter:drop-shadow(0 0 2px var(--teal)) drop-shadow(0 2px 3px rgba(0,0,0,.4))}
-.pin-in.icon.done{filter:drop-shadow(0 0 2px var(--ok)) drop-shadow(0 2px 3px rgba(0,0,0,.4))}
+/* pastille remplacée par une icône dessinée (fond transparent, contour net, sans ombre ni halo) : même clic, taille réglable via PLACE_ICONS */
+.pin.has-icon{width:var(--iw,50px);height:var(--ih,50px)}
+.pin-in.icon,.pin-in.icon.seen,.pin-in.icon.done{width:var(--iw,50px)!important;height:var(--ih,50px)!important;margin:calc(var(--ih,50px) / -2 + 22px) 0 0 calc(var(--iw,50px) / -2 + 22px)!important;border-radius:0!important;border:0!important;background:var(--img) center/contain no-repeat!important;box-shadow:none!important;overflow:visible!important;filter:none!important}
+.pin-in.icon::before,.pin-in.icon::after{content:none!important;display:none!important;background:none!important;filter:none!important}
