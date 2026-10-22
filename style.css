@@ -1049,3 +1049,29 @@ img.cut.outfit{object-fit:contain!important;object-position:50% 50%!important}
 .hl-wrap{min-height:var(--lh,100%)}
 .hl-img{height:min(calc(var(--lh) * .54),105vw,460px)!important}
 .hl-hi{margin-top:clamp(18px,calc(var(--lh) * .06),56px)!important}
+
+/* ───── Intro v3 : colonne à droite de Corto, boutons précédent/suivant, fond plein écran, carte masquée ───── */
+body.intro-open>*:not(.in2){visibility:hidden!important}
+.in2{inset:0 0 auto 0!important;height:max(var(--lh),100lvh)!important;background:#f3ead7}
+.in2-nav{position:absolute;left:0;right:0;bottom:calc(8px + var(--safe-b));z-index:5;display:flex;justify-content:space-between;padding:0 14px;pointer-events:none}
+.in2-nav button{pointer-events:auto;width:44px;height:44px;border-radius:50%;font-size:30px;line-height:1;color:#1d2230;background:rgba(243,234,215,.55);opacity:.5;display:grid;place-items:center;padding:0 0 4px}
+.in2-nav button:active{opacity:.9}
+.in2-s.hello .in2-bg,.in2-s.hello .in2-veil{position:absolute;inset:0}
+.in2-veil{background:radial-gradient(ellipse at 62% 40%,rgba(243,234,215,.55) 0%,rgba(243,234,215,.35) 45%,rgba(243,234,215,0) 80%)!important}
+.hl-wrap{justify-content:flex-start!important;padding-top:calc(var(--safe-t) + clamp(10px,2.5%,26px))!important}
+.hl-top{align-items:flex-start!important;gap:clamp(8px,3vw,18px)!important}
+.hl-img{height:min(calc(var(--lh) * .5),100vw,440px)!important;flex:0 0 auto}
+.hl-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:clamp(8px,1.6dvh,16px);padding-top:clamp(2px,1dvh,10px)}
+.hl-hi{white-space:nowrap;margin:0!important;font-size:clamp(15px,4.6vw,24px)!important;line-height:1.2!important;font-weight:400!important;align-self:flex-start}
+.hl-q{margin:clamp(6px,2dvh,22px) 0 0!important;font-size:clamp(19px,5.6vw,28px)!important;line-height:1.2;font-weight:400;text-shadow:0 0 10px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
+.hl-hi{text-shadow:0 0 10px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
+.in2-s.hello .in2-form{margin:0}
+.in2-s.hello .in2-form input{font-size:clamp(20px,5.6vw,28px)!important;padding:8px 2px!important;border-bottom-width:2px!important;background:rgba(243,234,215,.35)!important}
+.in2-s.hello .in2-form button{border:0!important;font-size:clamp(24px,7vw,32px)!important;padding:0 6px!important;opacity:.55;background:transparent!important}
+.hl-top{margin-top:0}
+
+/* le tableau reste en fond sur toutes les pages de l'introduction */
+.in2>.in2-bg,.in2>.in2-veil{position:absolute!important;inset:0}
+.in2>.in2-bg{z-index:0}.in2>.in2-veil{z-index:0}
+.in2-s{z-index:1}
+.in2-s.bottom .in2-txt,.in2-s.center-bottom .in2-txt{padding-bottom:calc(62px + var(--safe-b))!important}

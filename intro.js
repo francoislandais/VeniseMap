@@ -169,33 +169,29 @@ export function selfie() {
 
 /* ───────── Écran d'identification ───────── */
 // Écran 1 : la peinture défile (travelling) puis se fige ; le voile apparaît progressivement, puis Corto, son salut, la question et le champ. Un toucher passe directement à la fin.
-function openingShot(d) {
-  return new Promise((res) => {
-    const bg = d.querySelector(".in2-bg"), veil = d.querySelector(".in2-veil"), wrap = d.querySelector(".hl-wrap"), img = d.querySelector(".hl-img"), hi = d.querySelector(".hl-hi"), bot = d.querySelector(".hl-bot");
-    const parts = [img, hi, bot]; wrap.style.opacity = 1; parts.forEach((p) => (p.style.opacity = 0));
-    const anims = [];
-    const A = (el, kf, o) => { const a = el.animate(kf, { fill: "forwards", easing: "ease-in-out", ...o }); anims.push(a); return a; };
-    const wide = innerWidth / innerHeight > 1.3; // écran large : le recadrage est faible, le mouvement est surtout un zoom
-    bg.style.transformOrigin = wide ? "45% 45%" : "55% 42%";
-    A(bg, [{ backgroundPosition: wide ? "50% 40%" : "64% 40%", transform: wide ? "scale(1.55)" : "scale(1.75)" }, { backgroundPosition: wide ? "50% 50%" : "10% 50%", transform: "scale(1)" }], { duration: 6200, easing: "cubic-bezier(.35,.1,.2,1)" });
-    A(veil, [{ opacity: 0 }, { opacity: 1 }], { duration: 1600, delay: 4700 });
-    A(img, [{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 900, delay: 5700 });
-    A(hi, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: 6200 });
-    const last = A(bot, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: 7000 });
-    let done = false; const end = () => { if (done) return; done = true; d.removeEventListener("pointerdown", skip); anims.forEach((a) => { try { a.finish(); } catch {} }); res(); };
-    const skip = (e) => { if (e.target.closest("input,form,button")) return; end(); };
-    d.addEventListener("pointerdown", skip); last.onfinish = end;
-  });
+function openingShot(d, instant) {
+  const root = d.parentNode, bg = root.querySelector(".in2-bg"), veil = root.querySelector(".in2-veil"), img = d.querySelector(".hl-img"), col = d.querySelector(".hl-col");
+  const anims = [];
+  const A = (el, kf, o) => { const a = el.animate(kf, { fill: "forwards", easing: "ease-in-out", ...o }); anims.push(a); return a; };
+  const wide = innerWidth / innerHeight > 1.3; // écran large : le recadrage est faible, le mouvement est surtout un zoom
+  bg.style.transformOrigin = wide ? "45% 45%" : "55% 42%";
+  A(bg, [{ backgroundPosition: wide ? "50% 40%" : "64% 40%", transform: wide ? "scale(1.55)" : "scale(1.75)" }, { backgroundPosition: wide ? "50% 50%" : "10% 50%", transform: "scale(1)" }], { duration: 6200, easing: "cubic-bezier(.35,.1,.2,1)" });
+  A(veil, [{ opacity: 0 }, { opacity: 1 }], { duration: 1600, delay: 4700 });
+  A(img, [{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 900, delay: 5700 });
+  const last = A(col, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 900, delay: 6300 });
+  const skip = () => anims.forEach((a) => { try { a.finish(); } catch {} });
+  d.addEventListener("pointerdown", (e) => { if (!e.target.closest("input,form,button")) skip(); });
+  if (instant) skip(); // retour à l'écran 1 : on affiche directement l'état final
+  return { skip, done: new Promise((r) => (last.onfinish = r)) };
 }
 
 export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (prénom déjà connu, profil inchangé)
-  // Introduction : 7 écrans plein page qui s'enchaînent en fondu, après un toucher (ou la saisie du prénom). Images + texte, sans bulle.
-  return new Promise(async (resolve) => {
+  // Introduction : 7 écrans plein page, fondu enchaîné, navigation par toucher ou par les petits boutons précédent / suivant. Images + texte, sans bulle.
+  return new Promise((resolve) => {
     let name = opts.replay ? opts.name || "" : "";
     const IMG = (n) => `img/intro/e${n}.webp`;
-    // layout : "side" (image à gauche, texte à droite + champ prénom), "bottom"/"top" (image pleine page, texte en bas / en haut), "center" (image centrée sans cadre)
     const SCREENS = [
-      { img: 1, layout: "hello", hello: "Eh oh, bien le bonjour !", text: () => "Comment t'appelles-tu, jeune aventurier ?", input: true },
+      { img: 1, layout: "hello", hello: "Eh oh, bien le bonjour !", text: () => "Comment t'appelles-tu ?", input: true },
       { img: 2, layout: "bottom", text: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour. Je m'appelle Corto Maltese. J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires.` },
       { img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
       { img: 4, layout: "bottom", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.\n\nEs-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
@@ -207,35 +203,35 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const meta = document.querySelector('meta[name="viewport"]'), metaOld = meta && meta.content;
     if (meta) meta.content = metaOld + ", interactive-widget=resizes-visual";
     const lockedH = Math.round(window.visualViewport ? Math.max(visualViewport.height, innerHeight) : innerHeight);
-    const root = document.createElement("div"); root.className = "in2"; root.style.height = lockedH + "px"; root.style.setProperty("--lh", lockedH + "px"); document.body.appendChild(root);
+    document.body.classList.add("intro-open"); // la carte est masquée pendant l'intro (elle n'apparaît qu'à l'écran 7)
+    const root = document.createElement("div"); root.className = "in2"; root.style.setProperty("--lh", lockedH + "px"); document.body.appendChild(root);
     const restore = () => { if (meta) meta.content = metaOld; };
-    let cur = null;
+    root.innerHTML = '<div class="in2-bg"></div><div class="in2-veil"></div><div class="in2-nav"><button type="button" class="in2-prev" aria-label="Précédent">‹</button><button type="button" class="in2-next" aria-label="Suivant">›</button></div>';
+    const prevBtn = root.querySelector(".in2-prev"), nextBtn = root.querySelector(".in2-next");
+    let cur = null, idx = -1, busy = false, opening = null;
     const build = (sc) => {
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
       const txt = esc(sc.text()).replace(/\n\n/g, "<br><br>");
-      if (sc.layout === "hello") { // écran 1 : Corto grand à gauche avec son salut, la question et le champ prénom en dessous (tout tient dans l'écran, quelle que soit sa taille)
-        d.innerHTML = `<div class="in2-bg"></div><div class="in2-veil"></div><div class="hl-wrap"><div class="hl-top"><img class="hl-img" style="opacity:0" src="${IMG(sc.img)}" alt=""><p class="hl-hi" style="opacity:0">${esc(sc.hello)}</p></div><div class="hl-bot" style="opacity:0"><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form></div></div>`;
+      if (sc.layout === "hello") { // écran 1 : Corto à gauche ; à droite le salut (sur une ligne, à hauteur de son visage), la question et le champ prénom
+        d.innerHTML = `<div class="hl-wrap"><div class="hl-top"><img class="hl-img" style="opacity:0" src="${IMG(sc.img)}" alt=""><div class="hl-col" style="opacity:0"><p class="hl-hi">${esc(sc.hello)}</p><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Valider">›</button></form></div></div></div>`;
         return d;
       }
-      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.input ? `<form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form>` : sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : '<span class="in2-hint">toucher pour continuer</span>'}</div>`;
+      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
       const im = d.querySelector(".in2-img"); // image à sa proportion réelle, contenue dans la page (le fondu des bords suit l'image elle-même)
-      if (sc.layout === "bottom" || sc.layout === "top") { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, innerHeight / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
+      if (sc.layout === "bottom" || sc.layout === "top") { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, lockedH / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
       return d;
     };
-    const show = (sc) => new Promise((res) => {
-      const d = build(sc); root.appendChild(d);
-      const incoming = d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" ? 1 : 700, fill: "forwards", easing: "ease-in-out" });
-      if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
-      cur = d;
-      incoming.onfinish = async () => {
-        if (sc.layout === "hello") await openingShot(d); // dézoom sur la peinture, puis voile, puis Corto et la question
-        const go = () => { d.removeEventListener("click", tap); res(); };
-        const tap = (e) => { if (e.target.closest("input,form,button")) return; go(); };
-        if (sc.input) { const f = d.querySelector("form"), i = d.querySelector("input"); setTimeout(() => i.focus(), 50); f.onsubmit = (e) => { e.preventDefault(); const v = i.value.trim(); if (v) { name = v; go(); } else i.focus(); }; }
-        else if (sc.button) d.querySelector(".in2-btn").onclick = go;
-        else setTimeout(() => d.addEventListener("click", tap), 350);
-      };
-    });
+    const finish = () => {
+      const profile = opts.replay ? null : { name, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
+      if (profile) saveProfile(profile);
+      resolve(profile); restore(); document.body.classList.remove("intro-open");
+      const msg = document.createElement("div"); msg.className = "in2-end"; // écran 7 : la carte est révélée pour la première fois, Corto parle en bas
+      msg.innerHTML = `<p>En attendant notre rencontre, je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt=""><span class="in2-hint">toucher pour continuer</span>`;
+      msg.style.opacity = 0; document.body.appendChild(msg);
+      root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1400, fill: "forwards", easing: "ease-in-out" }).onfinish = () => root.remove();
+      msg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 700, fill: "forwards" });
+      setTimeout(() => msg.addEventListener("click", () => msg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).onfinish = () => msg.remove()), 1800);
+    };
     const vv = window.visualViewport;
     const lift = () => { // remonte le contenu juste assez pour que le champ reste visible au-dessus du clavier
       const wrap = root.querySelector(".hl-wrap"), inp = root.querySelector("#in2-name"); if (!wrap || !inp || !vv) return;
@@ -246,18 +242,26 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     };
     if (vv) { vv.addEventListener("resize", lift); vv.addEventListener("scroll", lift); }
     root.addEventListener("focusin", () => setTimeout(lift, 120)); root.addEventListener("focusout", () => setTimeout(lift, 120));
-    for (const sc of SCREENS) await show(sc);
-    if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
-    // Écran 7 : l'écran s'efface et révèle la carte pour la première fois ; Corto parle en bas.
-    const profile = opts.replay ? null : { name, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
-    if (profile) saveProfile(profile);
-    resolve(profile); restore();
-    const msg = document.createElement("div"); msg.className = "in2-end";
-    msg.innerHTML = `<p>En attendant notre rencontre, je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt=""><span class="in2-hint">toucher pour continuer</span>`;
-    msg.style.opacity = 0; document.body.appendChild(msg);
-    root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1400, fill: "forwards", easing: "ease-in-out" }).onfinish = () => root.remove();
-    msg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 700, fill: "forwards" });
-    setTimeout(() => msg.addEventListener("click", () => msg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).onfinish = () => msg.remove()), 1800);
+    const go = async (to) => {
+      if (busy || to < 0) return;
+      if (idx === 0 && to > 0) { // le prénom est obligatoire pour quitter l'écran 1
+        const i = root.querySelector("#in2-name"); const v = i ? i.value.trim() : name; if (!v) { if (i) i.focus(); return; } name = v;
+      }
+      if (to >= SCREENS.length) { if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); } if (opening) opening.skip(); finish(); return; }
+      busy = true; setTimeout(() => (busy = false), 450);
+      const sc = SCREENS[to], first = idx === -1, d = build(sc); root.insertBefore(d, root.querySelector(".in2-nav")); idx = to;
+      prevBtn.style.visibility = to === 0 ? "hidden" : "visible";
+      if (sc.layout === "hello") root.querySelector("#in2-name")?.blur?.();
+      d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
+      if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
+      cur = d;
+      const vl = root.querySelector(".in2-veil"); if (sc.layout !== "hello") vl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }); // le tableau reste en permanence ; le voile de lecture n'est que sur l'écran 1
+      if (sc.layout === "hello") { opening = openingShot(d, !first); const f = d.querySelector("form"), i = d.querySelector("input"); f.onsubmit = (e) => { e.preventDefault(); go(1); }; }
+      else if (sc.button) d.querySelector(".in2-btn").onclick = () => go(to + 1);
+      else setTimeout(() => d.addEventListener("click", (e) => { if (!e.target.closest("input,form,button")) go(to + 1); }), 350);
+    };
+    prevBtn.onclick = () => go(idx - 1); nextBtn.onclick = () => go(idx + 1);
+    go(0);
   });
 }
 
