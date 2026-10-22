@@ -189,7 +189,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
       const txt = esc(sc.text()).replace(/\n\n/g, "<br><br>");
       if (sc.layout === "hello") { // écran 1 : Corto grand à gauche avec son salut, la question et le champ prénom en dessous (tout tient dans l'écran, quelle que soit sa taille)
-        d.innerHTML = `<div class="hl-top"><img class="hl-img" src="${IMG(sc.img)}" alt=""><p class="hl-hi">${esc(sc.hello)}</p></div><div class="hl-bot"><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form></div>`;
+        d.innerHTML = `<div class="in2-bg"></div><div class="hl-wrap"><div class="hl-top"><img class="hl-img" src="${IMG(sc.img)}" alt=""><p class="hl-hi">${esc(sc.hello)}</p></div><div class="hl-bot"><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form></div></div>`;
         return d;
       }
       d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.input ? `<form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form>` : sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : '<span class="in2-hint">toucher pour continuer</span>'}</div>`;
