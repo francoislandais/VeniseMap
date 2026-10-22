@@ -168,6 +168,25 @@ export function selfie() {
 }
 
 /* ───────── Écran d'identification ───────── */
+// Écran 1 : la peinture défile (travelling) puis se fige ; le voile apparaît progressivement, puis Corto, son salut, la question et le champ. Un toucher passe directement à la fin.
+function openingShot(d) {
+  return new Promise((res) => {
+    const bg = d.querySelector(".in2-bg"), veil = d.querySelector(".in2-veil"), wrap = d.querySelector(".hl-wrap"), img = d.querySelector(".hl-img"), hi = d.querySelector(".hl-hi"), bot = d.querySelector(".hl-bot");
+    const parts = [img, hi, bot]; wrap.style.opacity = 1; parts.forEach((p) => (p.style.opacity = 0));
+    const anims = [];
+    const A = (el, kf, o) => { const a = el.animate(kf, { fill: "forwards", easing: "ease-in-out", ...o }); anims.push(a); return a; };
+    const wide = innerWidth / innerHeight > 1.3; // écran large : le recadrage est faible, le mouvement est surtout un zoom
+    A(bg, [{ backgroundPosition: wide ? "50% 0%" : "0% 50%", transform: "scale(1.18)" }, { backgroundPosition: wide ? "50% 70%" : "62% 50%", transform: "scale(1)" }], { duration: 5600, easing: "cubic-bezier(.4,.1,.25,1)" });
+    A(veil, [{ opacity: 0 }, { opacity: 1 }], { duration: 1600, delay: 4300 });
+    A(img, [{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 900, delay: 5200 });
+    A(hi, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: 5700 });
+    const last = A(bot, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: 6500 });
+    let done = false; const end = () => { if (done) return; done = true; d.removeEventListener("pointerdown", skip); anims.forEach((a) => { try { a.finish(); } catch {} }); res(); };
+    const skip = (e) => { if (e.target.closest("input,form,button")) return; end(); };
+    d.addEventListener("pointerdown", skip); last.onfinish = end;
+  });
+}
+
 export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (prénom déjà connu, profil inchangé)
   // Introduction : 7 écrans plein page qui s'enchaînent en fondu, après un toucher (ou la saisie du prénom). Images + texte, sans bulle.
   return new Promise(async (resolve) => {
@@ -189,7 +208,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
       const txt = esc(sc.text()).replace(/\n\n/g, "<br><br>");
       if (sc.layout === "hello") { // écran 1 : Corto grand à gauche avec son salut, la question et le champ prénom en dessous (tout tient dans l'écran, quelle que soit sa taille)
-        d.innerHTML = `<div class="in2-bg"></div><div class="hl-wrap"><div class="hl-top"><img class="hl-img" src="${IMG(sc.img)}" alt=""><p class="hl-hi">${esc(sc.hello)}</p></div><div class="hl-bot"><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form></div></div>`;
+        d.innerHTML = `<div class="in2-bg"></div><div class="in2-veil"></div><div class="hl-wrap"><div class="hl-top"><img class="hl-img" src="${IMG(sc.img)}" alt=""><p class="hl-hi">${esc(sc.hello)}</p></div><div class="hl-bot"><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form></div></div>`;
         return d;
       }
       d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.input ? `<form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Continuer">➤</button></form>` : sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : '<span class="in2-hint">toucher pour continuer</span>'}</div>`;
@@ -202,7 +221,8 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       const incoming = d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, fill: "forwards", easing: "ease-in-out" });
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
       cur = d;
-      incoming.onfinish = () => {
+      incoming.onfinish = async () => {
+        if (sc.layout === "hello") await openingShot(d); // travelling sur la peinture, puis voile, puis Corto et la question
         const go = () => { d.removeEventListener("click", tap); res(); };
         const tap = (e) => { if (e.target.closest("input,form,button")) return; go(); };
         if (sc.input) { const f = d.querySelector("form"), i = d.querySelector("input"); setTimeout(() => i.focus(), 50); f.onsubmit = (e) => { e.preventDefault(); const v = i.value.trim(); if (v) { name = v; go(); } else i.focus(); }; }
