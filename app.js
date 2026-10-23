@@ -320,14 +320,54 @@ function doArrive(p, manual) {
 const map = createMap("map", { center: [12.338, 45.4342], zoom: 14 });
 window.__map = map;
 // Le voilier de Corto, amarré dans la lagune près de l'embarcadère de Santo Spirito : repère de la carte, point de rendez-vous. Il apparaît à la fin de l'introduction et reste ensuite.
-const BOAT = { lngLat: [12.3262, 45.4290], w: 64 };
-let boatMarker = null;
-function ensureBoat() {
-  if (boatMarker) { boatMarker.getElement().style.visibility = ""; return; }
-  const el = document.createElement("div"); el.className = "lagoon-boat"; el.innerHTML = '<img src="img/intro/e5.webp" alt="">';
-  boatMarker = new maplibregl.Marker({ element: el, anchor: "center", offset: [0, -0.28 * BOAT.w] }).setLngLat(BOAT.lngLat).addTo(map); // la coque (78 % de la hauteur) est posée sur le point
+/* Le voilier : parti du même point à la fin de l'introduction (BOAT.lngLat, au milieu du canal de la Giudecca), il fait des tours de lagune à allure régulière, et arrive amarré
+   au point de rendez-vous (Santo Spirito) à l'heure dite. Sa position ne dépend que de l'heure : même trajet, même instant, sur tous les téléphones qui ont démarré en même temps.
+   Au démarrage (fin de l'intro) on mémorise l'instant t0 ; on choisit un nombre entier de tours pour arriver pile à RENDEZ_VOUS (vitesse ≈ 14 km/h, jamais plus de 22 km/h). */
+const BOAT_ROUTE = [[12.3310, 45.4276], [12.3345, 45.4277], [12.3380, 45.4283], [12.3410, 45.4294], [12.3460, 45.4301], [12.3500, 45.4296], [12.3500, 45.4262], [12.3515, 45.4232], [12.3560, 45.4215], [12.3660, 45.4220], [12.3620, 45.4190], [12.3600, 45.4150], [12.3580, 45.4138], [12.3450, 45.4138], [12.3300, 45.4138], [12.3150, 45.4138], [12.3050, 45.4160], [12.3040, 45.4220], [12.3040, 45.4290], [12.3100, 45.4296], [12.3170, 45.4296], [12.3215, 45.4290], [12.3262, 45.4290], [12.3295, 45.4285]]; // boucle fermée, vérifiée sur l'eau ; [0] = départ, [22] = rendez-vous
+const BOAT_MOOR = 22; // indice du point de rendez-vous dans BOAT_ROUTE
+const RENDEZ_VOUS = Date.parse("2026-10-26T10:00:00+01:00"); // lundi 26 octobre 2026, 10 h à Venise
+const BOAT_V = 14 / 3.6, BOAT_VMAX = 22 / 3.6; // m/s
+const BOAT = { lngLat: BOAT_ROUTE[0], w: 64 };
+const BOAT_PATH = (() => { // trajectoire lissée (Catmull-Rom) avec distances cumulées en mètres
+  const W = BOAT_ROUTE, n = W.length, pts = [], cr = (a, b, c, d, t) => b.map((_, i) => 0.5 * (2 * b[i] + (-a[i] + c[i]) * t + (2 * a[i] - 5 * b[i] + 4 * c[i] - d[i]) * t * t + (-a[i] + 3 * b[i] - 3 * c[i] + d[i]) * t * t * t));
+  for (let i = 0; i < n; i++) for (let k = 0; k < 8; k++) pts.push(cr(W[(i - 1 + n) % n], W[i], W[(i + 1) % n], W[(i + 2) % n], k / 8));
+  const cum = [0]; for (let i = 1; i <= pts.length; i++) { const a = pts[i - 1], b = pts[i % pts.length]; cum.push(cum[i - 1] + Math.hypot((b[0] - a[0]) * 78200, (b[1] - a[1]) * 111000)); }
+  return { pts, cum, L: cum[pts.length], moor: cum[BOAT_MOOR * 8] };
+})();
+const boatPoint = (d) => { // position à la distance d (m) le long de la boucle (0 = départ)
+  const { pts, cum, L } = BOAT_PATH; d = ((d % L) + L) % L; let lo = 0, hi = pts.length; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cum[mid] <= d) lo = mid; else hi = mid; }
+  const a = pts[lo], b = pts[(lo + 1) % pts.length], t = (d - cum[lo]) / ((cum[lo + 1] - cum[lo]) || 1); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+};
+const BOAT_T0 = "vq_boat_t0";
+function boatPlan(t0, T = RENDEZ_VOUS) { // { speed (m/s), total (m), tEnd } : nombre entier de tours, arrivée à T (ou le plus tôt possible si T est trop proche)
+  const { L, moor } = BOAT_PATH, dt = (T - t0) / 1000;
+  if (dt * BOAT_VMAX < moor) return { speed: BOAT_V, total: moor, tEnd: t0 + (moor / BOAT_V) * 1000 }; // trop tard pour tenir l'heure : trajet direct à vitesse normale
+  const k = Math.max(0, Math.round((BOAT_V * dt - moor) / L)), total = k * L + moor; return { speed: total / dt, total, tEnd: T };
 }
-const BOAT_OPTS = { map, boat: { lngLat: BOAT.lngLat, w: BOAT.w, ensure: ensureBoat, hide: () => { if (boatMarker) boatMarker.getElement().style.visibility = "hidden"; } } };
+function boatAt(now = Date.now(), t0 = +localStorage.getItem(BOAT_T0) || now) {
+  const pl = boatPlan(t0); if (now >= pl.tEnd) return { ll: boatPoint(BOAT_PATH.moor), moored: true, plan: pl };
+  const d = Math.max(0, pl.speed * (now - t0) / 1000); return { ll: boatPoint(d), moored: false, d, plan: pl };
+}
+let boatMarker = null, boatLeft = false;
+function ensureBoat(fresh) { // fresh : fin de l'intro → le voilier repart du point de départ (toujours le même, quelle que soit l'heure)
+  try { if (fresh || !localStorage.getItem(BOAT_T0)) localStorage.setItem(BOAT_T0, String(Date.now())); } catch {}
+  if (boatMarker) { boatMarker.getElement().style.visibility = ""; boatMarker.setLngLat(boatAt().ll); return; }
+  const el = document.createElement("div"); el.className = "lagoon-boat"; el.innerHTML = '<div class="lb-flip"><img src="img/intro/e5.webp" alt=""></div>';
+  boatMarker = new maplibregl.Marker({ element: el, anchor: "center", offset: [0, -0.28 * BOAT.w] }).setLngLat(boatAt().ll).addTo(map); // la coque (78 % de la hauteur) est posée sur le point
+  requestAnimationFrame(boatTick);
+}
+let boatLast = 0;
+function boatTick(ts) {
+  requestAnimationFrame(boatTick);
+  if (!boatMarker || document.hidden || ts - boatLast < (ecoOn() ? 120 : 40)) return; boatLast = ts;
+  const b = boatAt(); if (boatMarker.getElement().style.visibility === "hidden") return; boatMarker.setLngLat(b.ll);
+  if (!b.moored) { // il regarde dans le sens de la marche (retournement doux)
+    const a = map.project(b.ll), c = map.project(boatAt(Date.now() + 8000).ll), dx = c.x - a.x; if (Math.abs(dx) > 0.3) { const left = dx < 0; if (left !== boatLeft) { boatLeft = left; boatMarker.getElement().classList.toggle("left", left); } }
+  }
+}
+window.__boat = { at: boatAt, plan: boatPlan, path: BOAT_PATH, T: RENDEZ_VOUS };
+window.__boatOpts = () => BOAT_OPTS; // (outil de test)
+const BOAT_OPTS = { map, boat: { lngLat: BOAT.lngLat, w: BOAT.w, ensure: () => ensureBoat(true), hide: () => { if (boatMarker) boatMarker.getElement().style.visibility = "hidden"; } } };
 // Taille des macarons selon le zoom : normale de loin, de plus en plus grande à mesure qu'on zoome, tant qu'ils restent séparés les uns des autres.
 const PIN_DMIN = (() => { let m = 1e9; PLACES.forEach((p, i) => PLACES.slice(i + 1).forEach((q) => { m = Math.min(m, Math.hypot((p.lat - q.lat) * 111000, (p.lon - q.lon) * 78000)); })); return Math.max(m, 30); })();
 const pinScaleAt = (z) => Math.min(2.5, Math.max(1, (0.9 * PIN_DMIN) / (156543.03392 * Math.cos((45.43 * Math.PI) / 180) / 2 ** z) / 42));
