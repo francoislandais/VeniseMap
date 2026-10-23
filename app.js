@@ -1,4 +1,4 @@
-import { loadProfile, saveProfile, runIntro, cortoSays, editProfile, FACE, typewriter } from "./intro.js";
+import { loadProfile, saveProfile, clearProfile, runIntro, cortoSays, editProfile, FACE, typewriter } from "./intro.js";
 import { createMap, WC_URL, OSM_URL, OFM_TILEJSON, FONTS, useStamen } from "./mapstyle.js";
 import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
 import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
@@ -2219,11 +2219,14 @@ function renderSettings() {
   $("#chteam", v).onclick = async () => { try { localStorage.removeItem(TEAMKEY); } catch {} TEAM = null; await joinGame(); await sync(); if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); } refreshAll(); renderSettings(); };
   $("#intro", v).onclick = async () => { setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE, ...BOAT_OPTS }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
   $("#devtog", v).onchange = (e) => { try { if (e.target.checked) localStorage.setItem("vq_dev", "1"); else localStorage.removeItem("vq_dev"); } catch {} location.reload(); };
-  $("#reset", v).onclick = () => {
-    if (!confirm("Effacer TOUTE la progression (points, lettres, collections) ?")) return;
+  $("#reset", v).onclick = async () => {
+    if (!confirm("Effacer TOUTE la progression et le profil, puis reprendre l'introduction ?")) return;
     if (!confirm("Vraiment tout ? Cette action est définitive.")) return;
     for (const k of Object.keys(S.done)) unaward(k);
-    save(); refreshAll(); renderSettings(); toast("Progression remise à zéro");
+    S.onboarded = false; clearProfile(); PROFILE = null; renderBadge();
+    save(); refreshAll(); setTab("map");
+    const p = await runIntro(BOAT_OPTS);
+    if (p) { applyProfile(p); S.onboarded = true; save(); }
   };
 }
 
