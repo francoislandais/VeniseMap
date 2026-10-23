@@ -189,12 +189,12 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
   // Introduction : 7 écrans plein page, fondu enchaîné, navigation par toucher ou par les petits boutons précédent / suivant. Images + texte, sans bulle.
   return new Promise(async (resolve) => {
     let LAYOUT = {}; try { const r = await fetch("data/intro-layout.json?" + Date.now()); if (r.ok) LAYOUT = await r.json(); } catch {} // réglages de position/taille enregistrés depuis l'éditeur
-    const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt" } };
+    const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt", ask: ".in2-ask" } };
     const edKey = (to) => SCREENS[to].key; // clé stable de chaque écran (s1…s6, who) : les réglages enregistrés ne bougent pas si on insère un écran
     const elsOf = (d, sc) => { const map = EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     const applyOne = (e, v) => { if (!v) { e.style.translate = ""; e.style.scale = ""; return; } e.style.translate = `${v.x || 0}vw calc(${v.y || 0} * var(--lh) / 100)`; e.style.scale = v.s && v.s !== 1 ? String(v.s) : ""; };
     // Textes modifiables : réglages dans LAYOUT._t[sN][clé] ; « {nom} » est remplacé par le prénom
-    const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", mid: ".wl-mid p" }, who: { lab: ".wh-lab", ok: ".wh-ok" }, other: { txt: ".in2-txt p", btn: ".in2-btn" } };
+    const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", mid: ".wl-mid p" }, who: { lab: ".wh-lab", ok: ".wh-ok" }, other: { txt: ".in2-txt p:not(.in2-ask)", ask: ".in2-ask", btn: ".in2-btn" } };
     const textsOf = (d, sc) => { const map = TEXTSEL[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     const htmlOf = (t) => esc(String(t).replace(/\{nom\}/g, name)).replace(/\n/g, "<br>");
     const applyTexts = (d, sc, to) => { const T = (LAYOUT._t || {})[edKey(to)] || {}, els = textsOf(d, sc); for (const k in els) if (typeof T[k] === "string") els[k].innerHTML = htmlOf(T[k]); };
@@ -207,7 +207,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       { key: "who", img: 1, layout: "who", lab: "Je m'appelle…", ok: "Valider" }, // écran d'identité (premier lancement seulement) : prénom + photo de tête
       { key: "s2", img: 2, layout: "welcome", head: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour.`, name2: "Mon nom est…", name3: "Corto Maltese", text: () => "J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires." },
       { key: "s3", img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
-      { key: "s4", img: 4, layout: "bottom", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.\n\nEs-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
+      { key: "s4", img: 4, layout: "top", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.", ask: "Es-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
       { key: "s5", img: 5, layout: "center-top", text: () => "Parfait, alors c'est décidé ! Mon bateau sera bientôt amarré à l'embarcadère de Santo Spirito. Retrouvons-nous là-bas quand tu seras prêt." },
       { key: "s6", img: 5, layout: "center-bottom", text: () => "Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller." },
     ];
@@ -243,7 +243,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         d.innerHTML = `<div class="wl-top"><img class="wl-face" src="img/corto-content.webp" alt=""><p>${esc(sc.head())}</p></div><p class="wl-name">${esc(sc.name2)}</p><p class="wl-name2">${esc(sc.name3)}</p><img class="wl-img" src="img/intro/e2r.webp" alt=""><div class="wl-mid"><p>${esc(sc.text())}</p></div>`;
         return d;
       }
-      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
+      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.ask ? `<p class="in2-ask">${esc(sc.ask)}</p>` : ""}${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
       const im = d.querySelector(".in2-img"); // image à sa proportion réelle, contenue dans la page (le fondu des bords suit l'image elle-même)
       if (sc.layout === "bottom" || sc.layout === "top") { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, lockedH / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
       return d;
@@ -311,7 +311,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         if (a === "text") {
           if (txtEd) { stopText(); return; }
           if (!selKey) { say("Touche d'abord un texte"); return; }
-          const te = textsOf(cur, SCREENS[idx]), keys = selKey === "txt" ? ["txt", "btn"] : selKey === "head" || selKey === "name" || selKey === "mid" || selKey === "hi" || selKey === "q" ? [selKey] : [];
+          const te = textsOf(cur, SCREENS[idx]), keys = !te[selKey] ? [] : selKey === "txt" ? ["txt", "btn"] : [selKey];
           const els = keys.map((k) => [k, te[k]]).filter((x) => x[1]); if (!els.length) { say("Pas de texte ici"); return; }
           txtEd = els; for (const [k, e] of els) { e.contentEditable = "plaintext-only"; e.classList.add("in2-txted"); e.oninput = () => { const T = ((LAYOUT._t ||= {})[edKey(idx)] ||= {}); let v = e.innerText.replace(/\n{3,}/g, "\n\n").replace(/\n$/, ""); if (name && SCREENS[idx].layout === "welcome" && k === "head") v = v.split(name).join("{nom}"); T[k] = v; }; }
           els[0][1].focus(); say("Écris, puis ✎ Texte pour finir"); return;

@@ -1133,3 +1133,6 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .wl-name{font-size:clamp(20px,6vw,30px)!important}
 .wl-name2{position:absolute;left:0;right:0;top:calc(var(--safe-t) + clamp(14px,3%,30px) + clamp(84px,25vw,140px) + clamp(22px,3.4dvh,40px) + clamp(30px,8vw,40px));margin:0 auto;padding:0 clamp(16px,6vw,32px);max-width:560px;box-sizing:border-box;font-size:clamp(32px,10vw,52px);line-height:1.1;font-weight:400;color:#1d2230;text-shadow:0 0 12px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
 .in2-editing .wl-name,.in2-editing .wl-name2{pointer-events:auto}
+
+.in2-txt .in2-ask{font-size:1.12em;font-weight:500;margin-top:4px}
+.in2-editing .in2-txt .in2-ask{pointer-events:auto}
