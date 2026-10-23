@@ -1194,3 +1194,10 @@ body.ic-edit .pin.has-icon.ic-sel .pin-in.icon{outline:2px dashed #e0457b;outlin
 #ic-dev .ic-lb{font-size:12px;display:flex;gap:4px;align-items:center}
 .lagoon-boat .lb-flip{width:100%;height:100%;transition:transform .7s ease-in-out}
 .lagoon-boat.left .lb-flip{transform:scaleX(-1)}
+
+/* Commandes du bas de l'écran : le pont à droite, Corto à gauche (mêmes dimensions) */
+.bridge-btn{left:auto;right:12px}
+.bridge-btn.corto-btn{left:12px;right:auto;background:#f3ead7;overflow:hidden}
+.corto-btn img{width:100%;height:100%;object-fit:cover;object-position:50% 20%;display:block}
+body:not(.jeu) #corto-btn{display:none!important}
+.corto-say{bottom:calc(140px + var(--safe-b))}

@@ -666,6 +666,8 @@ function renderMap() {
   });
 }
 $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientRect());
+// Pastille de Corto (en bas à gauche, toujours visible) : un toucher fait parler Corto — pour l'instant il salue seulement ; plus tard il donnera ici ses indices.
+$("#corto-btn").onclick = () => cortoSays("Bonjour matelot, comment ça va ?");
 
 /* ───────── Éditeur d'icônes de bâtiments (aperçu local uniquement) ─────────
    Bouton « 🏛 Icônes » : on touche une icône pour la choisir, on la glisse pour déplacer son centre (sa position sur la carte), et à chaque niveau de zoom on règle sa taille
