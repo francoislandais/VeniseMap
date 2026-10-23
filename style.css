@@ -1164,3 +1164,10 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 /* Message final de Corto : plus bas (plus de « toucher pour continuer »), il laisse passer les touchers vers la carte */
 .in2-end{pointer-events:none;padding-top:70px;padding-bottom:calc(2px + var(--safe-b))}
 .in2-end p{margin-bottom:12px}
+
+/* Message final : le texte court sur toute la largeur puis s'enroule autour de Corto (image flottante en bas à droite, contour suivi) */
+.in2-end{display:block;padding:80px 22px calc(8px + var(--safe-b)) 22px}
+.in2-end::after{content:"";display:block;clear:both}
+.in2-end .sp{float:right;width:0;height:0}
+.in2-end img{float:right;clear:right;width:130px;height:130px;margin:0 0 0 8px;object-fit:contain;shape-outside:url(img/corto-content.webp);shape-image-threshold:.25;shape-margin:10px}
+.in2-end p{margin:0;text-align:left}

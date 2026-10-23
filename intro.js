@@ -242,7 +242,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       { key: "who", img: 1, layout: "who", lab: "Je m'appelle…", ok: "Valider" }, // écran d'identité (premier lancement seulement) : prénom + photo de tête
       { key: "s2", img: 2, layout: "welcome", head: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour.`, name2: "Mon nom est…", name3: "Corto Maltese", text: () => "J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires." },
       { key: "s3", img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
-      { key: "s4", img: 4, layout: "top", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.", ask: "Es-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
+      { key: "s4", img: 4, layout: "top", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une **mission de la plus haute importance**, une aventure qui te mènera au cœur de ses secrets et de son histoire.", ask: "Es-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
       { key: "s5", img: 5, layout: "center-top", face: true, parts: ["Parfait, alors c'est décidé !", "Voici mon bateau.", "Il sera bientôt amarré à l'embarcadère de **Santo Spirito**. Retrouvons-nous là-bas quand tu seras prêt."], text: () => "" },
       { key: "s6", base: "s5", img: 5, layout: "center-top", face: true, parts: ["Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller."], text: () => "" },
     ];
@@ -262,7 +262,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     let cur = null, idx = -1, busy = false, opening = null, boatPan = null, readT = null, finaleStarted = false;
     const build = (sc) => {
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
-      const txt = esc(sc.text ? sc.text() : "").replace(/\n\n/g, "<br><br>");
+      const txt = rich(esc(sc.text ? sc.text() : "")).replace(/\n\n/g, "<br><br>");
       if (sc.layout === "hello") { // écran 1 : Corto à gauche ; à droite le salut (sur une ligne, à hauteur de son visage), la question et le champ prénom
         d.innerHTML = `<div class="hl-wrap"><div class="hl-top"><img class="hl-img" style="opacity:0" src="${IMG(sc.img)}" alt=""><div class="hl-col" style="opacity:0"><p class="hl-hi">${esc(sc.hello)}</p><p class="hl-q">${esc(sc.text())}</p></div></div></div>`;
         return d;
@@ -289,13 +289,16 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       saveProfile(profile);
       resolve(profile); restore(); document.body.classList.remove("intro-open"); if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
       const msg = document.createElement("div"); msg.className = "in2-end"; // écran 7 : la carte est révélée pour la première fois, Corto parle en bas
-      msg.innerHTML = `<p>Je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt="">`;
+      msg.innerHTML = `<i class="sp"></i><img src="img/corto-content.webp" alt=""><p>Je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p>`;
       msg.style.opacity = 0; document.body.appendChild(msg);
+      // Le texte court sur toute la largeur puis s'enroule autour de Corto, calé en bas à droite : une cale invisible (flottante) repousse l'image vers le bas du bloc
+      const wrapAround = () => { const sp = msg.querySelector(".sp"), im = msg.querySelector("img"), pp = msg.querySelector("p"); sp.style.height = "0px"; for (let n = 0; n < 4; n++) sp.style.height = Math.max(0, pp.offsetHeight - im.offsetHeight + 6) + "px"; };
+      wrapAround(); setTimeout(wrapAround, 300); window.addEventListener("resize", wrapAround);
       if (soft) root.remove(); else root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1400, fill: "forwards", easing: "ease-in-out" }).onfinish = () => root.remove();
       msg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: soft ? 100 : 700, fill: "forwards" });
-      // Le message disparaît tout seul au bout de quelques secondes, ou dès qu'on touche n'importe où sur la carte
-      let gone = false; const bye = () => { if (gone) return; gone = true; clearTimeout(autoT); document.removeEventListener("pointerdown", bye, true); msg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).onfinish = () => msg.remove(); };
-      const autoT = setTimeout(bye, 11000); setTimeout(() => document.addEventListener("pointerdown", bye, true), 1500);
+      // Le message reste affiché, stable, jusqu'au premier toucher sur la carte
+      let gone = false; const bye = () => { if (gone) return; gone = true; document.removeEventListener("pointerdown", bye, true); window.removeEventListener("resize", wrapAround); msg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).onfinish = () => msg.remove(); };
+      setTimeout(() => document.addEventListener("pointerdown", bye, true), 1500);
     };
     const vv = window.visualViewport;
     const lift = () => { // remonte le contenu juste assez pour que le champ reste visible au-dessus du clavier
