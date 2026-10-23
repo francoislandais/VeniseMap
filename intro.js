@@ -200,7 +200,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const rich = (h) => h.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); // **mot** = gras
     const htmlOf = (t) => rich(esc(String(t).replace(/\{nom\}/g, name))).replace(/\n/g, "<br>");
     const mdOf = (el) => { let o = ""; el.childNodes.forEach((n) => { o += n.nodeType === 3 ? n.nodeValue : n.nodeName === "BR" ? "\n" : /^(B|STRONG)$/.test(n.nodeName) ? "**" + n.textContent + "**" : n.textContent; }); return o; };
-    const applyTexts = (d, sc, to) => { const T = (LAYOUT._t || {})[edKey(to)] || {}, els = textsOf(d, sc); for (const k in els) if (typeof T[k] === "string") els[k].innerHTML = htmlOf(T[k]); };
+    const applyTexts = (d, sc, to) => { const T = (LAYOUT._t || {})[edKey(to)] || {}, els = textsOf(d, sc); for (const k in els) if (typeof T[k] === "string" && !(T[k] === "" && sc.layout === "welcome")) els[k].innerHTML = htmlOf(T[k]); };
     const applyLayout = (d, sc, to) => { applyTexts(d, sc, to); const L = LAYOUT[edKey(to)] || {}, els = elsOf(d, sc); for (const k in els) { if (sc.base && ["img", "face", "txt"].includes(k)) continue; els[k]._fx = els[k]._fy = 0; els[k]._fs = 1; applyOne(els[k], L[k] || (k === "name2" ? L.name : undefined)); } }; // « Corto Maltese » reprend d'abord la position de l'ancienne ligne unique
     // Garantie « tout est visible » : quelle que soit la taille / le format de l'écran, les textes, boutons et champs sont ramenés dans la zone visible (rétrécis s'ils sont trop grands, décalés s'ils débordent). Images laissées libres : un Corto coupé par le bord est voulu.
     const probe = document.createElement("div"); probe.style.cssText = "position:fixed;visibility:hidden;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)"; document.body.appendChild(probe);
@@ -288,7 +288,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         return d;
       }
       if (sc.layout === "welcome") { // écran 2 : Corto joyeux (fondu en bas) et sa salutation en haut, « Je m'appelle Corto Maltese. » en grand dessous ; Corto de l'aquarelle (sans le bateau) en bas à droite, la suite du texte à gauche
-        d.innerHTML = `<div class="wl-top"><img class="wl-face" src="img/corto-content.webp" alt=""><p>${esc(sc.head())}</p></div><p class="wl-name">${esc(sc.name2)}</p><p class="wl-name2">${esc(sc.name3)}</p><p class="wl-sea">${esc(sc.sea)}</p><img class="wl-img" src="img/intro/e2r.webp" alt=""><div class="wl-mid"><p>${esc(sc.text())}</p></div>`;
+        d.innerHTML = `<div class="wl-top"><img class="wl-face" src="img/corto-content.webp" alt=""><p>${esc(sc.head())}</p></div><p class="wl-name">${esc(sc.name2)}</p><p class="wl-name2">${esc(sc.name3)}</p><p class="wl-sea" data-fade>${esc(sc.sea)}</p><img class="wl-img" src="img/intro/e2r.webp" alt=""><div class="wl-mid"><p data-fade>${esc(sc.text())}</p></div>`;
         return d;
       }
       d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt="">${sc.face ? '<img class="in2-face" src="img/corto-content.webp" alt="">' : ""}<div class="in2-txt">${sc.parts ? sc.parts.map((t, n) => `<p class="in2-part${t.length > 90 ? " in2-long" : ""}" data-k="p${n + 1}">${rich(esc(t))}</p>`).join("") : `<p>${txt}</p>`}${sc.ask ? `<p class="in2-ask">${esc(sc.ask)}</p>` : ""}${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
@@ -483,14 +483,18 @@ export function typewriter(el, text, delay = 450) {
 function typeSeq(els, { delay = 400, speed = 1, onDone, manual = false } = {}) {
   let curC = null;
   const items = els.map((el) => { const chars = []; const walk = (node) => [...node.childNodes].forEach((n) => { if (n.nodeType === 3) { const f = document.createDocumentFragment(); for (const ch of n.nodeValue) { const sp = document.createElement("span"); sp.textContent = ch; sp.style.opacity = "0"; f.appendChild(sp); chars.push(sp); } n.replaceWith(f); } else if (n.nodeType === 1 && n.tagName !== "BR") walk(n); }); walk(el); return { el, chars }; });
-  const all = items.flatMap((it) => it.chars.map((c, k) => ({ c, first: k === 0 }))); let i = 0, t = null;
+  const all = items.flatMap((it) => it.chars.map((c, k) => ({ c, first: k === 0, it, fade: it.el.hasAttribute("data-fade") }))); let i = 0, t = null;
   // on garde les <span> des lettres (jamais de retour au HTML d'origine) : la mise en page justifiée ne change donc plus d'un pixel à la fin de la frappe
-  const restore = () => { clearTimeout(t); if (curC) curC.classList.remove("tw-cur"); items.forEach((it) => it.chars.forEach((c) => { c.style.opacity = ""; })); api.done = true; };
+  const restore = () => { clearTimeout(t); if (curC) curC.classList.remove("tw-cur"); items.forEach((it) => it.chars.forEach((c) => { c.style.transition = ""; c.style.opacity = ""; })); api.done = true; };
   const api = { done: false, go(d = 0) { if (!api.done && !t) t = setTimeout(step, d); }, finish() { if (api.done) return; restore(); onDone && onDone(); }, cancel() { if (api.done) return; restore(); } };
   const step = () => {
     if (i >= all.length) { api.finish(); return; }
+    if (all[i].fade) { // bloc qui apparaît en fondu, d'un seul coup (« Je suis marin. », puis la suite du récit)
+      const it = all[i].it; it.chars.forEach((c) => { c.style.transition = "opacity 1.6s ease"; c.style.opacity = "1"; }); i += it.chars.length;
+      t = setTimeout(step, 1700 + (all[i] && all[i].first ? (all[i].fade ? 2600 : 260) : 0)); return;
+    }
     const { c, first } = all[i++]; c.style.opacity = "1"; if (curC) curC.classList.remove("tw-cur"); c.classList.add("tw-cur"); curC = c; const ch = c.textContent;
-    t = setTimeout(step, (ch === "," ? 140 : ".!?…:".includes(ch) ? 280 : ch === " " ? 26 : 22 + Math.random() * 22) * speed + (all[i] && all[i].first ? 260 : 0));
+    t = setTimeout(step, (ch === "," ? 140 : ".!?…:".includes(ch) ? 280 : ch === " " ? 26 : 22 + Math.random() * 22) * speed + (all[i] && all[i].first ? (all[i].fade ? 2600 : 260) : 0));
   };
   if (!all.length || matchMedia("(prefers-reduced-motion: reduce)").matches) { restore(); onDone && onDone(); } else if (!manual) t = setTimeout(step, delay);
   return api;
