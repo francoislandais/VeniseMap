@@ -1361,3 +1361,7 @@ body.menu-open #corto-btn{display:none!important}
 /* Ponts : photos légèrement espacées (le tableau de fond transparaît entre elles), sans contour ni fond noir ; une dernière rangée incomplète garde la taille naturelle de ses photos */
 .bmos{background:none;border:0;gap:3px;box-sizing:border-box;width:100%}
 .bmr{background:none;gap:3px;width:100%}
+
+/* Œuvres : peintres seulement s'ils ont au moins une toile trouvée, mosaïque comme les ponts */
+.wk-art{margin:0 0 16px}
+.wk-art h3{margin:0 0 6px;font-size:17px}

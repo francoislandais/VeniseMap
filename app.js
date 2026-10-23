@@ -1801,20 +1801,21 @@ async function findWork(id, opts = {}) { // appelée quand l'enfant réussit l'�
   return true;
 }
 window.__works = { find: findWork, load: loadWorks, all: async () => (await loadWorks()).oeuvres.map((w) => w.id), reset: async () => { (await loadWorks()).oeuvres.forEach((w) => { if (workFound(w.id)) unaward("w:" + w.id); }); save(); renderHud(); if (tab === "works") renderWorks(); } };
-const WORKS_MSG = "Trouve des toiles de maîtres à travers la ville : elles s'afficheront ici en hommage à ta ténacité et te rapporteront un max d'étoiles !";
+const WORKS_MSG = "Collectionne les toiles de maîtres : elles s'afficheront ici en hommage à ta ténacité et te rapporteront un max d'étoiles !";
+// Mosaïque justifiée (mêmes règles que les ponts : rangées de hauteurs variées jusqu'au bord, photos légèrement espacées, dernière rangée incomplète à sa taille naturelle)
+function mosaicHtml(items, W, cls) {
+  const heights = [150, 118, 136, 168, 124], rows = []; let cur = [], sum = 0;
+  items.forEach((it) => { const h0 = heights[rows.length % heights.length]; cur.push(it); sum += it.ar; if (sum * h0 + 3 * (cur.length - 1) >= W) { rows.push({ cur, h: Math.min(h0 * 1.35, (W - 3 * (cur.length - 1)) / sum), full: true }); cur = []; sum = 0; } });
+  if (cur.length) rows.push({ cur, h: heights[rows.length % heights.length] * 0.95, full: false });
+  return `<div class="bmos ${cls}">${rows.map((r) => `<div class="bmr" style="height:${Math.round(r.h)}px">${r.cur.map((it) => `<button type="button" class="bm" ${it.attr} aria-label="${esc(it.label)}" style="flex:${r.full ? it.ar : 0} 1 ${r.full ? 0 : Math.round(it.ar * r.h)}px;background-image:url(${it.img})"></button>`).join("")}</div>`).join("")}</div>`;
+}
 async function renderWorks() {
   const v = $("#v-works"), W = await loadWorks(); if (tab !== "works") return;
-  const found = W.oeuvres.filter((w) => workFound(w.id)).length;
-  const tiles = (arts) => arts.map((w) => { const ok = workFound(w.id), ar = Math.max(0.45, Math.min(2.2, w.ratio)); return ok
-    ? `<button type="button" class="wk-t" data-w="${w.id}" style="--ar:${ar}" aria-label="${esc(w.titre)}"><img src="${w.thumb}" alt="" loading="lazy" onerror="this.parentNode.classList.add('noimg')"></button>`
-    : `<button type="button" class="wk-t lock" data-lock="1" style="--ar:${ar}" aria-label="Toile à trouver"><span>?</span></button>`; }).join("");
-  v.innerHTML = `<div class="wk-head"><h2>Œuvres de maîtres</h2><span class="wk-cnt">${found} / ${W.oeuvres.length}</span></div>`
-    + W.artistes.map((a) => { const arts = W.oeuvres.filter((w) => w.artiste === a.cle), n = arts.filter((w) => workFound(w.id)).length; return `<section class="wk-art${n ? "" : " none"}"><h3>${esc(a.nom)} <small>${n} / ${arts.length}</small></h3><div class="wk-row">${tiles(arts)}</div></section>`; }).join("")
-    + "";
-  const msg = found ? `Déjà ${found} toile${found > 1 ? "s" : ""} sur ${W.oeuvres.length} ! Cherche les autres à travers la ville : chacune te rapporte ${POINTS.work} étoiles.` : WORKS_MSG;
-  menuSay(msg);
-  $$(".wk-t[data-w]", v).forEach((b) => (b.onclick = () => openWorkView(W, b.dataset.w)));
-  $$(".wk-t.lock", v).forEach((b) => (b.onclick = () => cortoSays("Cette toile t'attend quelque part à Venise… Continue tes épreuves dans les musées et les églises !")));
+  menuSay(WORKS_MSG);
+  // Un peintre n'apparaît qu'à partir de sa première toile trouvée ; seules les toiles trouvées sont affichées (rien d'autre : l'onglet reste vide au départ)
+  const cw = Math.max(200, v.clientWidth - 28);
+  v.innerHTML = W.artistes.map((a) => { const got = W.oeuvres.filter((w) => w.artiste === a.cle && workFound(w.id)); return got.length ? `<section class="wk-art"><h3>${esc(a.nom)}</h3>${mosaicHtml(got.map((w) => ({ ar: Math.max(0.5, Math.min(2.2, w.ratio)), img: w.thumb, label: w.titre, attr: `data-w="${w.id}"` })), cw, "wk")}</section>` : ""; }).join("");
+  $$(".bm[data-w]", v).forEach((b) => (b.onclick = () => openWorkView(W, b.dataset.w)));
 }
 function openWorkView(W, id) {
   const w = W.oeuvres.find((x) => x.id === id); if (!w) return; const a = W.artistes.find((x) => x.cle === w.artiste), lieu = W.lieux[w.lieu];
