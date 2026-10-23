@@ -1483,3 +1483,10 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 
 /* La fenêtre de prise de photo reste visible au-dessus de l'introduction. */
 body.intro-open > .cam.cam{visibility:visible!important}
+
+/* Le nouveau portrait se fond dans le bouton rond sans contour dur ni coupe du buste. */
+.wh-cam.round{border-color:transparent;background:transparent}
+.wh-cam.round img{object-position:50% 30%}
+.cam.has-photo .cam-frame{aspect-ratio:1!important;border-color:transparent;box-shadow:none;background:transparent}
+.cam.has-photo .cam-oval,.cam.has-photo .cam-sh{display:none}
+.cam.has-photo .cam-frame .cam-prev.cut{object-position:50% 30%!important}

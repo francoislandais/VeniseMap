@@ -96,13 +96,18 @@ export const FRAME = { w: 300, h: 400 };
 export const FACE = { cx: 0.5, cy: 0.4, w: 0.46, h: 0.52 }; // anciens portraits enregistrés avec frame: true
 const SELFIE_FACE = { cx: 0.5, cy: 0.32, w: 0.4, h: 0.4 }; // visage dans la moitié haute ; épaules et buste dans la moitié basse
 // Géométrie du cadre mémorisée avec la photo : si l'ovale change un jour, les anciennes photos gardent leurs proportions.
-export const frameSpec = () => ({ v: 2, cx: SELFIE_FACE.cx, cy: SELFIE_FACE.cy, w: SELFIE_FACE.w, h: SELFIE_FACE.h });
+export const frameSpec = () => ({ v: 3, cx: SELFIE_FACE.cx, cy: SELFIE_FACE.cy, w: SELFIE_FACE.w, h: SELFIE_FACE.h });
 export function frameShot(src) { // recadre au format 3:4 (centre), comme l'aperçu de la caméra
   const w = src.naturalWidth || src.videoWidth || src.width, h = src.naturalHeight || src.videoHeight || src.height;
   const sw = Math.min(w, (h * 3) / 4), sh = (sw * 4) / 3, sx = (w - sw) / 2, sy = (h - sh) / 2;
   const c = document.createElement("canvas"); c.width = FRAME.w; c.height = FRAME.h; const x = c.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(src, sx, sy, sw, sh, 0, 0, FRAME.w, FRAME.h); return c;
 }
-const fadeBottom = (c) => { const x = c.getContext("2d"), g = x.createLinearGradient(0, c.height * 0.86, 0, c.height); g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.globalCompositeOperation = "destination-in"; const cv = document.createElement("canvas"); cv.width = c.width; cv.height = c.height; const y = cv.getContext("2d"); const gg = y.createLinearGradient(0, 0, 0, c.height); gg.addColorStop(0, "rgba(0,0,0,1)"); gg.addColorStop(0.86, "rgba(0,0,0,1)"); gg.addColorStop(1, "rgba(0,0,0,0)"); y.fillStyle = gg; y.fillRect(0, 0, c.width, c.height); x.drawImage(cv, 0, 0); x.globalCompositeOperation = "source-over"; };
+const roundBust = (c) => { // cercle doux autour du visage et du buste, sans bord droit en bas
+  const x = c.getContext("2d"), cx = c.width / 2, cy = c.height * 0.45, radius = c.width * 0.49;
+  const g = x.createRadialGradient(cx, cy, radius - 18, cx, cy, radius);
+  g.addColorStop(0, "#000"); g.addColorStop(1, "transparent");
+  x.globalCompositeOperation = "destination-in"; x.fillStyle = g; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = "source-over";
+};
 const toUrl = (c) => { const du = c.toDataURL("image/webp", 0.9); return du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); };
 // Détourage sans recadrage : on garde exactement la mise en page du cadre (le visage reste dans l'ovale).
 export async function cutoutFramed(frame) {
@@ -116,13 +121,11 @@ export async function cutoutFramed(frame) {
   mx.putImageData(id, 0, 0); m.close && m.close();
   const out = document.createElement("canvas"); out.width = FRAME.w; out.height = FRAME.h; const x = out.getContext("2d"); x.drawImage(frame, 0, 0);
   x.globalCompositeOperation = "destination-in"; x.filter = "blur(1.2px)"; x.drawImage(mc, 0, 0, FRAME.w, FRAME.h); x.filter = "none"; x.globalCompositeOperation = "source-over";
-  fadeBottom(out); return toUrl(out);
+  roundBust(out); return toUrl(out);
 }
-export function framedFallback(frame) { // sans segmentation : on garde le visage et le buste, avec des bords adoucis
+export function framedFallback(frame) { // sans segmentation : on garde le visage et le buste dans le même cercle doux
   const out = document.createElement("canvas"); out.width = FRAME.w; out.height = FRAME.h; const x = out.getContext("2d"); x.drawImage(frame, 0, 0);
-  const side = x.createLinearGradient(0, 0, FRAME.w, 0); side.addColorStop(0, "transparent"); side.addColorStop(0.06, "#000"); side.addColorStop(0.94, "#000"); side.addColorStop(1, "transparent");
-  x.globalCompositeOperation = "destination-in"; x.fillStyle = side; x.fillRect(0, 0, FRAME.w, FRAME.h); x.globalCompositeOperation = "source-over";
-  fadeBottom(out); return toUrl(out);
+  roundBust(out); return toUrl(out);
 }
 
 /* ───────── Caméra ───────── */
@@ -143,12 +146,12 @@ export function selfie() {
     const show = async (srcEl) => {
       cam.querySelector(".cam-t").textContent = "Je prépare ton portrait…"; cam.classList.add("busy");
       const fr = frameShot(srcEl); try { result = { photo: await cutoutFramed(fr), cut: true, frame: frameSpec() }; } catch (e) { result = { photo: framedFallback(fr), cut: true, frame: frameSpec() }; } // repli : visage et buste conservés, bords adoucis
-      cam.classList.remove("busy"); prev.src = result.photo; prev.classList.toggle("cut", result.cut); prev.hidden = false; video.hidden = true;
+      cam.classList.remove("busy"); cam.classList.add("has-photo"); prev.src = result.photo; prev.classList.toggle("cut", result.cut); prev.hidden = false; video.hidden = true;
       cam.querySelectorAll(".cam-bar")[0].hidden = true; cam.querySelector("[data-ok]").hidden = false; cam.querySelector(".cam-t").textContent = "Voilà ton portrait de marin !";
     };
     cam.querySelector("[data-x]").onclick = () => done(null);
     cam.querySelector("[data-use]").onclick = () => done(result);
-    cam.querySelector("[data-again]").onclick = () => { prev.hidden = true; video.hidden = false; cam.querySelectorAll(".cam-bar")[0].hidden = false; cam.querySelector("[data-ok]").hidden = true; cam.querySelector(".cam-t").textContent = "Ton visage en haut, tes épaules et ton buste dans le cadre."; };
+    cam.querySelector("[data-again]").onclick = () => { cam.classList.remove("has-photo"); prev.hidden = true; video.hidden = false; cam.querySelectorAll(".cam-bar")[0].hidden = false; cam.querySelector("[data-ok]").hidden = true; cam.querySelector(".cam-t").textContent = "Ton visage en haut, tes épaules et ton buste dans le cadre."; };
     cam.querySelector("[data-shot]").onclick = async () => {
       if (!video.videoWidth) return;
       const c = document.createElement("canvas"); c.width = video.videoWidth; c.height = video.videoHeight;
@@ -302,7 +305,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         d.innerHTML = `<div class="wh"><p class="wh-lab">${esc(sc.lab)}</p><input class="wh-in" id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button type="button" class="wh-cam" aria-label="Prendre ma tête en photo">${CAM_SVG}</button><button type="button" class="wh-ok">${esc(sc.ok)}</button></div>`;
         const cam = d.querySelector(".wh-cam"), inp = d.querySelector(".wh-in"), ok = d.querySelector(".wh-ok");
         const update = () => { const ready = !!inp.value.trim() && !!photoRes; ok.hidden = !ready; nextBtn.disabled = !ready; nextBtn.style.visibility = ready ? "" : "hidden"; fitSoon(); };
-        const paint = () => { cam.classList.toggle("has", !!photoRes); cam.innerHTML = photoRes ? `<img src="${photoRes.photo}" alt="">` : CAM_SVG; update(); };
+        const paint = () => { cam.classList.toggle("has", !!photoRes); cam.classList.toggle("round", !!(photoRes?.frame?.v >= 3)); cam.innerHTML = photoRes ? `<img src="${photoRes.photo}" alt="">` : CAM_SVG; update(); };
         paint(); inp.oninput = update; inp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } };
         cam.onclick = async () => { if (editing) return; inp.blur(); const r = await selfie(); if (r) { photoRes = r; paint(); } };
         return d;
