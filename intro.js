@@ -339,8 +339,8 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const panRun = () => {
       const bgE = root.querySelector(".in2-bg"); if (!bgE || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       const x0 = parseFloat(getComputedStyle(bgE).backgroundPositionX) || 20; if (boatPan) boatPan.cancel();
-      const T = 40, kf = []; let x = x0; // vitesse : 0,7 %/s au départ (le double du défilement précédent), jusqu'à 4,2 %/s au bout de 18 s
-      for (let t = 0; t <= T; t++) { kf.push({ backgroundPosition: Math.min(x, 96) + "% 50%", offset: t / T }); x += 0.7 + Math.pow(Math.min(t / 18, 1), 1.6) * 3.5; }
+      const T = 40, kf = []; let x = x0; // vitesse : 0,5 %/s au départ, jusqu'à 2,8 %/s au bout de 18 s
+      for (let t = 0; t <= T; t++) { kf.push({ backgroundPosition: Math.min(x, 96) + "% 50%", offset: t / T }); x += 0.5 + Math.pow(Math.min(t / 18, 1), 1.6) * 2.3; }
       boatPan = bgE.animate(kf, { duration: T * 1000, easing: "linear", fill: "forwards" }); boatPan.fast = true;
     };
     const morph = (sc, to) => {
