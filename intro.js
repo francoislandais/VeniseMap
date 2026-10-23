@@ -189,9 +189,9 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
   // Introduction : 7 écrans plein page, fondu enchaîné, navigation par toucher ou par les petits boutons précédent / suivant. Images + texte, sans bulle.
   return new Promise(async (resolve) => {
     let LAYOUT = {}; try { const r = await fetch("data/intro-layout.json?" + Date.now()); if (r.ok) LAYOUT = await r.json(); } catch {} // réglages de position/taille enregistrés depuis l'éditeur
-    const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt", ask: ".in2-ask" } };
+    const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt", ask: ".in2-ask", btn: ".in2-btn" } };
     const edKey = (to) => SCREENS[to].key; // clé stable de chaque écran (s1…s6, who) : les réglages enregistrés ne bougent pas si on insère un écran
-    const elsOf = (d, sc) => { const map = EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
+    const elsOf = (d, sc) => { const map = { ...EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.ask) map.txt = ".in2-txt p:not(.in2-ask)"; /* écran avec question + bouton : le texte, la question et le bouton sont trois éléments indépendants */ const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     const applyOne = (e, v) => { if (!v) { e.style.translate = ""; e.style.scale = ""; return; } e.style.translate = `${v.x || 0}vw calc(${v.y || 0} * var(--lh) / 100)`; e.style.scale = v.s && v.s !== 1 ? String(v.s) : ""; };
     // Textes modifiables : réglages dans LAYOUT._t[sN][clé] ; « {nom} » est remplacé par le prénom
     const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", mid: ".wl-mid p" }, who: { lab: ".wh-lab", ok: ".wh-ok" }, other: { txt: ".in2-txt p:not(.in2-ask)", ask: ".in2-ask", btn: ".in2-btn" } };
@@ -311,7 +311,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         if (a === "text") {
           if (txtEd) { stopText(); return; }
           if (!selKey) { say("Touche d'abord un texte"); return; }
-          const te = textsOf(cur, SCREENS[idx]), keys = !te[selKey] ? [] : selKey === "txt" ? ["txt", "btn"] : [selKey];
+          const te = textsOf(cur, SCREENS[idx]), keys = !te[selKey] ? [] : [selKey];
           const els = keys.map((k) => [k, te[k]]).filter((x) => x[1]); if (!els.length) { say("Pas de texte ici"); return; }
           txtEd = els; for (const [k, e] of els) { e.contentEditable = "plaintext-only"; e.classList.add("in2-txted"); e.oninput = () => { const T = ((LAYOUT._t ||= {})[edKey(idx)] ||= {}); let v = e.innerText.replace(/\n{3,}/g, "\n\n").replace(/\n$/, ""); if (name && SCREENS[idx].layout === "welcome" && k === "head") v = v.split(name).join("{nom}"); T[k] = v; }; }
           els[0][1].focus(); say("Écris, puis ✎ Texte pour finir"); return;
@@ -330,7 +330,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         if (txtEd) stopText();
         if (!editing || e.target.closest(".in2-ed,.in2-nav,.in2-handle")) return;
         const els = elsOf(cur, SCREENS[idx]); let hit = null; // l'élément éditable le plus en avant sous le doigt (images comprises, même sous un bloc de texte)
-        for (const t of document.elementsFromPoint(e.clientX, e.clientY)) { for (const k in els) if (els[k].contains(t)) { hit = k; break; } if (hit) break; }
+        for (const t of document.elementsFromPoint(e.clientX, e.clientY)) { const m = Object.keys(els).filter((k) => els[k].contains(t)); if (m.length) { hit = m.find((k) => !m.some((k2) => k2 !== k && els[k].contains(els[k2]))); break; } }
         if (!hit) { select(null); return; }
         e.preventDefault(); select(hit); const c = cfgFor(hit); drag = { k: hit, x0: e.clientX, y0: e.clientY, cx: c.x, cy: c.y }; root.setPointerCapture?.(e.pointerId);
       }, true);
