@@ -1531,10 +1531,10 @@ function setTab(t) {
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   const onTab = $("#up-bar .up-tabs button.on"); if (onTab && onTab.scrollIntoView) setTimeout(() => onTab.scrollIntoView({ inline: "center", block: "nearest" }), 30);
   $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; document.body.classList.toggle("menu-open", t !== "map"); { const ms = $("#menu-say"); if (ms) ms.hidden = t === "map"; } if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
-  ["days", "bridges", "photos", "works", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
+  ["days", "objects", "bridges", "photos", "works", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t)); if (t !== "objects") dropHeld();
   $("#tab-dev").hidden = !DEV;
   $("#bridge-btn").hidden = t !== "map";
-  if (t === "days") renderDays(); if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
+  if (t === "days") renderDays(); if (t === "objects") renderObjects(); if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
   if (t === "map") { setTimeout(() => map.resize(), 50); renderNext(); } else $("#next").hidden = true;
   if (t !== "map") closeSheetKeep();
 }
@@ -1788,6 +1788,32 @@ const BADGES = [
   { e: "🌟", n: "Maître de Venise", ok: () => PLACES.every(complete) },
   { e: "👑", n: "Gardiens du Lion", ok: () => has("finale") },
 ];
+/* ───────── Objets trouvés : petits trésors à collectionner (ex. la coquille d'or donnée par saint Jean-Baptiste aux Frari) ─────────
+   Un objet trouvé = S.done["tr:" + id du lieu] (déjà posé par le jeu quand l'enfant le ramasse). Ils pourront servir plus tard à différents moments de l'aventure. */
+const OBJECT_IMG = { frari: "img/objets/coquille.svg", miracoli: "img/objets/perle.svg", basilique: "img/objets/plume.svg" };
+const objectList = () => PLACES.filter((p) => p.reward).map((p) => ({ id: p.id, name: p.reward.name, emoji: p.reward.emoji, img: OBJECT_IMG[p.id] || "", found: has("tr:" + p.id) }));
+let heldEl = null, heldId = null;
+function dropHeld() { if (heldEl) { heldEl.remove(); heldEl = null; heldId = null; } }
+function renderObjects() {
+  const v = $("#v-objects"), got = objectList().filter((o) => o.found); dropHeld();
+  menuSay(got.length ? "Voici tous les objets que tu as trouvés : peut-être pourront-ils te servir !" : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
+  v.innerHTML = got.length ? `<div class="ogrid">${got.map((o) => `<button type="button" class="ob" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${o.emoji}</span>`}</button>`).join("")}</div>` : "";
+  $$(".ob", v).forEach((b) => (b.onclick = () => holdObject(b)));
+}
+// Un toucher sur un objet : il glisse sur le côté de l'écran (il y reste « en main », visible dans cet onglet seulement) ; un second toucher le repose dans la grille.
+function holdObject(btn) {
+  const id = btn.dataset.o, back = heldId === id;
+  const r = btn.getBoundingClientRect(), hasEl = !!heldEl;
+  if (hasEl) { const prev = $(`.ob[data-o="${heldId}"]`); const from = heldEl.getBoundingClientRect(), to = prev ? prev.getBoundingClientRect() : from, el = heldEl; heldEl = null; heldId = null; if (prev) prev.classList.remove("away"); el.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${to.width / from.width})`, opacity: 1 }], { duration: 380, easing: "ease-in-out", fill: "forwards" }).onfinish = () => el.remove(); if (back) return; }
+  const src = btn.querySelector("img, .ob-em"); const el = document.createElement("div"); el.className = "held-ob"; el.dataset.o = id; el.innerHTML = btn.innerHTML;
+  const size = 72, left = innerWidth - size - 8, top = Math.max(120, Math.min(innerHeight * 0.42, r.top));
+  el.style.cssText = `left:${left}px;top:${top}px;width:${size}px;height:${size}px`;
+  document.body.appendChild(el); heldEl = el; heldId = id; btn.classList.add("away");
+  el.animate([{ transform: `translate(${r.left - left}px, ${r.top - top}px) scale(${r.width / size})` }, { transform: "none" }], { duration: 420, easing: "cubic-bezier(.2,.9,.3,1.1)" });
+  el.onclick = () => { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); };
+}
+window.__objects = { list: objectList, find: (id) => { if (!has("tr:" + id)) { award("tr:" + id, 0, meIdx()); save(); refreshAll(); if (tab === "objects") renderObjects(); } }, reset: () => { PLACES.filter((p) => p.reward && has("tr:" + p.id)).forEach((p) => unaward("tr:" + p.id)); save(); refreshAll(); if (tab === "objects") renderObjects(); } };
+
 /* ───────── Œuvres de maîtres : la collection de toiles trouvées au fil des épreuves ─────────
    Base : data/oeuvres.json (61 œuvres, 19 artistes, 16 lieux, 5 questions par œuvre pour les épreuves à venir). Une toile trouvée = S.done["w:" + id] (étoiles POINTS.work), donc synchronisée comme le reste. */
 let WORKS = null;
@@ -1994,6 +2020,8 @@ async function renderDev() {
   $$("[data-cer]", v).forEach((b) => (b.onclick = () => { setTab("map"); setTimeout(() => ceremony(b.dataset.cer, +b.dataset.li), 350); }));
   const off = $("#dv-off", v); if (off) off.onclick = async () => { await wearOutfit(null); toast("Tenue retirée"); renderDev(); };
   v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🖼️ Œuvres de maîtres (test)</h2><p class="muted">Simule la découverte des toiles (le vrai déclenchement viendra avec les épreuves).</p><div class="dv-src"><button class="btn ghost" data-wk="one">Trouver une toile</button><button class="btn ghost" data-wk="all">Tout débloquer</button><button class="btn ghost" data-wk="reset">Tout verrouiller</button></div></div>`);
+  v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🐚 Objets trouvés (test)</h2><div class="dv-src"><button class="btn ghost" data-ob="one">Trouver un objet</button><button class="btn ghost" data-ob="all">Tout trouver</button><button class="btn ghost" data-ob="reset">Tout retirer</button></div></div>`);
+  $$("[data-ob]", v).forEach((b) => (b.onclick = () => { const L = objectList(); if (b.dataset.ob === "one") { const n = L.find((o) => !o.found); if (n) window.__objects.find(n.id); else toast("Tous les objets sont trouvés"); } else if (b.dataset.ob === "all") L.forEach((o) => window.__objects.find(o.id)); else window.__objects.reset(); }));
   $$("[data-wk]", v).forEach((b) => (b.onclick = async () => { const ids = await window.__works.all(); if (b.dataset.wk === "one") { const left = ids.filter((id) => !workFound(id)); if (!left.length) { toast("Toutes les toiles sont déjà trouvées"); return; } await findWork(left[Math.floor(Math.random() * left.length)]); } else if (b.dataset.wk === "all") { for (const id of ids) await findWork(id, { silent: true }); toast("Toutes les toiles sont débloquées"); } else { await window.__works.reset(); toast("Toiles verrouillées"); } }));
   paint();
 }
