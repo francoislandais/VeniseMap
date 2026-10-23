@@ -289,11 +289,13 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       saveProfile(profile);
       resolve(profile); restore(); document.body.classList.remove("intro-open"); if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
       const msg = document.createElement("div"); msg.className = "in2-end"; // écran 7 : la carte est révélée pour la première fois, Corto parle en bas
-      msg.innerHTML = `<p>En attendant notre rencontre, je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt=""><span class="in2-hint">toucher pour continuer</span>`;
+      msg.innerHTML = `<p>Je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt="">`;
       msg.style.opacity = 0; document.body.appendChild(msg);
       if (soft) root.remove(); else root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1400, fill: "forwards", easing: "ease-in-out" }).onfinish = () => root.remove();
       msg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: soft ? 100 : 700, fill: "forwards" });
-      setTimeout(() => msg.addEventListener("click", () => msg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).onfinish = () => msg.remove()), 1800);
+      // Le message disparaît tout seul au bout de quelques secondes, ou dès qu'on touche n'importe où sur la carte
+      let gone = false; const bye = () => { if (gone) return; gone = true; clearTimeout(autoT); document.removeEventListener("pointerdown", bye, true); msg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).onfinish = () => msg.remove(); };
+      const autoT = setTimeout(bye, 11000); setTimeout(() => document.addEventListener("pointerdown", bye, true), 1500);
     };
     const vv = window.visualViewport;
     const lift = () => { // remonte le contenu juste assez pour que le champ reste visible au-dessus du clavier
