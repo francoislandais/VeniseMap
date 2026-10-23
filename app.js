@@ -669,9 +669,12 @@ $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientR
 // Pastille de Corto (en bas à gauche, toujours visible) : un toucher fait parler Corto — pour l'instant il salue seulement ; plus tard il donnera ici ses indices.
 $("#corto-btn").onclick = () => cortoSays("Bonjour matelot, comment ça va ?");
 // Pastille maison (à côté de Corto, toujours visible) : ouvre l'espace de l'enfant (profil, défis, ponts, photos, trophées, réglages).
-$("#home-btn").onclick = (e) => { if (tab === "map") openMenuFrom(e.currentTarget); };
-// Pastille carte (à côté de la maison, toujours visible pour l'instant) : ramène à la carte.
-$("#map-btn").onclick = () => { if (tab !== "map") setTab("map"); else if (openId) closeSheet(); };
+$("#home-btn").onclick = (e) => {
+  const btn = e.currentTarget, busy = !!quest || !!openId; if (quest) closeQuest(); if (openId === "chap") suspendChap(); else if (openId) closeSheet();
+  const go = () => { if (tab === "map") openMenuFrom(btn); }; busy ? setTimeout(go, 350) : go(); // la fermeture d'une fiche passe par l'historique du navigateur : on laisse finir avant d'ouvrir l'espace
+};
+// Pastille carte (à gauche) : ramène toujours à la carte, quoi qu'il y ait à l'écran (fiche de lieu, défi, espace de l'enfant).
+$("#map-btn").onclick = () => { if (quest) closeQuest(); if (openId === "chap") suspendChap(); else if (openId) closeSheet(); if (tab !== "map") { if (history.state && history.state.vqMenu) history.back(); else setTab("map"); } };
 
 /* ───────── Éditeur d'icônes de bâtiments (aperçu local uniquement) ─────────
    Bouton « 🏛 Icônes » : on touche une icône pour la choisir, on la glisse pour déplacer son centre (sa position sur la carte), et à chaque niveau de zoom on règle sa taille

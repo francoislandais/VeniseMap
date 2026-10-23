@@ -1214,3 +1214,15 @@ body:not(.jeu) #home-btn{display:none!important}
 /* Pastille carte : à la suite de la maison */
 .bridge-btn.map-btn{left:calc(10px + 2 * (64px + 8px) + env(safe-area-inset-left,0px));right:auto}
 body:not(.jeu) #map-btn{display:none!important}
+
+/* Commandes sanctuarisées (de gauche à droite : carte, maison, Corto) : toujours visibles et cliquables, au-dessus de tout (fiches, défis, espace de l'enfant) */
+.bridge-btn.map-btn{left:calc(10px + env(safe-area-inset-left,0px))}
+.bridge-btn.home-btn{left:calc(10px + 64px + 8px + env(safe-area-inset-left,0px))}
+.bridge-btn.corto-btn{left:calc(10px + 2 * (64px + 8px) + env(safe-area-inset-left,0px))}
+#map-btn,#home-btn,#corto-btn{z-index:1600}
+#map-btn[hidden],#home-btn[hidden],#corto-btn[hidden]{display:grid!important}
+.dock.up-dock .dk-exit{display:none}
+/* Le bouton « retour à la carte » des fiches est remplacé par la pastille carte ; le bouton « plan du lieu » passe dans le coin droit (libéré par le pont, caché dans les fiches) */
+.dock:not(.up-dock) .dk-exit{display:none}
+.dock:not(.up-dock){left:auto;right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(19px + var(--safe-b))}
+.quest{padding-bottom:calc(84px + var(--safe-b))}
