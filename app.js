@@ -718,7 +718,7 @@ function renderHud() {
 $("#hud-kids").onclick = () => setTab(lastTab);
 function renderProfileBar() {
   const pts = pointsOf(meIdx()), cur = LEVELS[level(pts)];
-  $("#up-me").innerHTML = `<span class="mb-av">${PROFILE ? profileHtml() : me().avatar}</span><span class="up-n"><b>${esc(myName())}</b><small>${cur.emoji} ${cur.name} · ⭐ ${pts}</small></span><em>✎</em>`;
+  $("#up-me").innerHTML = `<span class="mb-av">${PROFILE ? profileHtml() : me().avatar}</span><span class="up-n"><b>${esc(myName())}</b><small>${cur.name}</small></span>`; // photo, nom, grade : rien d'autre (les étoiles sont dans le compteur, toujours visible)
 }
 $("#up-me").onclick = async () => {
   if (!PROFILE) return;
@@ -1522,7 +1522,7 @@ function setTab(t) {
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   const onTab = $("#up-bar .up-tabs button.on"); if (onTab && onTab.scrollIntoView) setTimeout(() => onTab.scrollIntoView({ inline: "center", block: "nearest" }), 30);
-  $("#up-bar").hidden = t === "map"; if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
+  $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
   ["days", "bridges", "photos", "works", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
   $("#tab-dev").hidden = !DEV;
   $("#bridge-btn").hidden = t !== "map";
@@ -1748,9 +1748,10 @@ function bridgeCard(b) {
 }
 function renderDays() {
   const v = $("#v-days"), n = PLACES.filter(complete).length;
-  v.innerHTML = `<div class="banner"><img src="img/corto-venise-pastel.webp" alt="Corto Maltese devant la basilique Saint-Marc"><div class="bt"><h2>Mes défis</h2><small>${n} / ${PLACES.length} lieux terminés</small></div></div>
-    <div class="dlist">${PLACES.map((p) => `<button class="pl pc ${complete(p) ? "ok" : "todo"}" data-p="${p.id}" style="--img:url(${pic(p.id)})"><span class="pc-n">${esc(p.name)}</span></button>`).join("")}</div>`;
-  $$(".pl", v).forEach((b) => (b.onclick = () => { setTab("map"); openPlace(b.dataset.p); }));
+  // Mosaïque des défis : l'icône du lieu quand elle existe, sinon sa pastille photo ; grisés tant que le défi n'est pas réalisé, éclatants une fois terminé.
+  v.innerHTML = `<p class="dg-count"><b>${n}</b> / ${PLACES.length} lieux terminés</p>
+    <div class="dgrid">${PLACES.map((p) => { const ic = PLACE_ICONS[p.id], ok = complete(p); return `<button type="button" class="dt ${ok ? "ok" : "todo"}${ic ? " ico" : ""}" data-p="${p.id}" aria-label="${esc(p.name)}" title="${esc(p.name)}">${ic ? `<img src="${ic.src}" alt="">` : `<span class="ph" style="background-image:url(${pic(p.id)})"></span>`}</button>`; }).join("")}</div>`;
+  $$(".dt", v).forEach((b) => (b.onclick = () => { setTab("map"); openPlace(b.dataset.p); }));
 }
 
 const cc = (id) => collCount(COLLECTIONS.find((c) => c.id === id));

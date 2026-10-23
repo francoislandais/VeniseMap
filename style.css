@@ -1298,3 +1298,33 @@ body.corto-talk #map-btn,body.corto-talk #home-btn,body.corto-talk #corto-btn,bo
 #bridge-btn{background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
 #bridge-btn img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))}
 #bridge-btn:active img{transform:scale(.94)}
+
+/* ───────── Espace personnel : le tableau de l'introduction en fond, tout le reste par-dessus ───────── */
+#up-bg{position:fixed;inset:0;z-index:540;background:#f3ead7 url(img/intro/bg.webp) 12% 50%/cover no-repeat}
+#up-bg::after{content:"";position:absolute;inset:0;background:rgba(243,234,215,.3)}
+#up-bg[hidden]{display:none}
+.up-bar{background:linear-gradient(to bottom,rgba(243,234,215,.88) 0%,rgba(243,234,215,.55) 70%,rgba(243,234,215,0) 100%);color:#1d2230;padding-bottom:4px}
+.up-top{height:60px}
+.up-me{color:#1d2230}
+.up-me .mb-av{width:52px;height:52px;font-size:34px}
+.up-n b{font-size:20px;text-shadow:0 0 8px rgba(243,234,215,.95)}
+.up-n small{color:#3b4a55;font-size:14px;text-shadow:0 0 6px rgba(243,234,215,.95)}
+.up-tabs{margin-top:2px;gap:6px;padding:4px 2px 8px}
+.up-tabs button{flex:0 0 auto;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.55);color:#1d2230;border:1px solid rgba(29,34,48,.22);font-size:13px;font-weight:700;letter-spacing:0;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.up-tabs button.on{background:#1d2230;color:#f3ead7;border-color:#1d2230;border-radius:999px}
+.view{background:transparent}
+.view h2,.view h3{text-shadow:0 0 8px rgba(243,234,215,.95)}
+/* Défis : mosaïque de pastilles et d'icônes */
+.dg-count{margin:2px 2px 10px;font-size:15px;font-weight:700;color:#1d2230;text-shadow:0 0 8px rgba(243,234,215,.95)}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:12px 8px;justify-items:center}
+.dt{width:76px;height:76px;padding:0;border:0;background:none;display:grid;place-items:center;position:relative;transition:none}
+.dt .ph{width:68px;height:68px;border-radius:50%;background-size:cover;background-position:center;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35);display:block}
+.dt.ico img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.dt.todo{filter:grayscale(1) contrast(.85) brightness(1.05);opacity:.5}
+.dt.todo .ph{border-color:rgba(255,255,255,.7)}
+.dt.ok{filter:saturate(1.12) drop-shadow(0 0 7px rgba(255,205,70,.95)) drop-shadow(0 0 2px rgba(255,235,160,.9))}
+.dt.ok .ph{border-color:#ffd24a}
+#v-days{background:transparent;padding:6px 14px 24px}
+.dock.up-dock{background:none;box-shadow:none}
+.dt.ico img{width:100%;height:100%;max-width:none;max-height:none;object-fit:contain}
+.dt{grid-template:76px / 76px;overflow:visible}
