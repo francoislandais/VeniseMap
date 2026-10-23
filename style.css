@@ -1147,5 +1147,9 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 
 /* Tête de Corto contente (écran 5) : mêmes fondus que sur l'écran 2 ; position et taille réglables dans l'éditeur */
 .in2-face{position:absolute;left:6vw;top:calc(var(--lh) * .3);width:clamp(84px,25vw,140px);height:auto;z-index:1;pointer-events:none;-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent 100%);mask-image:linear-gradient(to bottom,#000 55%,transparent 100%)}
-.in2-face{z-index:5;-webkit-mask-image:linear-gradient(to bottom,#000 82%,transparent 100%);mask-image:linear-gradient(to bottom,#000 82%,transparent 100%)}
-.in2-face{-webkit-mask-image:linear-gradient(to bottom,#000 92%,transparent 100%);mask-image:linear-gradient(to bottom,#000 92%,transparent 100%)}
+.in2-face{z-index:5}
+
+/* Écran 5 : le tableau apparaît plus haut (le dégradé beige du haut est plus court et commence plus haut) */
+.in2-s.center-top .in2-txt{background:none;padding-bottom:0}
+.in2-s.center-top::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(var(--safe-t) + 110px);background:linear-gradient(to bottom,#f3ead7 0,#f3ead7 35%,rgba(243,234,215,0) 100%);pointer-events:none}
+.in2-part{text-shadow:0 0 10px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
