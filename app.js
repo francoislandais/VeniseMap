@@ -841,17 +841,17 @@ function renderSheet() { if (openId) updateMedal(); }
 /* ───────── Épreuve en pause : on peut revenir à la carte et retomber exactement sur le même écran (plan déployé, réponse de Corto…) ───────── */
 let suspended = null, chapCur = null, destroying = false;
 function suspendChap(fromPop) {
-  if (openId !== "chap" || !chapCur) return;
+  if (openId !== "chap" || !chapCur) return; document.body.classList.remove("chap-open");
   suspended = { id: chapCur.id }; openId = null; $("#sheet").hidden = true; stopChapAudio();
   if (!fromPop && history.state && history.state.vqBridge) history.back(); // le popstate qui suit ne fait rien : openId est nul
   $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext();
 }
 function resumeSuspended() {
-  suspended = null; openId = "chap"; chatSel = "#b-talk"; $("#sheet").hidden = false; $("#next").hidden = true; $("#bridge-btn").hidden = true;
+  suspended = null; openId = "chap"; chatSel = "#b-talk"; document.body.classList.add("chap-open"); $("#sheet").hidden = false; $("#next").hidden = true; $("#bridge-btn").hidden = true;
   try { history.pushState({ vqBridge: 1 }, ""); } catch {}
 }
 function closeSheet() {
-  suspended = null; stopMusic(500); stopChapAudio(); closeLoc();
+  document.body.classList.remove("chap-open"); suspended = null; stopMusic(500); stopChapAudio(); closeLoc();
   if ((openId === "bridges" || openId === "chap") && history.state && history.state.vqBridge) { destroying = true; history.back(); return; } // popstate rappellera closeSheet
   openId = null; const sh = $("#sheet"); sh.hidden = true; sh.innerHTML = ""; $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext(); }
 function closeMedal() {
@@ -1122,13 +1122,15 @@ function nextBar(more, label) {
     bar.innerHTML = `${inChap ? "" : '<button class="b-btn ghost small" data-k="map">Revenir à la carte</button>'}${more ? `<button class="b-btn go-next" data-k="next">${label}</button>` : ""}`;
     bar.classList.toggle("end", inChap);
     bar.hidden = false; const sh = $("#sheet"); sh.dataset.k = "one";
+    if (inChap) { const im = $(".rev-img"), sr = sh.getBoundingClientRect(); bar.style.bottom = "auto"; bar.style.top = (im ? im.getBoundingClientRect().bottom - sr.top + 12 : (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-t")) || 0) + 80) + "px"; } // le bouton « Suite » se place sous l'image de révélation
     bar.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 320, easing: "cubic-bezier(.2,.9,.25,1.1)" });
-    $$("button", bar).forEach((b) => (b.onclick = () => { const k = b.dataset.k; bar.hidden = true; bar.innerHTML = ""; delete sh.dataset.k; res(k); }));
+    $$("button", bar).forEach((b) => (b.onclick = () => { const k = b.dataset.k; bar.hidden = true; bar.innerHTML = ""; bar.style.top = bar.style.bottom = ""; delete sh.dataset.k; res(k); }));
   });
 }
 // Le prochain défi remet la conversation à zéro.
 async function clearTalk() {
   const c = $("#b-talk"); if (!c) return;
+  $$("#sheet > .aud").forEach((e) => e.remove());
   $$(".rev-img,.rev-cap").forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: "forwards" }).finished.then(() => e.remove()));
   await Promise.all([...c.children].map((m) => m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: "forwards" }).finished));
   c.innerHTML = ""; c.scrollTop = 0;
@@ -1320,7 +1322,7 @@ function chapAudioCard(s) {
     if (!chapAudio || chapAudio._src !== s.audio) { stopChapAudio(); chapAudio = new Audio(s.audio); chapAudio._src = s.audio; chapAudio.ontimeupdate = () => { bar.style.width = (chapAudio.currentTime / (chapAudio.duration || 1)) * 100 + "%"; }; chapAudio.onended = () => { b.textContent = "▶"; bar.style.width = "0"; }; }
     chapAudio.play().then(() => { b.textContent = "❚❚"; }).catch(() => {});
   };
-  $("#b-talk").appendChild(card);
+  ($("#sheet.chap") ? $("#sheet") : $("#b-talk")).appendChild(card);
 }
 const EXIT_SVG = '<svg viewBox="0 0 48 48" width="24" height="24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M26 5a10 10 0 0 1 10 10c0 8-10 19-10 19S16 23 16 15A10 10 0 0 1 26 5z"/><circle cx="26" cy="15" r="3.5"/><path d="M6 41h18M11 36l-5 5 5 5"/></svg>';
 const PLAN_SVG = '<svg viewBox="0 0 48 48" width="24" height="24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="38" height="38" rx="6"/><path d="M19 39V27H11v-7h8v-8h10v8h8v7h-8v12z"/></svg>';
@@ -1328,7 +1330,10 @@ function openChapters(p, replay = false) {
   chapCur = p; suspended = null; openId = "chap"; chatSel = "#b-talk"; $("#next").hidden = true; $("#bridge-btn").hidden = true;
   const sh = $("#sheet"); sh.hidden = false; sh.className = "medal-wrap bridge-wrap chap"; delete sh.dataset.k;
   sh.innerHTML = `<div class="chap-bg" style="background-image:url(${pic(p.id)})"></div><div class="chap-g chap-g-top"></div><div class="chap-g chap-g-bot"></div>
-    <div class="m-chat b-talk" id="b-talk"></div><div class="b-actions" id="b-actions" hidden></div>`;
+    <div class="m-chat b-talk" id="b-talk"></div><div class="b-actions" id="b-actions" hidden></div><img class="cq-head" src="img/corto-content.webp" alt="">`;
+  // Épreuve : Corto parle comme partout ailleurs (bande en bas, texte à gauche, sa tête à droite) ; plus de pastille de Corto ni de boutons du coin.
+  document.body.classList.add("chap-open");
+  { const bt = $("#b-talk"); if (window.ResizeObserver) new ResizeObserver(() => sh.style.setProperty("--cqh", bt.offsetHeight + "px")).observe(bt); }
   if (DEV) { const sk = document.createElement("button"); sk.type = "button"; sk.className = "dev-skip"; sk.textContent = "⏭ Fin"; sk.onclick = () => skipEnd && skipEnd(); sh.appendChild(sk); } // mode dev : sauter à l'écran final
   { // coin bas gauche, permanent : sortir vers la carte de Venise, et (si le lieu en a un) voir le plan
     const dk = document.createElement("div"); dk.className = "dock";
@@ -1364,16 +1369,16 @@ function closeLoc() {
 function showLocBtn(bubbleEl, loc) {
   closeLoc(); const sh = $("#sheet"), bub = bubbleEl && $(".m-bubble", bubbleEl); if (!sh || !bub) return;
   const bb = bub.getBoundingClientRect(), sr = sh.getBoundingClientRect();
-  const btn = document.createElement("button"); btn.type = "button"; btn.className = "loc-btn"; btn.textContent = "📍 Où ?"; btn.style.top = bb.bottom - sr.top + 8 + "px"; sh.appendChild(btn);
+  const btn = document.createElement("button"); btn.type = "button"; btn.className = "loc-btn"; btn.textContent = "📍 Où ?"; btn.style.top = (sh.classList.contains("chap") ? 66 : bb.bottom - sr.top + 8) + "px"; sh.appendChild(btn);
   btn.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 400 });
   const ui = (locUI = { els: [btn], map: null, panel: null, t: null, loc });
   const hide = () => { clearInterval(ui.t); try { ui.map && ui.map.remove(); } catch {} ui.map = null; if (ui.panel) { ui.panel.remove(); ui.els = ui.els.filter((e) => e !== ui.panel); ui.panel = null; } btn.classList.remove("on"); btn.hidden = false; };
   btn.onclick = () => {
     if (ui.panel) { hide(); return; }
     btn.hidden = true;
-    const barH = ($("#b-actions") ? $("#b-actions").offsetHeight : 60), top = Math.max(0, bb.bottom - sr.top - 24);
+    const inCh = sh.classList.contains("chap"), barH = ($("#b-actions") ? $("#b-actions").offsetHeight : 60), top = inCh ? 60 : Math.max(0, bb.bottom - sr.top - 24);
     const panel = (ui.panel = document.createElement("div")); panel.className = "loc-map";
-    panel.style.top = top + "px"; panel.style.bottom = barH + 120 + SAFE_B() + "px"; panel.innerHTML = '<div class="loc-in"></div><button type="button" class="loc-x" aria-label="Fermer la carte">✕</button>';
+    panel.style.top = top + "px"; panel.style.bottom = (inCh ? ($("#b-talk").offsetHeight + 8) : barH + 120 + SAFE_B()) + "px"; panel.innerHTML = '<div class="loc-in"></div><button type="button" class="loc-x" aria-label="Fermer la carte">✕</button>';
     sh.appendChild(panel); ui.els.push(panel);
     $(".loc-x", panel).onclick = hide;
     const m = (ui.map = createMap($(".loc-in", panel), { center: [loc.lon, loc.lat], zoom: 18, minZoom: 13, maxZoom: 19 }));
@@ -1454,10 +1459,7 @@ async function runChapters(p, replay = false) {
     const sh = $("#sheet");
     const chainBar = (qs, from) => qs.slice(from).reduce((m, x) => Math.max(m, barHeight(x.opts)), 0);
     // Place l'image de révélation sous la bulle de Corto, et la fait finir (fondue) avant les boutons ou les pastilles.
-    const placeImg = (im, rv, bar) => {
-      const bub = $(".m-bubble", rv).getBoundingClientRect(), top = Math.max(0, bub.bottom - sh.getBoundingClientRect().top - 24);
-      im.style.top = top + "px"; im.style.height = Math.max(120, sh.clientHeight - top - (bar ? bar + 56 : 112) - SAFE_B()) + "px";
-    };
+    const placeImg = () => {}; // l'image de révélation occupe la partie haute de l'écran (voir la feuille de style : .chap .rev-img), au-dessus de la bande de Corto
     outer: for (let k = 0; k < todo.length; k++) {
       const s = todo[k], qs = chainOf(s);
       let j = replay ? 0 : qs.findIndex((x) => !taskDone(p.id, x.idx)), rv = null, im = null;
@@ -1467,8 +1469,8 @@ async function runChapters(p, replay = false) {
         if (!s.img || im) return; // une fois posée, l'image ne bouge plus
         im = new Image(); im.className = "rev-img"; im.alt = ""; im.src = s.img; if (s.imgPos) im.style.objectPosition = s.imgPos;
         await new Promise((ok) => { im.onload = im.onerror = ok; });
-        placeImg(im, rv, bar); sh.appendChild(im);
-        if (s.cap) { const cp = document.createElement("div"); cp.className = "rev-cap"; cp.textContent = s.cap; cp.style.bottom = Math.max(0, sh.clientHeight - parseFloat(im.style.top) - parseFloat(im.style.height) - 4) + "px"; sh.appendChild(cp); cp.animate([{ opacity: 0 }, { opacity: 0, offset: .5 }, { opacity: 1 }], { duration: 900 }); }
+        sh.appendChild(im);
+        if (s.cap) { const cp = document.createElement("div"); cp.className = "rev-cap"; cp.textContent = s.cap; const ir = im.getBoundingClientRect(), sr = sh.getBoundingClientRect(); cp.style.bottom = Math.max(0, sr.bottom - ir.bottom + 6) + "px"; sh.appendChild(cp); cp.animate([{ opacity: 0 }, { opacity: 0, offset: .5 }, { opacity: 1 }], { duration: 900 }); }
         im.animate([{ opacity: 0, transform: "translateY(16px) scale(.97)" }, { opacity: 1, transform: "none" }], { duration: 600, easing: "ease-out" });
       };
       const newRev = async (text, bar) => { // écran de révélation : Corto content en haut, image dessous
@@ -1483,7 +1485,7 @@ async function runChapters(p, replay = false) {
           if (x.audio) chapAudioCard(x);
           if (x.loc) showLocBtn(el, x.loc);
         }
-        const cf = !rv && !x.loc && !x.audio && el && $(".m-bubble", el) ? $(".m-bubble", el).getBoundingClientRect().bottom - sh.getBoundingClientRect().top : null; // question sans image associée
+        const cf = null; // les propositions se centrent d'elles-mêmes dans l'espace libre au-dessus de la bande de Corto (feuille de style)
         const pts = x.pts ?? 10, r = await bridgeChoose(ch, replay ? 0 : pts, cf); closeLoc();
         if (r.skip) break outer;
         if (!replay) { award(`t:${p.id}:${x.idx}`, r.first ? pts : 0, meIdx()); save(); refreshAll(); }
