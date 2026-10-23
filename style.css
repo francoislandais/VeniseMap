@@ -1147,3 +1147,4 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 
 /* Tête de Corto contente (écran 5) : mêmes fondus que sur l'écran 2 ; position et taille réglables dans l'éditeur */
 .in2-face{position:absolute;left:6vw;top:calc(var(--lh) * .3);width:clamp(84px,25vw,140px);height:auto;z-index:1;pointer-events:none;-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent 100%);mask-image:linear-gradient(to bottom,#000 55%,transparent 100%)}
+.in2-face{z-index:5;-webkit-mask-image:linear-gradient(to bottom,#000 82%,transparent 100%);mask-image:linear-gradient(to bottom,#000 82%,transparent 100%)}
