@@ -256,14 +256,14 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       { key: "who", img: 1, layout: "who", lab: "Je m'appelle…", ok: "Valider" }, // écran d'identité (premier lancement seulement) : prénom + photo de tête
       { key: "s2", img: 2, layout: "welcome", head: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour.`, name2: "Mon nom est…", name3: "Corto Maltese", sea: "Je suis marin.", text: () => "J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires." },
       { key: "s3", img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
-      { key: "s4", img: 4, layout: "top", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une **mission de la plus haute importance**, une aventure qui te mènera au cœur de ses secrets et de son histoire.", ask: "Es-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
+      { key: "s4", layout: "top", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une **mission de la plus haute importance**, une aventure qui te mènera au cœur de ses secrets et de son histoire.", ask: "Es-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
       { key: "s5", img: 5, layout: "center-top", face: true, parts: ["Parfait, alors c'est décidé !", "Voici mon bateau.", "Il sera bientôt amarré à l'embarcadère de **Santo Spirito**. Retrouvons-nous là-bas quand tu seras prêt."], text: () => "" },
       { key: "s6", base: "s5", bye: "À bientôt", img: 5, layout: "center-top", face: true, parts: ["Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller."], text: () => "" },
     ];
     const SCREENS = ALL; // l'écran d'identité s'affiche toujours ; en rejeu il reprend le profil existant (nom, photo) et permet de le modifier
     const cur0 = opts.profile || null;
     let photoRes = cur0 && cur0.photo ? { photo: cur0.photo, cut: !!cur0.cut, frame: cur0.frame } : null; // { photo, cut, frame } : la tête de l'enfant (reprise du profil en rejeu)
-    SCREENS.forEach((sc) => { const i = new Image(); i.src = IMG(sc.img); }); // préchargées
+    SCREENS.forEach((sc) => { if (sc.img == null) return; const i = new Image(); i.src = IMG(sc.img); }); // préchargées
     // Verrou d'écran : la hauteur est figée à celle du départ (le clavier ne change plus la mise en page) ; le clavier ne rétrécit que la vue visible.
     const meta = document.querySelector('meta[name="viewport"]'), metaOld = meta && meta.content;
     if (meta) meta.content = metaOld + ", interactive-widget=resizes-visual";
@@ -308,9 +308,9 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         d.innerHTML = `<div class="wl-top"><img class="wl-face" src="img/corto-content.webp" alt=""><p>${esc(sc.head())}</p></div><p class="wl-name">${esc(sc.name2)}</p><p class="wl-name2">${esc(sc.name3)}</p><p class="wl-sea" data-fade>${esc(sc.sea)}</p><img class="wl-img" src="img/intro/e2r.webp" alt=""><div class="wl-mid"><p>${esc(sc.text())}</p></div>`;
         return d;
       }
-      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt="">${sc.face ? '<img class="in2-face" src="img/corto-content.webp" alt="">' : ""}<div class="in2-txt">${sc.parts ? sc.parts.map((t, n) => `<p class="in2-part${t.length > 90 ? " in2-long" : ""}" data-k="p${n + 1}">${rich(esc(t))}</p>`).join("") : `<p>${txt}</p>`}${sc.ask ? `<p class="in2-ask" data-fade="1400">${esc(sc.ask)}</p>` : ""}${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
+      d.innerHTML = `${sc.img == null ? "" : `<img class="in2-img" src="${IMG(sc.img)}" alt="">`}${sc.face ? '<img class="in2-face" src="img/corto-content.webp" alt="">' : ""}<div class="in2-txt">${sc.parts ? sc.parts.map((t, n) => `<p class="in2-part${t.length > 90 ? " in2-long" : ""}" data-k="p${n + 1}">${rich(esc(t))}</p>`).join("") : `<p>${txt}</p>`}${sc.ask ? `<p class="in2-ask" data-fade="1400">${esc(sc.ask)}</p>` : ""}${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
       const im = d.querySelector(".in2-img"); // image à sa proportion réelle, contenue dans la page (le fondu des bords suit l'image elle-même)
-      if (sc.layout === "bottom" || sc.layout === "top") { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, lockedH / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
+      if (im && (sc.layout === "bottom" || sc.layout === "top")) { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, lockedH / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
       return d;
     };
     const finish = (soft) => {
