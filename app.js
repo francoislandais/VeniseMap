@@ -1808,11 +1808,27 @@ function mountHeld(id, fromRect) {
   if (fromRect) el.animate([{ transform: `translate(${fromRect.left + fromRect.width / 2 - (p.left + HELD_SIZE / 2)}px, ${fromRect.top + fromRect.height / 2 - (p.top + HELD_SIZE / 2)}px) scale(${fromRect.width / HELD_SIZE})` }, { transform: "scale(1.12)", offset: 0.7 }, { transform: "none" }], { duration: 560, easing: "cubic-bezier(.2,.9,.3,1)" }).onfinish = () => el.classList.add("wob"); else el.classList.add("wob");
   // L'enfant peut le déplacer où il veut avec le doigt (il restera là où il le lâche) ; un simple toucher, dans l'onglet Objets, le repose.
   el.style.touchAction = "none"; let st = null;
+  const zone = () => { let z = $("#ranger"); if (!z) { z = document.createElement("div"); z.id = "ranger"; z.innerHTML = '<b>Ranger</b><span></span>'; document.body.appendChild(z); } return z; };
+  const inZone = () => { const z = $("#ranger"); if (!z) return false; const a = z.getBoundingClientRect(), b = el.getBoundingClientRect(); return Math.hypot(a.left + a.width / 2 - (b.left + b.width / 2), a.top + a.height / 2 - (b.top + b.height / 2)) < a.width / 2 + 10; };
   el.onpointerdown = (e) => { e.preventDefault(); const r = el.getBoundingClientRect(); st = { x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false }; try { el.setPointerCapture(e.pointerId); } catch {} };
-  el.onpointermove = (e) => { if (!st) return; if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return; st.moved = true; el.classList.add("drag"); const q = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy }); el.style.left = q.left + "px"; el.style.top = q.top + "px"; };
-  const end = () => { if (!st) return; const moved = st.moved; st = null; el.classList.remove("drag"); if (moved) { try { localStorage.setItem(HELD_POS, JSON.stringify({ left: parseFloat(el.style.left), top: parseFloat(el.style.top) })); } catch {} } else if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
-  el.onpointerup = end; el.onpointercancel = () => { st = null; el.classList.remove("drag"); };
+  el.onpointermove = (e) => { if (!st) return; if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return; if (!st.moved && tab === "map") { const z = zone(); $("span", z).textContent = o.name; z.classList.add("on"); } st.moved = true; el.classList.add("drag"); const q = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy }); el.style.left = q.left + "px"; el.style.top = q.top + "px"; const zz = $("#ranger"); if (zz) zz.classList.toggle("hot", inZone()); };
+  const hideZone = () => { const z = $("#ranger"); if (z) z.classList.remove("on", "hot"); };
+  const end = () => { if (!st) return; const moved = st.moved; st = null; el.classList.remove("drag");
+    if (moved) { if (tab === "map" && inZone()) { storeHeld(el); hideZone(); return; } hideZone(); try { localStorage.setItem(HELD_POS, JSON.stringify({ left: parseFloat(el.style.left), top: parseFloat(el.style.top) })); } catch {} }
+    else if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
+  el.onpointerup = end; el.onpointercancel = () => { st = null; el.classList.remove("drag"); const z = $("#ranger"); if (z) z.classList.remove("on", "hot"); };
 }
+// Lâché dans la zone « Ranger » (en haut de la carte) : l'objet retourne dans le coffret (l'onglet Objets), il n'est plus en main.
+function storeHeld(el) {
+  const z = $("#ranger"), zr = z ? z.getBoundingClientRect() : null, r = el.getBoundingClientRect(); heldEl = null; heldId = null; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} el.classList.remove("wob");
+  el.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${zr ? zr.left + zr.width / 2 - (r.left + r.width / 2) : 0}px, ${zr ? zr.top + zr.height / 2 - (r.top + r.height / 2) : 0}px) scale(.2)`, opacity: 0 }], { duration: 340, easing: "ease-in", fill: "forwards" }).onfinish = () => el.remove();
+}
+// L'objet en main n'est visible que sur la carte nue et dans l'onglet Objets (jamais dans une fiche, un défi, une conversation, un autre onglet…)
+setInterval(() => {
+  if (!heldEl) return;
+  const bare = tab === "map" && $("#sheet").hidden && $("#quest").hidden && $("#modal").hidden && !document.body.classList.contains("corto-talk") && !document.body.classList.contains("intro-open") && !document.querySelector(".cer,.wview,.pview,.mont,.finale,.doge-msg:not(.menu-say),.pf,.cam,.ocam,.wq,.in2,.plan-photo");
+  heldEl.style.visibility = bare || tab === "objects" ? "" : "hidden";
+}, 200);
 function releaseHeld() {
   if (!heldEl) { heldId = null; saveHeld(); return; }
   const el = heldEl, id = heldId, b = $(`.ob[data-o="${id}"]`); heldEl = null; heldId = null; saveHeld(); el.classList.remove("wob"); try { localStorage.removeItem(HELD_POS); } catch {}

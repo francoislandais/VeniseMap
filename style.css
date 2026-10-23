@@ -1386,3 +1386,10 @@ body.menu-open #corto-btn{display:none!important}
 
 .held-ob{cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
 .held-ob.drag{animation:none;scale:1.12;cursor:grabbing;filter:drop-shadow(0 8px 12px rgba(0,0,0,.45))}
+
+/* Zone « Ranger » : un cercle transparent en haut de la carte qui s'allume quand on déplace l'objet en main */
+#ranger{position:fixed;left:50%;top:calc(14px + var(--safe-t));width:128px;height:128px;margin-left:-64px;border-radius:50%;z-index:1150;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;box-sizing:border-box;background:rgba(255,255,255,.2);border:2px dashed rgba(255,255,255,.85);color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.65);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s,background .18s}
+#ranger b{font-size:16px}
+#ranger span{font-size:12px;line-height:1.15;margin-top:2px;font-weight:700}
+#ranger.on{opacity:1}
+#ranger.hot{transform:scale(1.12);background:rgba(255,255,255,.45);border-style:solid}
