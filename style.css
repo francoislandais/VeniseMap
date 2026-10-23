@@ -1432,3 +1432,5 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
   mask-image:linear-gradient(to right,transparent 0,#000 10%,#000 90%,transparent 100%),linear-gradient(to bottom,transparent 0,#000 10%,#000 86%,transparent 100%);mask-composite:intersect}
 #sheet.chap .rev-cap{display:none!important}
 #sheet.chap .b-actions.two{top:auto!important;bottom:calc(18px + var(--safe-b))!important;left:156px;right:auto;width:auto;padding:0;justify-content:flex-start}
+#sheet.chap .b-talk{justify-content:flex-start!important}
+#sheet.chap .b-talk{height:var(--cqfix,auto)!important;max-height:none!important}

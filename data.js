@@ -2326,8 +2326,8 @@ export const PLACES = [
             "a": 0,
             "reveal": "**Les frères.** « Frari » désigne les frères franciscains en vénitien. Leur communauté s’installe ici au XIIIᵉ siècle.",
             "title": "Le nom mystère",
-            "img": "img/q/frari-q01.webp",
-            "cap": "Révélation : l’église des frères franciscains. · Didier Descouens · CC BY-SA 4.0",
+            "img": "img/q/frari-1.webp",
+            "cap": "Un frère franciscain (gravure ancienne).",
             "src": [
               "https://www.basilicadeifrari.it/wp-content/uploads/2023/10/FRANCESE-2023.pdf",
               "https://archiviodistatovenezia.it/it/la-sede-dei-frari.html?catid=13%3Astoria&id=58%3Ail-convento-e-il-chiostro-della-trinita&view=article"
@@ -2346,8 +2346,8 @@ export const PLACES = [
             "a": 0,
             "reveal": "**Un terrain marécageux.** Les archives vénitiennes situent les premiers Frari dans une zone paludosa, près d’un ancien bassin appelé lac Badoer. Le quartier a ensuite été progressivement assaini.",
             "title": "Avant les pierres",
-            "img": "img/q/frari-q02.webp",
-            "cap": "Plan pédagogique actuel : il aide à se repérer, mais ne représente pas le site médiéval. · Plan original du précédent dossier Frari",
+            "img": "img/q/frari-2.webp",
+            "cap": "Un terrain humide et brumeux, comme les marais d’autrefois.",
             "src": [
               "https://archiviodistatovenezia.it/it/la-sede-dei-frari.html?catid=13%3Astoria&id=58%3Ail-convento-e-il-chiostro-della-trinita&view=article"
             ]

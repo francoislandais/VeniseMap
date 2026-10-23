@@ -1464,6 +1464,18 @@ async function runChapters(p, replay = false) {
     let lead = replay ? `On refait les épreuves, {g} ! Tu peux t'amuser à réessayer !` : answered ? `Reprenons là où nous en étions, {g} !` : `Te voilà dans ${p.name.replace(/^L'/, "l'")}, {g} !`, el = chatAdd(typingHtml, "fc"), fresh = true;
     const todo = all.filter((s) => replay || chainOf(s).some((x) => !taskDone(p.id, x.idx)));
     const sh = $("#sheet");
+    { // Bande de Corto stable : sa hauteur est fixée une fois pour toutes sur le texte le plus long de l'épreuve (questions comme explications), puis elle ne bouge plus.
+      try { await document.fonts.ready; } catch {}
+      const bt = $("#b-talk"), lead = "On refait les épreuves, capitaine ! Tu peux t'amuser à réessayer !", clean = (t) => String(t || "").replace(/\*\*/g, "").replace(/\{g\}/g, "capitaine");
+      const qs0 = all.map((x) => clean(`${x.where || ""} ${x.q}`)), longestQ = qs0.reduce((a, b) => (b.length > a.length ? b : a), "");
+      const texts = [...qs0, `${lead} ${longestQ}`, ...all.map((x) => clean(`C'est la bonne réponse ! ${x.reveal || ""}`))];
+      if (bt) {
+        const pr = document.createElement("div"); pr.className = "b-talk"; pr.setAttribute("aria-hidden", "true"); pr.style.cssText = "visibility:hidden;pointer-events:none;height:auto;max-height:none;bottom:0";
+        pr.innerHTML = '<div class="msg"><div class="m-bubble"></div></div>'; sh.appendChild(pr); let H = 0;
+        for (const t of texts) { $(".m-bubble", pr).textContent = t; H = Math.max(H, pr.offsetHeight); }
+        pr.remove(); bt.style.setProperty("--cqfix", Math.min(H, Math.round(sh.clientHeight * 0.66)) + "px");
+      }
+    }
     const chainBar = (qs, from) => qs.slice(from).reduce((m, x) => Math.max(m, barHeight(x.opts)), 0);
     // Place l'image de révélation sous la bulle de Corto, et la fait finir (fondue) avant les boutons ou les pastilles.
     const placeImg = () => {};
