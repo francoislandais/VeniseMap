@@ -211,7 +211,8 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       { key: "s5", img: 5, layout: "center-top", text: () => "Parfait, alors c'est décidé ! Mon bateau sera bientôt amarré à l'embarcadère de Santo Spirito. Retrouvons-nous là-bas quand tu seras prêt." },
       { key: "s6", img: 5, layout: "center-bottom", text: () => "Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller." },
     ];
-    const SCREENS = opts.replay ? ALL.filter((sc) => sc.layout !== "who") : ALL;
+    const devMode = (() => { try { return ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) || !!localStorage.getItem("vq_dev") || new URL(location.href).searchParams.has("dev"); } catch { return false; } })();
+    const SCREENS = opts.replay && !devMode ? ALL.filter((sc) => sc.layout !== "who") : ALL; // « Revoir l'histoire » saute l'écran d'identité, sauf en mode dev (pour pouvoir le régler)
     let photoRes = null; // { photo, cut, frame } si l'enfant a pris sa tête
     SCREENS.forEach((sc) => { const i = new Image(); i.src = IMG(sc.img); }); // préchargées
     // Verrou d'écran : la hauteur est figée à celle du départ (le clavier ne change plus la mise en page) ; le clavier ne rétrécit que la vue visible.
