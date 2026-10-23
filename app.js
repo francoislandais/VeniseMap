@@ -1495,7 +1495,7 @@ async function runChapters(p, replay = false) {
       };
       const newRev = async (text, bar) => { // écran de révélation : Corto content en haut, image dessous
         rv = chatAdd('<span class="arr-face"></span><div class="m-bubble typing"><i></i><i></i><i></i></div>', "fc rv"); sh.dataset.k = "one";
-        await bsleep(700); cortoFill(rv, text.replace(/\{g\}/g, gradeLc())); await bsleep(350); await showImg(bar);
+        await bsleep(80); cortoFill(rv, text.replace(/\{g\}/g, gradeLc())); await bsleep(100); await showImg(bar);
       };
       if (j > 0) { await clearTalk(); el = null; await newRev(`${lead} ${qs[j].q}`.trim(), chainBar(qs, j)); lead = ""; }
       for (; j < qs.length; j++) {
@@ -1514,7 +1514,7 @@ async function runChapters(p, replay = false) {
         const head = x.free ? `**Merci de me le dire !** ` : r.first ? `**Bravo !** ` : "**C'est la bonne réponse !** ";
         const text = head + x.reveal + (last ? "" : ` ${qs[j + 1].q}`);
         if (!rv) { await clearTalk(); await newRev(text, chainBar(qs, j + 1)); } // première réponse : tout est effacé
-        else { cortoType(rv); await bsleep(700); cortoFill(rv, text); await bsleep(350); } // les suivantes : même bulle, même image
+        else { cortoType(rv); await bsleep(80); cortoFill(rv, text); await bsleep(100); } // les suivantes : même bulle, même image
       }
       const hasMore = k < todo.length - 1;
       $$(".rev-img").forEach((e) => e.dataset.keep = "1");
