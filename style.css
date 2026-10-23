@@ -1239,3 +1239,9 @@ body:not(.jeu) #map-btn{display:none!important}
 /* Pendant que Corto parle : tous les boutons du bas disparaissent (la pastille de Corto devient sa tête) ; ils reviennent à la fin de l'échange */
 body.corto-talk #map-btn,body.corto-talk #home-btn,body.corto-talk #corto-btn,body.corto-talk #bridge-btn{visibility:hidden}
 .doge-msg{z-index:1700}
+
+/* Messages de Corto : police « machine à écrire » (Special Elite, Apache 2.0, hébergée avec l'appli) et curseur clignotant pendant la frappe */
+@font-face{font-family:"Special Elite";src:url(fonts/special-elite-latin.woff2) format("woff2");font-weight:400;font-style:normal;font-display:swap}
+.doge-msg .dm-txt{font-family:"Special Elite","Courier New",Courier,monospace;font-size:17px;line-height:1.4;font-weight:400;letter-spacing:.2px}
+.tw-caret{display:inline-block;width:0;height:1.05em;border-right:2px solid #141822;margin-right:-2px;vertical-align:text-bottom;animation:tw-blink .7s steps(1) infinite}
+@keyframes tw-blink{50%{opacity:0}}

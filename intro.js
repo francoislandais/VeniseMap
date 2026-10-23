@@ -451,6 +451,20 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
 }
 
 /* ───────── Corto parle (message ponctuel par-dessus la carte) ───────── */
+// Texte « tapé à la machine » : toutes les lettres sont déjà en place (la mise en page ne bouge pas) mais invisibles ; elles apparaissent une à une, avec un curseur et de petites pauses à la ponctuation.
+function typewriter(el, text, delay = 450) {
+  el.textContent = ""; const chars = [], caret = document.createElement("span"); caret.className = "tw-caret";
+  for (const ch of text) { const sp = document.createElement("span"); sp.textContent = ch; sp.style.opacity = "0"; el.appendChild(sp); chars.push(sp); }
+  let i = 0, t = null; const api = { done: false, finish() { clearTimeout(t); chars.forEach((c) => (c.style.opacity = "1")); caret.remove(); api.done = true; } };
+  const step = () => {
+    if (i >= chars.length) { api.finish(); return; }
+    const c = chars[i++]; c.style.opacity = "1"; c.after(caret); const ch = c.textContent;
+    t = setTimeout(step, ch === "," ? 150 : ".!?…:".includes(ch) ? 300 : ch === " " ? 30 : 26 + Math.random() * 28);
+  };
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) api.finish(); else t = setTimeout(step, delay);
+  return api;
+}
+
 export function cortoSays(text) {
   // Corto parle : bande basse, texte à gauche, Corto joyeux à droite. Tous les boutons du bas disparaissent le temps de l'échange ; la pastille de Corto devient sa tête (transition),
   // et un toucher n'importe où ferme le message : la tête redevient pastille et les boutons reviennent.
@@ -459,12 +473,12 @@ export function cortoSays(text) {
   const m = document.createElement("div"); m.className = "doge-msg";
   m.innerHTML = `<div class="dm-txt">${esc(text)}</div><img class="dm-corto" src="img/corto-content.webp" alt="">`;
   document.body.appendChild(m); document.body.classList.add("corto-talk");
-  const big = m.querySelector(".dm-corto");
+  const big = m.querySelector(".dm-corto"), tw = typewriter(m.querySelector(".dm-txt"), text); // le texte se tape après l'arrivée de Corto
   const from = () => { const r = big.getBoundingClientRect(); return br ? `translate(${br.left + br.width / 2 - (r.left + r.width / 2)}px, ${br.bottom - r.bottom}px) scale(${br.width / r.width})` : "none"; };
   m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, fill: "forwards" });
   if (br) big.animate([{ transformOrigin: "50% 100%", transform: from() }, { transformOrigin: "50% 100%", transform: "none" }], { duration: 420, easing: "cubic-bezier(.2,.9,.3,1.1)" });
   let gone = false;
-  const bye = () => { if (gone) return; gone = true; document.removeEventListener("pointerdown", bye, true);
+  const bye = () => { if (gone) return; if (!tw.done) { tw.finish(); return; } /* premier toucher : le texte s'affiche en entier ; le suivant ferme */ gone = true; document.removeEventListener("pointerdown", bye, true);
     if (br) big.animate([{ transformOrigin: "50% 100%", transform: "none" }, { transformOrigin: "50% 100%", transform: from() }], { duration: 260, easing: "ease-in", fill: "forwards" });
     m.querySelector(".dm-txt").animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" });
     m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 120, fill: "forwards" }).onfinish = () => { m.remove(); document.body.classList.remove("corto-talk"); }; };
