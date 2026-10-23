@@ -107,6 +107,11 @@
    "x": 0.69,
    "y": 1,
    "s": 1
+  },
+  "bye": {
+   "x": 0.63,
+   "y": 11.54,
+   "s": 1.03
   }
  },
  "_t": {
@@ -119,6 +124,9 @@
   },
   "s3": {
    "txt": "Après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante."
+  },
+  "s6": {
+   "bye": "À bientôt !"
   }
  },
  "s4": {
