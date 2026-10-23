@@ -348,8 +348,14 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     // écran « Corto se présente » : le Corto du bas n'apparaît qu'avec « Je suis marin. »
     const showImg = (d) => { const im = d.querySelector(".wl-img, .in2-img"); if (im) { im.style.transition = "opacity 1.6s ease"; im.style.opacity = "1"; } };
     const startTyping = (d, sc, delay, onDone, manual) => {
-      if (curTyping) curTyping.cancel(); curTyping = null; if (editing) { onDone && onDone(); return; } if (sc.layout === "welcome" || sc.ask) { const im = d.querySelector(".wl-img, .in2-img"); if (im) { im.style.transition = "none"; im.style.opacity = "0"; } }
-      const els = typeTargets(d, sc).flatMap((q) => [...d.querySelectorAll(q)]); curTyping = typeSeq(els, { delay, onDone, manual, onFade: sc.layout === "welcome" || sc.ask ? () => showImg(d) : undefined }); if (curTyping.done && (sc.layout === "welcome" || sc.ask)) showImg(d);
+      if (curTyping) curTyping.cancel(); curTyping = null; if (editing) { onDone && onDone(); return; } if (sc.layout === "welcome" || sc.ask || sc.key === "s5") { const im = d.querySelector(".wl-img, .in2-img"); if (im) { im.style.transition = "none"; im.style.opacity = "0"; } }
+      let boatRevealT = null;
+      const els = typeTargets(d, sc).flatMap((q) => [...d.querySelectorAll(q)]);
+      curTyping = typeSeq(els, { delay, onDone, manual, onFade: sc.layout === "welcome" || sc.ask ? () => showImg(d) : undefined,
+        onItemEnd: sc.key === "s5" ? (el) => { if (el.dataset.k !== "p2") return; boatRevealT = setTimeout(() => showImg(d), 1000); return 6000; } : undefined,
+        onFinish: sc.key === "s5" ? () => { clearTimeout(boatRevealT); showImg(d); } : undefined,
+        onCancel: () => clearTimeout(boatRevealT) });
+      if (curTyping.done && (sc.layout === "welcome" || sc.ask)) showImg(d);
     };
     // Traveling de l'écran final : dès que Corto parle du tour de la lagune, le tableau de fond file vers la gauche, un peu plus vite que sur l'écran précédent, et accélère doucement jusqu'à la transition vers la carte
     const panRun = () => {
@@ -521,21 +527,22 @@ export function typewriter(el, text, delay = 450) {
 }
 
 // Même effet « machine à écrire » pour plusieurs éléments de suite (textes de l'introduction), en gardant le gras et les retours à la ligne : on remplace temporairement chaque lettre par un <span> invisible, puis on rétablit le HTML d'origine.
-function typeSeq(els, { delay = 400, speed = 1, onDone, onFade, manual = false } = {}) {
+function typeSeq(els, { delay = 400, speed = 1, onDone, onFade, onItemEnd, onFinish, onCancel, manual = false } = {}) {
   let curC = null;
   const items = els.map((el) => { const chars = []; const walk = (node) => [...node.childNodes].forEach((n) => { if (n.nodeType === 3) { const f = document.createDocumentFragment(); for (const ch of n.nodeValue) { const sp = document.createElement("span"); sp.textContent = ch; sp.style.opacity = "0"; f.appendChild(sp); chars.push(sp); } n.replaceWith(f); } else if (n.nodeType === 1 && n.tagName !== "BR") walk(n); }); walk(el); return { el, chars }; });
   const all = items.flatMap((it) => it.chars.map((c, k) => ({ c, first: k === 0, it, fade: it.el.hasAttribute("data-fade") }))); let i = 0, t = null;
   // on garde les <span> des lettres (jamais de retour au HTML d'origine) : la mise en page justifiée ne change donc plus d'un pixel à la fin de la frappe
   const restore = () => { clearTimeout(t); if (curC) curC.classList.remove("tw-cur"); items.forEach((it) => it.chars.forEach((c) => { c.style.transition = ""; c.style.opacity = ""; })); api.done = true; };
-  const api = { done: false, go(d = 0) { if (!api.done && !t) t = setTimeout(step, d); }, finish() { if (api.done) return; restore(); onFade && items.some((it) => it.el.hasAttribute("data-fade")) && onFade(); onDone && onDone(); }, cancel() { if (api.done) return; restore(); } };
+  const api = { done: false, go(d = 0) { if (!api.done && !t) t = setTimeout(step, d); }, finish() { if (api.done) return; restore(); onFade && items.some((it) => it.el.hasAttribute("data-fade")) && onFade(); onFinish && onFinish(); onDone && onDone(); }, cancel() { if (api.done) return; restore(); onCancel && onCancel(); } };
   const step = () => {
     if (i >= all.length) { api.finish(); return; }
     if (all[i].fade) { // bloc qui apparaît en fondu, d'un seul coup (« Je suis marin. », puis la suite du récit)
       const it = all[i].it; onFade && onFade(it.el); it.chars.forEach((c) => { c.style.transition = "opacity 1.6s ease"; c.style.opacity = "1"; }); i += it.chars.length;
       t = setTimeout(step, 1700 + (all[i] && all[i].first ? (all[i].fade ? +all[i].it.el.dataset.fade || 3000 : 260) : 0)); return;
     }
-    const { c, first } = all[i++]; c.style.opacity = "1"; if (curC) curC.classList.remove("tw-cur"); c.classList.add("tw-cur"); curC = c; const ch = c.textContent;
-    t = setTimeout(step, (ch === "," ? 140 : ".!?…:".includes(ch) ? 280 : ch === " " ? 26 : 22 + Math.random() * 22) * speed + (all[i] && all[i].first ? (all[i].fade ? +all[i].it.el.dataset.fade || 3000 : 260) : 0));
+    const { c, it } = all[i++]; c.style.opacity = "1"; if (curC) curC.classList.remove("tw-cur"); c.classList.add("tw-cur"); curC = c; const ch = c.textContent;
+    const pause = all[i]?.it !== it && onItemEnd ? onItemEnd(it.el) : undefined;
+    t = setTimeout(step, pause ?? ((ch === "," ? 140 : ".!?…:".includes(ch) ? 280 : ch === " " ? 26 : 22 + Math.random() * 22) * speed + (all[i] && all[i].first ? (all[i].fade ? +all[i].it.el.dataset.fade || 3000 : 260) : 0)));
   };
   if (!all.length || matchMedia("(prefers-reduced-motion: reduce)").matches) { restore(); onDone && onDone(); } else if (!manual) t = setTimeout(step, delay);
   return api;
