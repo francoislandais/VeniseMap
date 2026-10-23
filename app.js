@@ -894,6 +894,8 @@ function menuSay(text) {
   let m = $("#menu-say");
   if (!m) { m = document.createElement("div"); m.id = "menu-say"; m.className = "doge-msg menu-say"; m.innerHTML = '<div class="dm-txt"></div><img class="dm-corto" src="img/corto-content.webp" alt="">'; document.body.appendChild(m); }
   $(".dm-txt", m).innerHTML = richText(text); m.hidden = tab === "map";
+  // la bande de Corto est opaque pour le contenu : les onglets s'arrêtent à son bord haut (rien ne défile derrière le texte), sa hauteur suit la longueur du message
+  const th = $(".dm-txt", m).offsetHeight, H = Math.max(190, Math.round(th + 92 + 14)); document.documentElement.style.setProperty("--bandh", H + "px"); m.style.height = `calc(${H}px + var(--safe-b))`;
 }
 function cortoFill(el, text) { const b = el && $(".m-bubble", el); if (b) { b.classList.remove("typing"); b.innerHTML = richText(text); if (chatSel !== "#b-talk") { const c = $(chatSel); if (c && c.scrollHeight > c.clientHeight) c.scrollTop = c.scrollHeight - c.clientHeight; } } }
 let busy = false;
