@@ -1288,3 +1288,8 @@ body.corto-talk #map-btn,body.corto-talk #home-btn,body.corto-talk #corto-btn,bo
 #map-btn{background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
 #map-btn img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.45))}
 #map-btn:active img{transform:scale(.94)}
+
+/* Pastille maison remplacée par l'icône illustrée (livre ouvert) */
+#home-btn{background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
+#home-btn img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))}
+#home-btn:active img{transform:scale(.94)}
