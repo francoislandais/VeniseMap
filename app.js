@@ -489,15 +489,7 @@ function smoothAdj(W, now) {
   const kk = ecoOn() ? 3 : 1; W.so.x += (ox - W.so.x) * Math.min(0.5, 0.12 * kk); W.so.y += (oy - W.so.y) * Math.min(0.5, 0.12 * kk);
   return { lat: r.lat + W.so.y / KY, lon: r.lon + W.so.x / KX, shore: r.shore };
 }
-function dogeMsg(txt) { // message de Corto en bas de l'écran (Corto joyeux sous un grand texte), fermé par un toucher n'importe où
-  document.querySelectorAll(".doge-msg").forEach((e) => e.remove());
-  const m = document.createElement("div"); m.className = "doge-msg";
-  m.innerHTML = `<div class="dm-txt">${esc(txt)}</div><img class="dm-corto" src="img/corto-content.webp" alt="">`;
-  document.body.appendChild(m);
-  m.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 250 });
-  const off = () => { document.removeEventListener("pointerdown", off, true); m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).onfinish = () => m.remove(); };
-  setTimeout(() => document.addEventListener("pointerdown", off, true), 150);
-}
+function dogeMsg(txt) { cortoSays(txt); } // message de Corto (même présentation que la pastille de Corto : voir cortoSays)
 // Corto, quand on touche un personnage trop éloigné : variantes, avec le grade du joueur ({g}), {to} = « au doge », {n} = « le doge ».
 const FAR_LINES = [
   "Tu es trop loin pour parler avec {n}. Rapproche-toi d'abord !",

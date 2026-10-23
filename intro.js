@@ -440,13 +440,28 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
 
 /* ───────── Corto parle (message ponctuel par-dessus la carte) ───────── */
 export function cortoSays(text) {
+  // Corto parle : sa pastille (en bas, au milieu de la rangée) grandit pour former le grand Corto ; le texte court sur toute la largeur puis se resserre autour de lui,
+  // sans jamais passer derrière ni devant les boutons (carte et maison à gauche, pont à droite). Un toucher n'importe où le ferme.
   document.querySelectorAll(".corto-say").forEach((e) => e.remove());
+  const btn = document.getElementById("corto-btn"), br = btn && btn.getBoundingClientRect();
   const d = document.createElement("div"); d.className = "corto-say";
-  d.innerHTML = `<div class="msg fc"><span class="m-face"></span><div class="m-bubble">${esc(text)}</div></div><button class="cs-ok">OK</button>`;
-  document.body.appendChild(d);
-  d.animate([{ opacity: 0, transform: "translateY(20px)" }, { opacity: 1, transform: "none" }], { duration: 300 });
-  d.querySelector(".cs-ok").onclick = () => d.remove();
-  setTimeout(() => d.isConnected && d.remove(), 9000);
+  d.innerHTML = `<i class="cs-sp"></i><i class="cs-hd"></i><img class="cs-big" src="img/corto-content.webp" alt=""><p class="cs-txt">${esc(text)}</p>`;
+  d.style.opacity = 0; document.body.appendChild(d);
+  const big = d.querySelector(".cs-big"), txt = d.querySelector(".cs-txt"), sp = d.querySelector(".cs-sp"), hd = d.querySelector(".cs-hd");
+  // Le texte occupe toute la largeur au-dessus de la rangée de boutons ; ses dernières lignes (celles qui passent à côté de la tête de Corto) se resserrent à gauche de lui.
+  // S'il est court (≤ 3 lignes), il reste simplement au-dessus de sa tête. Une cale flottante (sp) place la zone « tête » (hd) en bas du texte.
+  const HEAD = 68, fit = () => { sp.style.height = hd.style.height = "0px"; hd.style.height = HEAD + "px"; sp.style.height = "9999px"; const lh = parseFloat(getComputedStyle(txt).lineHeight) || 24; sp.style.height = "0px"; hd.style.display = "none"; const full = txt.offsetHeight; hd.style.display = ""; const short = full <= lh * 3.2; let h = short ? full : Math.max(0, full - HEAD); for (let n = 0; n < 5 && !short; n++) { sp.style.height = h + "px"; h = Math.max(0, txt.offsetHeight - HEAD); } sp.style.height = (short ? full : h) + "px"; };
+  fit(); requestAnimationFrame(fit);
+  if (btn) btn.style.visibility = "hidden"; // la pastille devient le grand Corto
+  d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, fill: "forwards" });
+  if (br) { const r = big.getBoundingClientRect(); big.animate([{ transformOrigin: "50% 100%", transform: `translate(${br.left + br.width / 2 - (r.left + r.width / 2)}px, ${br.bottom - r.bottom}px) scale(${br.width / r.width})` }, { transformOrigin: "50% 100%", transform: "none" }], { duration: 420, easing: "cubic-bezier(.2,.9,.3,1.15)" }); }
+  let gone = false;
+  const bye = () => { if (gone) return; gone = true; document.removeEventListener("pointerdown", bye, true); window.removeEventListener("resize", fit); clearTimeout(auto);
+    if (br) { const r = big.getBoundingClientRect(); big.animate([{ transformOrigin: "50% 100%", transform: "none" }, { transformOrigin: "50% 100%", transform: `translate(${br.left + br.width / 2 - (r.left + r.width / 2)}px, ${br.bottom - r.bottom}px) scale(${br.width / r.width})` }], { duration: 260, easing: "ease-in", fill: "forwards" }); }
+    txt.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" });
+    d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 120, fill: "forwards" }).onfinish = () => { d.remove(); if (btn) btn.style.visibility = ""; }; };
+  const auto = setTimeout(bye, 6000 + text.length * 70); // assez long pour lire, sinon un toucher le ferme
+  setTimeout(() => document.addEventListener("pointerdown", bye, true), 250); window.addEventListener("resize", fit);
 }
 
 /* ───────── Modifier son profil : nom, pictogramme ou nouvelle photo ───────── */
