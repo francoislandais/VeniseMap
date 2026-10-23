@@ -480,14 +480,15 @@ export function typewriter(el, text, delay = 450) {
 
 // Même effet « machine à écrire » pour plusieurs éléments de suite (textes de l'introduction), en gardant le gras et les retours à la ligne : on remplace temporairement chaque lettre par un <span> invisible, puis on rétablit le HTML d'origine.
 function typeSeq(els, { delay = 400, speed = 1, onDone, manual = false } = {}) {
-  const caret = document.createElement("span"); caret.className = "tw-caret";
-  const items = els.map((el) => { const orig = el.innerHTML, chars = []; const walk = (node) => [...node.childNodes].forEach((n) => { if (n.nodeType === 3) { const f = document.createDocumentFragment(); for (const ch of n.nodeValue) { const sp = document.createElement("span"); sp.textContent = ch; sp.style.opacity = "0"; f.appendChild(sp); chars.push(sp); } n.replaceWith(f); } else if (n.nodeType === 1 && n.tagName !== "BR") walk(n); }); walk(el); return { el, orig, chars }; });
+  let curC = null;
+  const items = els.map((el) => { const chars = []; const walk = (node) => [...node.childNodes].forEach((n) => { if (n.nodeType === 3) { const f = document.createDocumentFragment(); for (const ch of n.nodeValue) { const sp = document.createElement("span"); sp.textContent = ch; sp.style.opacity = "0"; f.appendChild(sp); chars.push(sp); } n.replaceWith(f); } else if (n.nodeType === 1 && n.tagName !== "BR") walk(n); }); walk(el); return { el, chars }; });
   const all = items.flatMap((it) => it.chars.map((c, k) => ({ c, first: k === 0 }))); let i = 0, t = null;
-  const restore = () => { clearTimeout(t); caret.remove(); items.forEach((it) => { it.el.innerHTML = it.orig; }); api.done = true; };
+  // on garde les <span> des lettres (jamais de retour au HTML d'origine) : la mise en page justifiée ne change donc plus d'un pixel à la fin de la frappe
+  const restore = () => { clearTimeout(t); if (curC) curC.classList.remove("tw-cur"); items.forEach((it) => it.chars.forEach((c) => { c.style.opacity = ""; })); api.done = true; };
   const api = { done: false, go(d = 0) { if (!api.done && !t) t = setTimeout(step, d); }, finish() { if (api.done) return; restore(); onDone && onDone(); }, cancel() { if (api.done) return; restore(); } };
   const step = () => {
     if (i >= all.length) { api.finish(); return; }
-    const { c, first } = all[i++]; c.style.opacity = "1"; c.after(caret); const ch = c.textContent;
+    const { c, first } = all[i++]; c.style.opacity = "1"; if (curC) curC.classList.remove("tw-cur"); c.classList.add("tw-cur"); curC = c; const ch = c.textContent;
     t = setTimeout(step, (ch === "," ? 140 : ".!?…:".includes(ch) ? 280 : ch === " " ? 26 : 22 + Math.random() * 22) * speed + (all[i] && all[i].first ? 260 : 0));
   };
   if (!all.length || matchMedia("(prefers-reduced-motion: reduce)").matches) { restore(); onDone && onDone(); } else if (!manual) t = setTimeout(step, delay);

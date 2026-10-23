@@ -1393,3 +1393,8 @@ body.menu-open #corto-btn{display:none!important}
 #ranger span{font-size:12px;line-height:1.15;margin-top:2px;font-weight:700}
 #ranger.on{opacity:1}
 #ranger.hot{transform:scale(1.12);background:rgba(255,255,255,.45);border-style:solid}
+
+/* intro : pas de césure automatique (le texte tapé lettre par lettre garde exactement sa mise en page finale) */
+.in2-txt p,.wl-mid p,.in2-part.in2-long,.hl-hi,.hl-q{hyphens:manual!important;-webkit-hyphens:manual!important}
+/* curseur de frappe : pseudo-élément absolu sur la lettre courante, donc aucun effet sur la mise en page ni la justification */
+.tw-cur{position:relative}.tw-cur::after{content:"";position:absolute;right:-2px;top:.1em;height:1.05em;border-right:2px solid #141822;animation:tw-blink .7s steps(1) infinite;pointer-events:none}
