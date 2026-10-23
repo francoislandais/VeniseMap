@@ -2189,7 +2189,7 @@ export const PLACES = [
 
   // ─── JOUR 7 : lions, jardins, Corte Sconta ───
   { id: "frari", emoji: "🎨", name: "L'église des Frari", lat: 45.43687, lon: 12.32623, r: 70, music: "audio/frari-vespro.mp3",
-    story: "Une immense église de briques rouges, pleine de trésors : des tableaux géniaux, des tombes de grands artistes, des sièges de bois sculpté. Et un compositeur célèbre y repose : Monteverdi ! (Parents : entrée payante, horaires à vérifier, souvent fermée le dimanche matin. Silence demandé à l'intérieur.)",
+    story: "Une immense église de briques rouges, pleine de trésors : des tableaux géniaux, des tombes de grands artistes, des sièges de bois sculpté. Et un compositeur célèbre y repose : Monteverdi ! (Parents : entrée payante selon l'âge, horaires à vérifier avant de venir. Visite silencieuse, sans flash.)",
     clue: "Ici dorment des maîtres de la musique et de la peinture. Ouvrez grand les yeux, Gardiens : trois trésors se cachent sous ces voûtes.",
     reward: {"point": "C", "emoji": "🐚", "name": "La coquille d'or", "at": [0.63, 0.42], "hint": "Saint Jean-Baptiste a quelque chose pour toi."},
     plan: {
@@ -2311,253 +2311,372 @@ export const PLACES = [
     },
     chapters: [
       {
-        "title": "Introduction",
+        "title": "Une église née dans la lagune",
+        "intro": "Les deux premières questions installent l'histoire du lieu.",
         "steps": [
           {
-            "idx": 100,
-            "q": "À ton avis, que signifie « Frari » ?",
-            "opts": ["Les frères", "Les peintres", "Les pêcheurs"],
+            "idx": 200,
+            "q": "Que signifie « Frari » ?",
+            "opts": [
+              "Les frères",
+              "Les fleurs",
+              "Les forgerons",
+              "Les phares"
+            ],
             "a": 0,
-            "reveal": "Frari est la forme vénitienne de frati, « frères » en italien. Ces frères appartenaient à l'ordre des Franciscains, fondé par saint François d'Assise. Ils se sont installés à Venise au XIIIᵉ siècle.",
-            "img": "img/q/frari-1.webp"
+            "reveal": "**Les frères.** « Frari » désigne les frères franciscains en vénitien. Leur communauté s’installe ici au XIIIᵉ siècle.",
+            "title": "Le nom mystère",
+            "img": "img/q/frari-q01.webp",
+            "cap": "Révélation : l’église des frères franciscains. · Didier Descouens · CC BY-SA 4.0",
+            "src": [
+              "https://www.basilicadeifrari.it/wp-content/uploads/2023/10/FRANCESE-2023.pdf",
+              "https://archiviodistatovenezia.it/it/la-sede-dei-frari.html?catid=13%3Astoria&id=58%3Ail-convento-e-il-chiostro-della-trinita&view=article"
+            ]
           },
           {
-            "idx": 101,
-            "q": "Il y a presque 800 ans, les frères franciscains ont construit ici une première petite église. Mais à cette époque, l'endroit était bien différent d'aujourd'hui… À ton avis, à quoi ressemblait ce lieu ?",
-            "opts": ["À une forêt peuplée d'animaux sauvages", "À un terrain marécageux, entouré d'eau et de boue", "À une grande place remplie de marchands"],
-            "a": 1,
-            "reveal": "À l’époque, cet endroit était un terrain marécageux, plein d’eau et de boue ! Pour y construire leur église, les Franciscains ont dû aménager et renforcer le sol. Au fil des siècles, leur petite église est devenue l’immense basilique que tu visites aujourd’hui.",
-            "img": "img/q/frari-2.webp"
+            "idx": 201,
+            "where": "Observe les rues et le campo actuels, puis imagine le sol d’avant les constructions.",
+            "q": "À quoi ressemblait ce lieu il y a environ 800 ans ?",
+            "opts": [
+              "À un terrain humide, avec de l’eau et de la boue",
+              "À une colline sèche",
+              "À une forêt de pins",
+              "À une plage de sable"
+            ],
+            "a": 0,
+            "reveal": "**Un terrain marécageux.** Les archives vénitiennes situent les premiers Frari dans une zone paludosa, près d’un ancien bassin appelé lac Badoer. Le quartier a ensuite été progressivement assaini.",
+            "title": "Avant les pierres",
+            "img": "img/q/frari-q02.webp",
+            "cap": "Plan pédagogique actuel : il aide à se repérer, mais ne représente pas le site médiéval. · Plan original du précédent dossier Frari",
+            "src": [
+              "https://archiviodistatovenezia.it/it/la-sede-dei-frari.html?catid=13%3Astoria&id=58%3Ail-convento-e-il-chiostro-della-trinita&view=article"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Colonnes et gardien de pierre",
+        "intro": "Deux défis d'observation, puis trois questions sur la pyramide de Canova.",
+        "steps": [
+          {
+            "idx": 202,
+            "where": "Depuis l’entrée, avance doucement et compte les gros piliers de chaque côté.",
+            "q": "Combien de grosses colonnes portent les grandes voûtes de la nef ?",
+            "opts": [
+              "8",
+              "10",
+              "12",
+              "14"
+            ],
+            "a": 2,
+            "reveal": "**12 colonnes.** Elles sont disposées par six de chaque côté de la nef. Le site officiel les associe aux douze apôtres.",
+            "title": "Les douze géants",
+            "img": "img/q/frari-q03.webp",
+            "cap": "La nef centrale et ses rangées de piliers. · Zairon · CC BY-SA 4.0",
+            "src": [
+              "https://www.basilicadeifrari.it/interno-della-basilica/"
+            ]
           },
           {
-            "idx": 0,
-            "q": "Place-toi au milieu de la grande nef, l'allée centrale de l'église. Compte les grosses colonnes qui portent les arches, à gauche et à droite. Combien y en a-t-il ?",
-            "opts": ["12", "10", "16"],
+            "idx": 203,
+            "where": "Nef de gauche, près de l’entrée : regarde la base du grand monument blanc en forme de pyramide.",
+            "q": "Quel animal repose sur la première marche de la pyramide de marbre blanc ?",
+            "opts": [
+              "Un lion",
+              "Un aigle",
+              "Un cheval",
+              "Un dauphin"
+            ],
             "a": 0,
-            "reveal": "Il y en a **12** : six de chaque côté de la nef. Elles soutiennent des arches pointues, comme dans les églises gothiques.",
-            "img": "img/q/frari-3.webp"
-          },
-          {
-            "idx": 1,
-            "q": "Dans la nef de gauche, cherche une grande pyramide de marbre blanc avec une porte. Un animal dort sur la première marche. Lequel ?",
-            "opts": ["Un lion", "Un aigle", "Un dragon"],
-            "a": 0,
-            "reveal": "C'est un **lion ailé endormi**, le lion de Venise !",
-            "img": "img/q/frari-4.webp",
-            "imgPos": "47% 50%",
+            "reveal": "**Un lion ailé.** Ce lion à ailes est sculpté au pied du monument à Antonio Canova. Il rappelle aussi le lion ailé de saint Marc, emblème de Venise.",
+            "title": "Un animal qui veille",
+            "img": "img/q/frari-q04.webp",
+            "cap": "Détail recadré du lion ailé de Canova. · Didier Descouens · CC BY-SA 4.0",
+            "imgPos": "50% 50%",
+            "src": [
+              "https://catalogo.beniculturali.it/detail/HistoricOrArtisticProperty/0500677897"
+            ],
             "next": [
               {
-                "idx": 102,
-                "q": "À ton avis, à quoi sert ce monument ?",
-                "opts": ["C'est un tombeau", "C'est un autel", "C'est un monument à la gloire d'un doge"],
-                "a": 0,
-                "reveal": "C'est un **tombeau** : celui du sculpteur Antonio Canova."
+                "idx": 204,
+                "where": "Regarde la porte sombre au centre de la pyramide.",
+                "q": "À quoi sert ce monument ?",
+                "opts": [
+                  "À garder une ancienne porte",
+                  "À honorer un mort",
+                  "À abriter une fontaine",
+                  "À cacher un orgue"
+                ],
+                "a": 1,
+                "reveal": "**C’est un monument funéraire.** Il honore le sculpteur Antonio Canova. C’est aussi le lieu où son cœur a été déposé ; son corps repose à Possagno.",
+                "img": "img/q/frari-q05.webp",
+                "cap": "Le monument à Canova dans la nef gauche. · Didier Descouens · CC BY-SA 4.0",
+                "src": [
+                  "https://catalogo.beniculturali.it/detail/HistoricOrArtisticProperty/0500677897"
+                ]
               },
               {
-                "idx": 103,
-                "q": "Regarde bien son portrait au-dessus de la porte. Quel animal l'entoure en se mordant la queue ?",
-                "opts": ["Un serpent", "Un dragon", "Un poisson"],
-                "a": 0,
-                "reveal": "C'est un **serpent** qui se mord la queue."
+                "idx": 205,
+                "where": "Lève les yeux juste au-dessus du nom CANOVA.",
+                "q": "Quel animal entoure le portrait de Canova, au-dessus de la porte ?",
+                "opts": [
+                  "Un poisson",
+                  "Un serpent qui se mord la queue",
+                  "Un lézard",
+                  "Une anguille"
+                ],
+                "a": 1,
+                "reveal": "**Un serpent qui se mord la queue.** Ce motif, appelé ouroboros, symbolise l’éternité. Il forme le cercle autour du portrait sculpté.",
+                "img": "img/q/frari-q06.webp",
+                "cap": "Détail recadré : le serpent forme un cercle autour du portrait. · Didier Descouens · CC BY-SA 4.0",
+                "src": [
+                  "https://catalogo.beniculturali.it/detail/HistoricOrArtisticProperty/0500677897"
+                ]
               },
               {
-                "idx": 104,
-                "q": "Une seule partie du corps du sculpteur repose dans ce tombeau. Laquelle ?",
-                "opts": ["Son cœur", "Sa main droite", "Sa tête"],
-                "a": 0,
-                "reveal": "Dans cette pyramide repose l'urne qui contient le **cœur** du sculpteur Antonio Canova. Son corps, lui, est enterré dans son village, à Possagno."
+                "idx": 206,
+                "where": "Cherche ensuite, sans franchir la barrière, la porte du monument.",
+                "q": "Quelle partie du corps de Canova repose ici ?",
+                "opts": [
+                  "Sa main",
+                  "Son cœur",
+                  "Sa tête",
+                  "Son corps entier"
+                ],
+                "a": 1,
+                "reveal": "**Son cœur.** En 1827, son cœur a été placé dans une urne sous le monument. Le corps de l’artiste est enterré à Possagno.",
+                "src": [
+                  "https://catalogo.beniculturali.it/detail/HistoricOrArtisticProperty/0500677897"
+                ]
               }
             ]
           }
         ]
       },
       {
-        "title": "Les Géants de Venise",
-        "intro": "Explore l'église et relève 4 défis d'observation.",
-        "transition": "Tu as découvert les secrets des géants de Venise. Mais un autre grand artiste repose quelque part dans cette église. Ce n'était ni un peintre, ni un sculpteur : c'était un musicien. À toi de le retrouver !",
+        "title": "Le doge et le peintre qui décale tout",
+        "intro": "Deux monuments étonnants.",
         "steps": [
           {
-            "title": "Le géant porté par quatre hommes",
-            "where": "Juste à côté, toujours dans la nef de gauche, un énorme monument de marbre blanc et noir couvre tout un mur.",
-            "q": "Un doge, le chef de Venise, est assis tout en haut. Qui soutient le monument ?",
+            "idx": 207,
+            "where": "Nef de gauche : trouve le très haut monument où un doge est assis tout en haut.",
+            "q": "Qui soutient le monument du doge Giovanni Pesaro ?",
             "opts": [
-              "Quatre grandes statues d'hommes",
-              "Quatre anges en marbre blanc",
-              "Quatre lions de pierre"
+              "Quatre grandes statues d’hommes",
+              "Quatre lions",
+              "Quatre colonnes de bois",
+              "Quatre anges"
             ],
             "a": 0,
-            "reveal": "**Quatre statues géantes** en marbre noir et blanc portent tout le monument. Plus bas, deux dragons tiennent l'urne du doge Giovanni Pesaro. Un doge, c'était le chef de Venise, élu pour toute sa vie.",
+            "reveal": "**Quatre grandes statues d’hommes.** Les quatre figures, de marbre noir et blanc, portent l’architecture du tombeau. Deux dragons sculptés soutiennent le sarcophage du doge, élu à vie à la tête de Venise.",
+            "title": "Le géant porté par quatre hommes",
+            "img": "img/q/frari-q08.webp",
+            "cap": "Le monument à Giovanni Pesaro : les quatre figures porteuses se voient en bas. · Didier Descouens · CC BY-SA 4.0",
             "src": [
-              "https://it.wikipedia.org/wiki/Basilica_di_Santa_Maria_Gloriosa_dei_Frari"
+              "https://www.catalogo.beniculturali.it/detail/HistoricOrArtisticProperty/0500222386A-0",
+              "https://wrap.warwick.ac.uk/id/eprint/94209/1/WRAP_Theses_Colombo_2016.pdf"
             ]
           },
           {
-            "title": "Le peintre qui triche",
-            "where": "Plus loin dans la nef de gauche, regarde le grand tableau de l'autel des Pesaro : la Vierge est assise en haut des marches, avec l'Enfant.",
-            "q": "Titien n'a pas mis la Vierge au milieu du tableau, comme on le fait d'habitude. De quel côté l'a-t-il placée ?",
+            "idx": 208,
+            "where": "Nef de gauche : observe le grand tableau près du monument du doge.",
+            "q": "De quel côté Titien place-t-il la Vierge dans la Madone de Ca’ Pesaro ?",
             "opts": [
+              "À gauche",
+              "Au centre",
               "À droite",
-              "Au milieu",
-              "À gauche"
+              "Tout en bas"
             ],
-            "a": 0,
-            "reveal": "La Vierge est **décalée vers la droite**, sur une estrade placée en biais. C'était une idée originale pour l'époque : Titien a osé ne pas centrer son sujet.",
+            "a": 2,
+            "reveal": "**À droite.** Titien installe Marie et l’Enfant sur une haute estrade décalée et compose la scène en diagonale. C’était un choix inhabituel pour un retable.",
+            "title": "Le peintre qui triche",
+            "img": "img/q/frari-q09.webp",
+            "cap": "La Madone de Ca’ Pesaro, œuvre entière. · The Yorck Project / Wikimedia Commons · domaine public",
             "src": [
-              "https://it.wikipedia.org/wiki/Pala_Pesaro",
-              "https://en.wikipedia.org/wiki/Pesaro_Madonna"
+              "https://www.basilicadeifrari.it/wp-content/uploads/2023/10/FRANCESE-2023.pdf",
+              "https://smarthistory.org/titian-madonna-of-the-pesaro-family/"
             ]
           }
         ]
       },
       {
-        "title": "Le Musicien disparu",
-        "intro": "Sur les traces de Claudio Monteverdi : 4 nouveaux défis.",
-        "transition": "Bravo ! Tu as retrouvé Claudio Monteverdi. Il est mort il y a presque 400 ans, mais sa musique n'a pas disparu. Dans quelques jours, tu vas entendre une œuvre extraordinaire qu'il a publiée en 1610 : Les Vêpres de la Vierge. Es-tu prêt à découvrir ses secrets ?",
+        "title": "Un musicien et un chœur de bois",
+        "intro": "Sur les traces de Monteverdi.",
         "steps": [
           {
-            "title": "La tombe du musicien",
-            "where": "Va dans les chapelles autour du grand autel et cherche la chapelle des Milanais : une tombe est posée sur le sol.",
-            "q": "Une dalle au sol porte le nom d'un musicien mort à Venise en 1643. Qui est-ce ?",
+            "idx": 209,
+            "where": "Cherche une dalle au sol dans la chapelle des Milanais ; respecte l’espace de prière.",
+            "q": "Dans la chapelle des Milanais, quelle dalle porte le nom d’un musicien mort à Venise en 1643 ?",
             "opts": [
+              "Antonio Vivaldi",
               "Claudio Monteverdi",
-              "Andrea Gabrieli",
-              "Antonio Vivaldi"
+              "Giovanni Gabrieli",
+              "Tomaso Albinoni"
             ],
-            "a": 0,
-            "reveal": "**Claudio Monteverdi** ! Né en 1567, il est devenu maître de musique de la basilique Saint-Marc, et il a été l'un des pionniers de l'opéra.",
+            "a": 1,
+            "reveal": "**Claudio Monteverdi.** Né en 1567, il devient maître de chapelle de Saint-Marc et fait évoluer le théâtre musical. Sa tombe se trouve bien dans la chapelle des Milanais.",
+            "title": "La tombe du musicien",
+            "img": "img/q/frari-q10.webp",
+            "cap": "La dalle funéraire de Claudio Monteverdi. · Didier Descouens · CC BY-SA 4.0",
             "src": [
-              "https://it.wikipedia.org/wiki/Basilica_di_Santa_Maria_Gloriosa_dei_Frari",
-              "https://fr.wikipedia.org/wiki/Basilique_Santa_Maria_Gloriosa_dei_Frari",
-              "https://en.wikipedia.org/wiki/Claudio_Monteverdi"
+              "https://www.basilicadeifrari.it/wp-content/uploads/2023/10/FRANCESE-2023.pdf",
+              "https://www.basilicadeifrari.it/venezia-festeggia-monteverdi-iniziative-ottobre/"
             ]
           },
           {
+            "idx": 210,
+            "where": "Au milieu de la nef, observe les sièges sculptés à travers l’ouverture du chœur.",
+            "q": "Comment sont placés les sièges du chœur des frères ?",
+            "opts": [
+              "En longues rangées tournées vers l’autel",
+              "En U, avec des rangées qui se font face",
+              "En cercle autour d’une table",
+              "Sur les côtés de l’entrée"
+            ],
+            "a": 1,
+            "reveal": "**En U, avec des rangées face à face.** Le chœur compte 124 stalles sur trois niveaux. Achevé en 1468 par Marco et Francesco Cozzi, il demeure à sa place d’origine dans la nef.",
             "title": "Les chanteurs invisibles",
-            "where": "Reviens au milieu de l'église, juste devant le grand autel : un haut mur entoure le chœur des frères.",
-            "q": "Les frères s'asseyaient sur des sièges de bois sculpté. Comment ces sièges sont-ils placés ?",
-            "opts": [
-              "En forme de U, des rangées face à face",
-              "En cercle autour d'une table",
-              "En une seule rangée tournée vers l'autel"
-            ],
-            "a": 0,
-            "reveal": "Les **124 sièges** de bois sont disposés **en U**, avec des rangées qui se font face. Ils ont été sculptés en 1468 par les frères Cozzi. Les frères y suivaient les offices, séparés des autres fidèles par un haut mur. Les Frari sont la seule église de Venise à l'avoir gardé !",
+            "img": "img/q/frari-q11.webp",
+            "cap": "Les stalles sculptées du chœur. · Didier Descouens · CC BY-SA 4.0",
             "src": [
-              "https://it.wikipedia.org/wiki/Basilica_di_Santa_Maria_Gloriosa_dei_Frari",
-              "https://fr.wikipedia.org/wiki/Basilique_Santa_Maria_Gloriosa_dei_Frari",
-              "https://en.wikipedia.org/wiki/Santa_Maria_Gloriosa_dei_Frari"
+              "https://www.basilicadeifrari.it/wp-content/uploads/2023/10/FRANCESE-2023.pdf",
+              "https://insulafulcheria.comunecrema.it/sites/default/files/insula_fulcheria_2010_insula_fulcheria_2010-volume_a.pdf"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "La femme qui s'envole et le second tombeau",
+        "intro": "Titien aux Frari.",
+        "steps": [
+          {
+            "idx": 211,
+            "where": "Au maître-autel, tout au fond : regarde la figure centrale du grand tableau.",
+            "q": "De quelle couleur est la robe de Marie dans L’Assomption de Titien ?",
+            "opts": [
+              "Blanche, avec un manteau vert",
+              "Rouge, avec un manteau bleu",
+              "Jaune, avec un manteau noir",
+              "Bleue, avec un manteau rouge"
+            ],
+            "a": 1,
+            "reveal": "**Rouge, avec un manteau bleu.** Marie s’élève au milieu des anges. Le retable mesure près de sept mètres de haut. Le lien avec Monteverdi : ses Vêpres de 1610 sont dédiées à la Vierge.",
+            "title": "La femme qui s’envole",
+            "img": "img/q/frari-q12.webp",
+            "cap": "Détail recadré : Marie porte une robe rouge et un manteau bleu. · Luca Aless · CC BY-SA 4.0",
+            "src": [
+              "https://www.basilicadeifrari.it/wp-content/uploads/2023/10/FRANCESE-2023.pdf",
+              "https://smarthistory.org/titian-assumption-of-the-virgin/",
+              "https://sscm-jscm.org/jscm-issues/volume-18-no-1/monteverdis-mass-and-vespers-of-1610-the-economic-social-and-courtly-context/"
             ]
           },
           {
-            "title": "La femme qui s'envole",
-            "where": "Au fond de l'église, au-dessus du grand autel, regarde l'immense tableau : une femme monte au ciel sur un nuage.",
-            "q": "De quelle couleur est la grande robe de Marie ?",
+            "idx": 212,
+            "where": "Près de l’entrée, dans la nef de droite : trouve le monument blanc couronné d’un lion ailé.",
+            "q": "Quel autre grand peintre est enterré ici ?",
             "opts": [
-              "Rouge",
-              "Vert",
-              "Jaune"
-            ],
-            "a": 0,
-            "reveal": "Sa robe est **rouge**, avec un manteau bleu. Ce tableau, *L'Assomption*, a été peint par Titien entre 1515 et 1518 : c'est le plus grand tableau d'autel de Venise. Les Vêpres de Monteverdi sont consacrées à la Vierge Marie, comme ce tableau.",
-            "src": [
-              "https://en.wikipedia.org/wiki/Assumption_of_the_Virgin_(Titian)",
-              "https://it.wikipedia.org/wiki/Assunta_(Tiziano)",
-              "https://en.wikipedia.org/wiki/Vespro_della_Beata_Vergine"
-            ]
-          },
-          {
-            "title": "Le deuxième géant",
-            "where": "Dans la nef de droite, cherche un grand monument en forme d'arc de triomphe, orné de statues et de reliefs.",
-            "q": "Quel autre grand peintre est enterré dans cette église ?",
-            "opts": [
-              "Titien (Tiziano Vecellio)",
-              "Tintoret",
+              "Giovanni Bellini",
+              "Le Titien",
+              "Le Tintoret",
               "Véronèse"
             ],
-            "a": 0,
-            "reveal": "**Titien**, de son vrai nom **Tiziano Vecellio** ! Selon la tradition, c'est là qu'il est enterré. Il est mort en 1576. Sur son monument, des reliefs montrent trois de ses tableaux, dont *L'Assomption*.",
+            "a": 1,
+            "reveal": "**Le Titien.** Tiziano Vecellio meurt en 1576. Son monument du XIXᵉ siècle lui rend hommage par plusieurs scènes sculptées d’après ses tableaux : on en compte cinq, dont trois grands reliefs centraux.",
+            "title": "Le deuxième géant",
+            "img": "img/q/frari-q13.webp",
+            "cap": "Monument à Titien : les scènes en relief entourent la figure du peintre. · Didier Descouens · CC BY-SA 4.0",
             "src": [
-              "https://it.wikipedia.org/wiki/Basilica_di_Santa_Maria_Gloriosa_dei_Frari",
-              "https://en.wikipedia.org/wiki/Titian"
+              "https://www.basilicadeifrari.it/wp-content/uploads/2023/10/FRANCESE-2023.pdf",
+              "https://journals.flvc.org/athanor/article/download/126703/126257/207579"
             ]
           }
         ]
       },
       {
-        "title": "Les Secrets des Vêpres",
-        "intro": "Plus besoin de marcher : assieds-toi, mets un casque et écoute.",
-        "transition": "Félicitations, explorateur ! Pendant le concert, essaie de reconnaître l'appel du ténor, puis la réponse du chœur et des instruments. Tu es prêt pour les Vêpres !",
+        "title": "Les Vêpres de Monteverdi",
+        "intro": "Assieds-toi et écoute. Quatre défis d'écoute : le dernier recueille une impression personnelle, sans mauvaise réponse.",
         "steps": [
           {
-            "title": "L'appel de Monteverdi",
+            "idx": 213,
+            "q": "Qui chante en premier dans « Deus in adiutorium » ?",
+            "opts": [
+              "Une voix seule",
+              "Tout le chœur",
+              "Un duo d’enfants",
+              "Personne : les instruments seuls"
+            ],
+            "a": 0,
             "where": "Mets ton casque et appuie sur ▶ pour écouter le tout début des Vêpres.",
-            "q": "Qui chante en premier ?",
-            "opts": [
-              "Un homme seul",
-              "Un chœur",
-              "Une femme",
-              "Personne : seuls les instruments jouent"
-            ],
-            "a": 0,
             "audio": "audio/vespro-deus-intro.mp3",
-            "reveal": "Un **ténor tout seul** lance l'appel « Deus in adiutorium meum intende » (« Dieu, viens à mon aide »). Puis un chœur répond, avec des cornets, des trombones et des violons. Cette fanfare vient de l'opéra *L'Orfeo*, que Monteverdi avait écrit en 1607 !",
+            "reveal": "**Une voix seule.** Une intonation soliste ouvre l’œuvre, puis le chœur répond avec les instruments. La fanfare reprend la toccata de L’Orfeo (1607). Dans beaucoup d’enregistrements, la voix initiale est un ténor.",
+            "title": "L’appel de monteverdi",
+            "img": "img/q/frari-q14.webp",
+            "cap": "Claudio Monteverdi, portrait attribué à Bernardo Strozzi · domaine public",
             "src": [
-              "https://en.wikipedia.org/wiki/Vespro_della_Beata_Vergine"
+              "https://baroque.boston/monteverdi-vespers",
+              "https://www.arcadiaplayers.org/uploads/1/0/5/7/10576653/vespers___revised_web.pdf"
             ]
           },
           {
-            "pending": true,
-            "title": "Trois voix mystérieuses",
-            "where": "Écoute l'extrait « Duo Seraphim ».",
-            "q": "Combien de voix différentes entends-tu à la fin ?",
+            "idx": 214,
+            "q": "Combien de voix entend-on à la fin du « Duo Seraphim » ?",
             "opts": [
-              "Trois",
               "Deux",
+              "Trois",
               "Quatre",
-              "Dix"
+              "Six"
             ],
-            "a": 0,
+            "a": 1,
+            "where": "Écoute l'extrait « Duo Seraphim ».",
             "audio": null,
-            "reveal": "**Trois** voix ! Deux ténors commencent, puis un troisième les rejoint quand le texte parle de la Trinité : le Père, le Fils et l'Esprit saint.",
+            "pending": true,
+            "reveal": "**Trois voix.** Le motet commence à deux voix et en ajoute une troisième lorsque le texte évoque la Trinité.",
+            "title": "Trois voix mystérieuses",
             "src": [
-              "https://en.wikipedia.org/wiki/Vespro_della_Beata_Vergine"
+              "https://baroque.boston/monteverdi-vespers",
+              "https://www.pegasusearlymusic.org/wp-content/uploads/2025/03/Program-notesVespers-2025.pdf"
             ]
           },
           {
-            "pending": true,
-            "title": "Une voix au milieu des instruments",
-            "where": "Écoute l'extrait « Sonata sopra Sancta Maria ».",
-            "q": "Qu'entends-tu ?",
+            "idx": 215,
+            "q": "Dans la « Sonata sopra Sancta Maria », que répète la voix aiguë ?",
             "opts": [
-              "Une voix qui répète une phrase au milieu des instruments",
-              "Seulement des instruments",
-              "Un grand chœur",
-              "Des tambours uniquement"
+              "Alleluia",
+              "Sancta Maria, ora pro nobis",
+              "Gloria in excelsis Deo",
+              "Amen, amen"
             ],
-            "a": 0,
+            "a": 1,
+            "where": "Écoute l'extrait « Sonata sopra Sancta Maria ».",
             "audio": null,
-            "reveal": "Une soprano répète la même phrase : « **Sancta Maria, ora pro nobis** » (« Sainte Marie, priez pour nous »), tirée des litanies de Lorette, pendant que les instruments jouent autour d'elle.",
+            "pending": true,
+            "reveal": "**Sancta Maria, ora pro nobis.** Une voix de dessus répète cette invocation mariale pendant que les instruments se répondent.",
+            "title": "Une voix parmi les instruments",
             "src": [
-              "https://en.wikipedia.org/wiki/Vespro_della_Beata_Vergine"
+              "https://baroque.boston/monteverdi-vespers",
+              "https://www.pegasusearlymusic.org/wp-content/uploads/2025/03/Program-notesVespers-2025.pdf"
             ]
           },
           {
-            "pending": true,
-            "free": true,
-            "title": "Le grand final",
-            "where": "Écoute un extrait du Magnificat.",
-            "q": "Quel sentiment cette musique te donne-t-elle ?",
+            "idx": 216,
+            "q": "Quel sentiment te donne le Magnificat ?",
             "opts": [
               "De la joie",
-              "De l'émerveillement",
-              "De la peur",
-              "De la tristesse"
+              "De l’étonnement",
+              "Du calme",
+              "Un autre sentiment"
             ],
             "a": 0,
+            "free": true,
+            "where": "Écoute un extrait du Magnificat.",
             "audio": null,
-            "reveal": "Il n'y a pas de mauvaise réponse ! Le Magnificat est le chant de louange de Marie dans l'Évangile de Luc. Monteverdi y mêle jusqu'à sept voix et des instruments.",
+            "pending": true,
+            "reveal": "Il n'y a pas de mauvaise réponse ! Choisis le sentiment qui te vient, et raconte ce que tu as entendu.",
+            "title": "Le grand final",
+            "img": "img/q/frari-q17.webp",
+            "cap": "Page de titre des Vêpres, Venise, 1610 · domaine public",
             "src": [
-              "https://en.wikipedia.org/wiki/Vespro_della_Beata_Vergine"
+              "https://baroque.boston/monteverdi-vespers"
             ]
           }
         ]
