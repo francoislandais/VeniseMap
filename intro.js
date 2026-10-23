@@ -226,7 +226,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const restore = () => { if (meta) meta.content = metaOld; };
     root.innerHTML = '<div class="in2-bg"></div><div class="in2-veil"></div><div class="in2-nav"><button type="button" class="in2-prev" aria-label="Précédent">‹</button><button type="button" class="in2-next" aria-label="Suivant">›</button></div>';
     const prevBtn = root.querySelector(".in2-prev"), nextBtn = root.querySelector(".in2-next");
-    let cur = null, idx = -1, busy = false, opening = null;
+    let cur = null, idx = -1, busy = false, opening = null, boatT0 = null;
     const build = (sc) => {
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
       const txt = esc(sc.text ? sc.text() : "").replace(/\n\n/g, "<br><br>");
@@ -284,6 +284,10 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
             d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
       cur = d;
+      if (sc.layout.startsWith("center") && !matchMedia("(prefers-reduced-motion: reduce)").matches) { // le bateau avance très lentement vers la gauche ; une horloge commune évite tout saut entre les écrans 5 et 6
+        boatT0 ??= document.timeline.currentTime;
+        const bt = d.querySelector(".in2-img"), an = bt.animate([{ left: "calc(50% + 5vw)" }, { left: "calc(50% - 12vw)" }], { duration: 45000, easing: "linear", fill: "forwards" }); an.startTime = boatT0;
+      }
       const vl = root.querySelector(".in2-veil"); if (sc.layout !== "hello") vl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }); // le tableau reste en permanence ; le voile de lecture n'est que sur l'écran 1
       if (sc.layout === "hello") { opening = openingShot(d, !first); let ready = !!(!first); opening.done.then(() => (ready = true)); if (!first) ready = true; d.addEventListener("click", (e) => { if (ready && !editing) go(to + 1); }); }
       else if (sc.layout === "who") { d.querySelector(".wh-ok").onclick = () => { if (!editing) go(to + 1); }; }
