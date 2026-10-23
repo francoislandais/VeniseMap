@@ -1451,7 +1451,8 @@ async function runChapters(p, replay = false) {
   try {
     const say = async (el, text, pad) => { cortoType(el); await bsleep(900); cortoFill(el, text.replace(/\{g\}/g, gradeLc())); bFill(el, pad); await bsleep(350); };
     // Liste plate de questions-réponses (les chapitres ne servent plus qu'à ranger les données).
-    const all = p.chapters.flatMap((cc) => cc.steps).filter((s) => !s.pending);
+    // Plus d'enchaînement direct image → question : les questions liées (next) deviennent des étapes à part entière, chacune suivie de sa révélation (photo + explication de Corto) et du bouton « Suite ».
+    const all = p.chapters.flatMap((cc) => cc.steps).filter((s) => !s.pending).flatMap(chainOf).map((x) => ({ ...x, next: undefined }));
     // Reprise : si l'enfant a déjà répondu à des questions, il retrouve exactement la première question restante.
     const answered = all.flatMap(chainOf).filter((s) => taskDone(p.id, s.idx)).length;
     let lead = replay ? `On refait les épreuves, {g} ! Tu peux t'amuser à réessayer !` : answered ? `Reprenons là où nous en étions, {g} !` : `Te voilà dans ${p.name.replace(/^L'/, "l'")}, {g} !`, el = chatAdd(typingHtml, "fc"), fresh = true;
