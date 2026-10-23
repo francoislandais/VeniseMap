@@ -90,13 +90,13 @@ export async function cutout(src, S = 256) {
   return du.startsWith("data:image/webp") ? du : out.toDataURL("image/png");
 }
 
-/* ───────── Cadrage standard : ovale du visage + haut des épaules ─────────
-   Toutes les photos de profil ont la même mise en page (FRAME 300×400) : le visage est dans l'ovale FACE (fractions du cadre).
-   Les tenues de grade s'y posent donc toujours au même endroit, sans deviner où est la tête. */
+/* ───────── Cadrage standard : visage en haut, buste visible en dessous ─────────
+   Les anciens portraits gardent FACE ; les nouveaux mémorisent SELFIE_FACE pour placer les tenues au bon endroit. */
 export const FRAME = { w: 300, h: 400 };
-export const FACE = { cx: 0.5, cy: 0.4, w: 0.46, h: 0.52 }; // ovale de départ (plus petit : on voit mieux les épaules). Chaque photo mémorise l'ovale utilisé (frameSpec) : c'est lui qui règle la pose des tenues.
+export const FACE = { cx: 0.5, cy: 0.4, w: 0.46, h: 0.52 }; // anciens portraits enregistrés avec frame: true
+const SELFIE_FACE = { cx: 0.5, cy: 0.32, w: 0.4, h: 0.4 }; // visage dans la moitié haute ; épaules et buste dans la moitié basse
 // Géométrie du cadre mémorisée avec la photo : si l'ovale change un jour, les anciennes photos gardent leurs proportions.
-export const frameSpec = () => ({ v: 1, cx: FACE.cx, cy: FACE.cy, w: FACE.w, h: FACE.h });
+export const frameSpec = () => ({ v: 2, cx: SELFIE_FACE.cx, cy: SELFIE_FACE.cy, w: SELFIE_FACE.w, h: SELFIE_FACE.h });
 export function frameShot(src) { // recadre au format 3:4 (centre), comme l'aperçu de la caméra
   const w = src.naturalWidth || src.videoWidth || src.width, h = src.naturalHeight || src.videoHeight || src.height;
   const sw = Math.min(w, (h * 3) / 4), sh = (sw * 4) / 3, sx = (w - sw) / 2, sy = (h - sh) / 2;
@@ -118,18 +118,19 @@ export async function cutoutFramed(frame) {
   x.globalCompositeOperation = "destination-in"; x.filter = "blur(1.2px)"; x.drawImage(mc, 0, 0, FRAME.w, FRAME.h); x.filter = "none"; x.globalCompositeOperation = "source-over";
   fadeBottom(out); return toUrl(out);
 }
-export function framedFallback(frame) { // sans segmentation : photo cadrée dans un grand ovale adouci
+export function framedFallback(frame) { // sans segmentation : on garde le visage et le buste, avec des bords adoucis
   const out = document.createElement("canvas"); out.width = FRAME.w; out.height = FRAME.h; const x = out.getContext("2d"); x.drawImage(frame, 0, 0);
-  const m = document.createElement("canvas"); m.width = FRAME.w; m.height = FRAME.h; const y = m.getContext("2d"); y.filter = "blur(10px)"; y.fillStyle = "#000"; y.beginPath(); y.ellipse(FRAME.w / 2, FRAME.h * 0.56, FRAME.w * 0.46, FRAME.h * 0.46, 0, 0, Math.PI * 2); y.fill();
-  x.globalCompositeOperation = "destination-in"; x.drawImage(m, 0, 0); x.globalCompositeOperation = "source-over"; return toUrl(out);
+  const side = x.createLinearGradient(0, 0, FRAME.w, 0); side.addColorStop(0, "transparent"); side.addColorStop(0.06, "#000"); side.addColorStop(0.94, "#000"); side.addColorStop(1, "transparent");
+  x.globalCompositeOperation = "destination-in"; x.fillStyle = side; x.fillRect(0, 0, FRAME.w, FRAME.h); x.globalCompositeOperation = "source-over";
+  fadeBottom(out); return toUrl(out);
 }
 
 /* ───────── Caméra ───────── */
 export function selfie() {
   return new Promise((resolve) => {
     const cam = document.createElement("div"); cam.className = "cam";
-    cam.innerHTML = `<p class="cam-t">Place ton visage dans l'ovale, épaules en bas</p>
-      <div class="cam-ring cam-frame"><video autoplay playsinline muted></video><img class="cam-prev" alt="" hidden><i class="cam-oval" style="left:${(FACE.cx - FACE.w / 2) * 100}%;top:${(FACE.cy - FACE.h / 2) * 100}%;width:${FACE.w * 100}%;height:${FACE.h * 100}%"></i><svg class="cam-sh" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M2 100 C 6 84, 24 80, 36 80 L 64 80 C 76 80, 94 84, 98 100" fill="none" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 2.5"/></svg></div>
+    cam.innerHTML = `<p class="cam-t">Recule un peu : ton visage dans l'ovale, tes épaules et ton buste dans le cadre.</p>
+      <div class="cam-ring cam-frame"><video autoplay playsinline muted></video><img class="cam-prev" alt="" hidden><i class="cam-oval" style="left:${(SELFIE_FACE.cx - SELFIE_FACE.w / 2) * 100}%;top:${(SELFIE_FACE.cy - SELFIE_FACE.h / 2) * 100}%;width:${SELFIE_FACE.w * 100}%;height:${SELFIE_FACE.h * 100}%"></i><svg class="cam-sh" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M4 100 C 8 77, 20 61, 36 58 M64 58 C 80 61, 92 77, 96 100" fill="none" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 2.5"/></svg></div>
       <p class="cam-err" hidden></p>
       <div class="cam-bar"><button class="cam-btn" data-x>Annuler</button><button class="cam-shot" data-shot aria-label="Prendre la photo"></button>
         <label class="cam-btn">Une photo<input type="file" accept="image/*" capture="user" hidden data-file></label></div>
@@ -140,14 +141,14 @@ export function selfie() {
     const stop = () => { try { stream && stream.getTracks().forEach((t) => t.stop()); } catch {} };
     const done = (v) => { stop(); cam.remove(); resolve(v); };
     const show = async (srcEl) => {
-      cam.querySelector(".cam-t").textContent = "Je découpe ta tête…"; cam.classList.add("busy");
-      const fr = frameShot(srcEl); try { result = { photo: await cutoutFramed(fr), cut: true, frame: frameSpec() }; } catch (e) { result = { photo: framedFallback(fr), cut: true, frame: frameSpec() }; } // repli : photo cadrée dans un ovale adouci
+      cam.querySelector(".cam-t").textContent = "Je prépare ton portrait…"; cam.classList.add("busy");
+      const fr = frameShot(srcEl); try { result = { photo: await cutoutFramed(fr), cut: true, frame: frameSpec() }; } catch (e) { result = { photo: framedFallback(fr), cut: true, frame: frameSpec() }; } // repli : visage et buste conservés, bords adoucis
       cam.classList.remove("busy"); prev.src = result.photo; prev.classList.toggle("cut", result.cut); prev.hidden = false; video.hidden = true;
-      cam.querySelectorAll(".cam-bar")[0].hidden = true; cam.querySelector("[data-ok]").hidden = false; cam.querySelector(".cam-t").textContent = "Voilà ta tête de marin !";
+      cam.querySelectorAll(".cam-bar")[0].hidden = true; cam.querySelector("[data-ok]").hidden = false; cam.querySelector(".cam-t").textContent = "Voilà ton portrait de marin !";
     };
     cam.querySelector("[data-x]").onclick = () => done(null);
     cam.querySelector("[data-use]").onclick = () => done(result);
-    cam.querySelector("[data-again]").onclick = () => { prev.hidden = true; video.hidden = false; cam.querySelectorAll(".cam-bar")[0].hidden = false; cam.querySelector("[data-ok]").hidden = true; cam.querySelector(".cam-t").textContent = "Place ton visage dans le cercle"; };
+    cam.querySelector("[data-again]").onclick = () => { prev.hidden = true; video.hidden = false; cam.querySelectorAll(".cam-bar")[0].hidden = false; cam.querySelector("[data-ok]").hidden = true; cam.querySelector(".cam-t").textContent = "Ton visage en haut, tes épaules et ton buste dans le cadre."; };
     cam.querySelector("[data-shot]").onclick = async () => {
       if (!video.videoWidth) return;
       const c = document.createElement("canvas"); c.width = video.videoWidth; c.height = video.videoHeight;
@@ -316,7 +317,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       return d;
     };
     const finish = (soft) => {
-      const profile = photoRes ? { name, photo: photoRes.photo, ...(photoRes.cut ? { cut: true } : {}), ...(photoRes.frame ? { frame: true } : {}) } : { name, avatar: (cur0 && cur0.avatar) || AVATARS[Math.floor(Math.random() * AVATARS.length)] };
+      const profile = photoRes ? { name, photo: photoRes.photo, ...(photoRes.cut ? { cut: true } : {}), ...(photoRes.frame ? { frame: photoRes.frame } : {}) } : { name, avatar: (cur0 && cur0.avatar) || AVATARS[Math.floor(Math.random() * AVATARS.length)] };
       if (cur0 && cur0.photo && cur0.photo === profile.photo) { profile.outfit = cur0.outfit; profile.outfitPhoto = cur0.outfitPhoto; } // même photo : on garde la tenue
       saveProfile(profile);
       resolve(profile); restore(); document.body.classList.remove("intro-open"); if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
