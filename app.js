@@ -772,6 +772,8 @@ function openPlace(id, originRect) {
       bind: () => { $$("[data-plan]").forEach((b) => (b.onclick = () => openPlanPanel(place(b.dataset.plan).plan, place(b.dataset.plan)))); $$("[data-final]").forEach((b) => (b.onclick = async () => { await solemn(place(b.dataset.final)); b.remove(); })); $$("[data-photo]").forEach((b) => (b.onclick = () => openMontage(b.dataset.photo))); $$(".m-reply [data-k]").forEach((b) => (b.onclick = () => { if (b.dataset.k === "map") closeMedal(); else { closeSheet(); openChapters(p, true); } })); } });
     return;
   }
+  // Trop loin du lieu : plus de pastille agrandie, simplement un message de Corto (mêmes phrases que le test GPS : near / mid / far, avec distance et temps de marche).
+  if (!inZone(p)) { const d = distTo(p); cortoSays(say(d == null ? "nogps" : d < 200 ? "near" : d > 1500 ? "far" : "mid", p)); return; }
   buildMedal({ id, img: pic(id), title: p.name, bubble: `${esc(teaser(p))}<span class="m-q">Es-tu arrivé ?</span>`, label: "J'y suis !", originRect, bind: () => bindArrive(p) });
   // Épreuve entamée (au moins une question répondue) : le test GPS se fait tout de suite, sans attendre « J'y suis ! ».
   if (inProgress(p)) setTimeout(() => { if (openId === id) tryArrive(p, false); }, 1000);
