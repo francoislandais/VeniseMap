@@ -918,7 +918,7 @@ function menuSay(text) {
   // la bande de Corto est opaque pour le contenu : les onglets s'arrêtent à son bord haut (rien ne défile derrière le texte), sa hauteur suit la longueur du message
   const th = $(".dm-txt", m).offsetHeight, H = Math.max(190, Math.round(th + 92 + 14)); document.documentElement.style.setProperty("--bandh", H + "px"); m.style.height = `calc(${H}px + var(--safe-b))`;
 }
-function cortoFill(el, text) { const b = el && $(".m-bubble", el); if (b) { b.classList.remove("typing"); b.innerHTML = richText(text); if (chatSel !== "#b-talk") { const c = $(chatSel); if (c && c.scrollHeight > c.clientHeight) c.scrollTop = c.scrollHeight - c.clientHeight; } } }
+function cortoFill(el, text) { const b = el && $(".m-bubble", el); if (b) { b.classList.remove("typing"); b.innerHTML = richText(text); if (el.closest("#sheet.chap")) fitChapTalk(); if (chatSel !== "#b-talk") { const c = $(chatSel); if (c && c.scrollHeight > c.clientHeight) c.scrollTop = c.scrollHeight - c.clientHeight; } } }
 let busy = false;
 function enterPlace(p) { if (arrived(p.id)) { closeSheet(); openQuest(p.id); } else doArrive(p); }
 // Répliques de Corto : plusieurs variantes par situation, qui tiennent compte du grade du joueur.
@@ -1038,6 +1038,20 @@ function fitRevImg(im) {
   const cq = parseFloat(sh.style.getPropertyValue("--cqh")) || 150, top = SAFE_T() + 8, H = Math.max(120, sh.clientHeight - cq - top + 6), W = sh.clientWidth, r = im.naturalWidth / im.naturalHeight, w = Math.min(W, H * r);
   im.style.width = Math.round(w) + "px"; im.style.height = Math.round(w / r) + "px";
 }
+// Le texte de l'épreuve grandit autant que possible ; son bord bas reste au-dessus de la tête de Corto.
+function fitChapTalk() {
+  const sh = $("#sheet.chap"), bt = sh && $("#b-talk", sh);
+  if (!bt || !$(".m-bubble:not(.typing)", bt)) return;
+  const limit = sh.clientHeight - SAFE_T() - 72; // laisse libres les commandes du coin haut
+  bt.style.setProperty("--cqfix", "auto");
+  for (let size = Math.min(24, Math.max(18, sh.clientWidth * .06)); size >= 12; size -= .5) {
+    bt.style.setProperty("--cqfont", size + "px");
+    if (bt.offsetHeight <= limit) break;
+  }
+  sh.style.setProperty("--cqh", bt.offsetHeight + "px");
+  $$(".rev-img", sh).forEach(fitRevImg);
+}
+window.addEventListener("resize", () => { if ($("#sheet.chap")) fitChapTalk(); });
 const bToTop = (el) => { const c = $("#b-talk"); if (c && el) c.scrollTo({ top: el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop, behavior: "smooth" }); };
 // Les bulles gardent la hauteur de leur texte. Quand la conversation devient plus longue que la place disponible, elle défile
 // pour que le dernier message descende jusqu'en bas (au-dessus des boutons s'il y en a), avec une petite respiration.
@@ -1464,18 +1478,7 @@ async function runChapters(p, replay = false) {
     let lead = replay ? `On refait les épreuves, {g} ! Tu peux t'amuser à réessayer !` : answered ? `Reprenons là où nous en étions, {g} !` : `Te voilà dans ${p.name.replace(/^L'/, "l'")}, {g} !`, el = chatAdd(typingHtml, "fc"), fresh = true;
     const todo = all.filter((s) => replay || chainOf(s).some((x) => !taskDone(p.id, x.idx)));
     const sh = $("#sheet");
-    { // Bande de Corto stable : sa hauteur est fixée une fois pour toutes sur le texte le plus long de l'épreuve (questions comme explications), puis elle ne bouge plus.
-      try { await document.fonts.ready; } catch {}
-      const bt = $("#b-talk"), lead = "On refait les épreuves, capitaine ! Tu peux t'amuser à réessayer !", clean = (t) => String(t || "").replace(/\*\*/g, "").replace(/\{g\}/g, "capitaine");
-      const qs0 = all.map((x) => clean(`${x.where || ""} ${x.q}`)), longestQ = qs0.reduce((a, b) => (b.length > a.length ? b : a), "");
-      const texts = [...qs0, `${lead} ${longestQ}`, ...all.map((x) => clean(`C'est la bonne réponse ! ${x.reveal || ""}`))];
-      if (bt) {
-        const pr = document.createElement("div"); pr.className = "b-talk"; pr.setAttribute("aria-hidden", "true"); pr.style.cssText = "visibility:hidden;pointer-events:none;height:auto;max-height:none;bottom:0";
-        pr.innerHTML = '<div class="msg"><div class="m-bubble"></div></div>'; sh.appendChild(pr); let H = 0;
-        for (const t of texts) { $(".m-bubble", pr).textContent = t; H = Math.max(H, pr.offsetHeight); }
-        pr.remove(); bt.style.setProperty("--cqfix", Math.min(H, Math.round(sh.clientHeight * 0.66)) + "px");
-      }
-    }
+    try { await document.fonts.ready; } catch {} // mesure après chargement de la police de Corto
     const chainBar = (qs, from) => qs.slice(from).reduce((m, x) => Math.max(m, barHeight(x.opts)), 0);
     // Place l'image de révélation sous la bulle de Corto, et la fait finir (fondue) avant les boutons ou les pastilles.
     const placeImg = () => {};

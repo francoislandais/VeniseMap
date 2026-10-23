@@ -1447,5 +1447,6 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
     linear-gradient(to top,rgba(7,24,39,.98) 0%,rgba(8,29,46,.97) 38%,rgba(10,35,53,.88) 62%,rgba(11,38,57,.56) 82%,rgba(11,38,57,0) 100%);
 }
 #sheet.chap .b-talk .m-bubble{color:#fff;text-shadow:0 1px 3px rgba(2,13,25,.8),0 0 10px rgba(2,13,25,.42)}
+#sheet.chap .b-talk .m-bubble{font-size:var(--cqfont,18px)}
 #sheet.chap .b-talk .m-bubble b{background:none}
 #sheet.chap .tw-cur::after{border-right-color:#fff}
