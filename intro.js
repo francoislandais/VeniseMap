@@ -231,6 +231,20 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         for (let j = i + 1; j < keys.length; j++) { const b = boxOf(els[keys[j]]); if (hov(r, b)) lim = Math.min(lim, b.top - 8); }
         if (r.bottom > lim) shift(k, Math.max(lim - r.bottom, mt - r.top));
       }
+      // « Voici mon bateau » : le dernier paragraphe s'arrête avant le haut réel de la tête de Corto.
+      if (sc.key === "s5" && els.p3 && els.face) {
+        const last = els.p3, limit = boxOf(els.face).top - 10, previous = els.p2 ? boxOf(els.p2).bottom + 8 : mt;
+        let r = boxOf(last);
+        if (r.bottom > limit) {
+          const room = Math.max(1, limit - previous);
+          if (r.bottom - r.top > room) {
+            last._fs *= room / (r.bottom - r.top);
+            applyOne(last, cfgOf(sc, "p3"));
+            r = boxOf(last);
+          }
+          shift("p3", Math.floor(limit - r.bottom));
+        }
+      }
     };
     let fitT = null; const fitSoon = () => { clearTimeout(fitT); fitT = setTimeout(() => fit(cur, SCREENS[idx]), 60); };
     window.addEventListener("resize", fitSoon); window.addEventListener("orientationchange", fitSoon);
