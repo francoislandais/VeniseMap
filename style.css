@@ -1245,3 +1245,6 @@ body.corto-talk #map-btn,body.corto-talk #home-btn,body.corto-talk #corto-btn,bo
 .doge-msg .dm-txt{font-family:"Special Elite","Courier New",Courier,monospace;font-size:17px;line-height:1.4;font-weight:400;letter-spacing:.2px}
 .tw-caret{display:inline-block;width:0;height:1.05em;border-right:2px solid #141822;margin-right:-2px;vertical-align:text-bottom;animation:tw-blink .7s steps(1) infinite}
 @keyframes tw-blink{50%{opacity:0}}
+
+/* Introduction : textes de Corto en police « machine à écrire » */
+.in2-s .hl-hi,.in2-s .hl-q,.in2-s .wl-top p,.in2-s .wl-name,.in2-s .wl-name2,.in2-s .wl-mid p,.in2-s .in2-txt p,.in2-s .in2-btn{font-family:"Special Elite","Courier New",Courier,monospace;letter-spacing:.1px}

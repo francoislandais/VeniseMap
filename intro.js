@@ -269,7 +269,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     ambStart();
     root.innerHTML = '<div class="in2-bg"></div><div class="in2-veil"></div><div class="in2-nav"><button type="button" class="in2-prev" aria-label="Précédent">‹</button><button type="button" class="in2-next" aria-label="Suivant">›</button></div>';
     const prevBtn = root.querySelector(".in2-prev"), nextBtn = root.querySelector(".in2-next");
-    let cur = null, idx = -1, busy = false, opening = null, boatPan = null, readT = null, finaleStarted = false;
+    let cur = null, idx = -1, busy = false, opening = null, boatPan = null, readT = null, finaleStarted = false, curTyping = null;
     const build = (sc) => {
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
       const txt = rich(esc(sc.text ? sc.text() : "")).replace(/\n\n/g, "<br><br>");
@@ -321,6 +321,12 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     if (vv) { vv.addEventListener("resize", lift); vv.addEventListener("scroll", lift); }
     root.addEventListener("focusin", () => setTimeout(lift, 120)); root.addEventListener("focusout", () => setTimeout(lift, 120));
     // Écran 6 = même écran que le 5 : le bateau, le tableau et la tête ne bougent pas, seuls les textes d'en haut sont remplacés en fondu
+    // Les textes de Corto se tapent à la machine à écrire, dans l'ordre de lecture ; un premier toucher les affiche en entier (le suivant tourne la page).
+    const typeTargets = (d, sc) => sc.layout === "hello" ? [".hl-hi", ".hl-q"] : sc.layout === "welcome" ? [".wl-top p", ".wl-name", ".wl-name2", ".wl-mid p"] : sc.layout === "who" ? [] : [".in2-part", ".in2-txt > p:not(.in2-part):not(.in2-ask)", ".in2-ask"];
+    const startTyping = (d, sc, delay, onDone, manual) => {
+      if (curTyping) curTyping.cancel(); curTyping = null; if (editing) { onDone && onDone(); return; }
+      const els = typeTargets(d, sc).flatMap((q) => [...d.querySelectorAll(q)]); curTyping = typeSeq(els, { delay, onDone, manual });
+    };
     const morph = (sc, to) => {
       const t = cur.querySelector(".in2-txt"), old = [...t.querySelectorAll(".in2-part")];
       old.forEach((p) => { p.removeAttribute("data-k"); p.classList.remove("in2-part"); p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).onfinish = () => p.remove(); });
@@ -328,8 +334,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       idx = to; applyTexts(cur, sc, to); const els = elsOf(cur, sc); for (const k in els) if (/^p\d+$/.test(k)) applyOne(els[k], (LAYOUT[sc.key] || {})[k]);
       fit(cur, sc); setTimeout(() => fit(cur, sc), 350);
       prevBtn.style.visibility = "visible"; if (editing) select(null);
-      if (sc.key === "s6" && !editing) readT = setTimeout(() => finale(), 5000); // 5 s après l'apparition de l'écran, la transition vers la carte démarre
-      else if (!editing) {} // retour à l'écran 5 : pas de minuterie
+      startTyping(cur, sc, 900, sc.key === "s6" && !editing ? () => { readT = setTimeout(() => finale(), 5000); } : undefined); // 5 s après la fin de la frappe de l'écran 6, la transition vers la carte démarre
     };
     // Finale : le bateau rapetisse, le tableau se dissout, la carte de Venise se matérialise ; la caméra reste sur le bateau, posé sur l'eau de la lagune
     const finale = async () => {
@@ -365,6 +370,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const go = async (to) => {
       if (busy || to < 0) return;
       clearTimeout(readT);
+      if (curTyping && !curTyping.done) { if (to > idx) { curTyping.finish(); return; } curTyping.cancel(); } // premier toucher : le texte s'affiche en entier
       if (SCREENS[idx]?.layout === "who" && to > idx) { // le prénom est obligatoire pour quitter l'écran d'identité
         const i = root.querySelector("#in2-name"); const v = i ? i.value.trim() : name; if (!v) { if (i) i.focus(); return; } name = v;
       }
@@ -377,12 +383,13 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
             d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
       cur = d;
+      if (sc.layout === "hello") { if (first) startTyping(d, sc, 0, undefined, true); else startTyping(d, sc, 300); } else startTyping(d, sc, 800);
       if (sc.layout === "welcome") musStart(); // Corto se présente : la musique entre
       if (sc.layout.startsWith("center") && !boatPan && !matchMedia("(prefers-reduced-motion: reduce)").matches) { // le bateau reste en place (il tangue seulement) : c'est le tableau de fond qui défile très lentement vers la gauche, ce qui donne l'impression que le bateau avance
         boatPan = root.querySelector(".in2-bg").animate([{ backgroundPosition: "10% 50%" }, { backgroundPosition: "30% 50%" }], { duration: 60000, easing: "linear", fill: "forwards" });
       }
       const vl = root.querySelector(".in2-veil"); if (sc.layout !== "hello") vl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }); // le tableau reste en permanence ; le voile de lecture n'est que sur l'écran 1
-      if (sc.layout === "hello") { opening = openingShot(d, !first); let ready = !!(!first); opening.done.then(() => (ready = true)); if (!first) ready = true; d.addEventListener("click", (e) => { if (ready && !editing) go(to + 1); }); }
+      if (sc.layout === "hello") { opening = openingShot(d, !first); let ready = !!(!first); opening.done.then(() => { ready = true; if (cur === d && curTyping) curTyping.go(350); }); if (!first) ready = true; d.addEventListener("click", (e) => { if (ready && !editing) go(to + 1); }); }
       else if (sc.layout === "who") { d.querySelector(".wh-ok").onclick = () => { if (!editing) go(to + 1); }; }
       else if (sc.button) d.querySelector(".in2-btn").onclick = () => go(to + 1);
       else setTimeout(() => d.addEventListener("click", (e) => { if (!editing && !e.target.closest("input,form,button")) go(idx + 1); }), 350);
@@ -462,6 +469,22 @@ function typewriter(el, text, delay = 450) {
     t = setTimeout(step, ch === "," ? 150 : ".!?…:".includes(ch) ? 300 : ch === " " ? 30 : 26 + Math.random() * 28);
   };
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) api.finish(); else t = setTimeout(step, delay);
+  return api;
+}
+
+// Même effet « machine à écrire » pour plusieurs éléments de suite (textes de l'introduction), en gardant le gras et les retours à la ligne : on remplace temporairement chaque lettre par un <span> invisible, puis on rétablit le HTML d'origine.
+function typeSeq(els, { delay = 400, speed = 1, onDone, manual = false } = {}) {
+  const caret = document.createElement("span"); caret.className = "tw-caret";
+  const items = els.map((el) => { const orig = el.innerHTML, chars = []; const walk = (node) => [...node.childNodes].forEach((n) => { if (n.nodeType === 3) { const f = document.createDocumentFragment(); for (const ch of n.nodeValue) { const sp = document.createElement("span"); sp.textContent = ch; sp.style.opacity = "0"; f.appendChild(sp); chars.push(sp); } n.replaceWith(f); } else if (n.nodeType === 1 && n.tagName !== "BR") walk(n); }); walk(el); return { el, orig, chars }; });
+  const all = items.flatMap((it) => it.chars.map((c, k) => ({ c, first: k === 0 }))); let i = 0, t = null;
+  const restore = () => { clearTimeout(t); caret.remove(); items.forEach((it) => { it.el.innerHTML = it.orig; }); api.done = true; };
+  const api = { done: false, go(d = 0) { if (!api.done && !t) t = setTimeout(step, d); }, finish() { if (api.done) return; restore(); onDone && onDone(); }, cancel() { if (api.done) return; restore(); } };
+  const step = () => {
+    if (i >= all.length) { api.finish(); return; }
+    const { c, first } = all[i++]; c.style.opacity = "1"; c.after(caret); const ch = c.textContent;
+    t = setTimeout(step, (ch === "," ? 140 : ".!?…:".includes(ch) ? 280 : ch === " " ? 26 : 22 + Math.random() * 22) * speed + (all[i] && all[i].first ? 260 : 0));
+  };
+  if (!all.length || matchMedia("(prefers-reduced-motion: reduce)").matches) { restore(); onDone && onDone(); } else if (!manual) t = setTimeout(step, delay);
   return api;
 }
 
