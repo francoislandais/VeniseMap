@@ -289,7 +289,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       saveProfile(profile);
       resolve(profile); restore(); document.body.classList.remove("intro-open"); if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
       const msg = document.createElement("div"); msg.className = "in2-end"; // écran 7 : la carte est révélée pour la première fois, Corto parle en bas
-      msg.innerHTML = `<i class="sp"></i><img src="img/corto-content.webp" alt=""><p>Je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p>`;
+      msg.innerHTML = `<i class="sp"></i><img src="img/corto-content.webp" alt=""><p>Je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<span class="gap"></span>À bientôt, moussaillon !</p>`;
       msg.style.opacity = 0; document.body.appendChild(msg);
       // Le texte court sur toute la largeur puis s'enroule autour de Corto, calé en bas à droite : une cale invisible (flottante) repousse l'image vers le bas du bloc
       const wrapAround = () => { const sp = msg.querySelector(".sp"), im = msg.querySelector("img"), pp = msg.querySelector("p"); sp.style.height = "0px"; for (let n = 0; n < 4; n++) sp.style.height = Math.max(0, pp.offsetHeight - im.offsetHeight + 6) + "px"; };
