@@ -787,11 +787,10 @@ function openPlace(id, originRect) {
   if (suspended) { if (suspended.id === id && inZone(p)) { resumeSuspended(); return; } closeSheet(); }
   // Enquête commencée et enfant toujours dans la zone : on reprend instantanément là où il en était, sans repasser par l'accueil.
   if (arrived(p.id) && !complete(p) && inZone(p)) { closeSheet(); openQuest(p.id); return; }
-  // Épreuve terminée : plus de « J'y suis ! » ni de test GPS, Corto félicite tout de suite et propose de refaire les épreuves.
+  // Épreuve terminée : retrouver la même conclusion, sur la photo du lieu, sans relancer le questionnaire.
   if (p.chapters && complete(p)) {
     if (p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
-    buildMedal({ id, img: pic(id), title: p.name, chatHtml: endCardHtml(p), actions: `<button class="b-btn ghost small" data-k="map">Revenir à la carte</button><button class="b-btn go-next" data-k="redo">Refaire les épreuves</button>`, originRect,
-      bind: () => { $$("[data-plan]").forEach((b) => (b.onclick = () => openPlanPanel(place(b.dataset.plan).plan, place(b.dataset.plan)))); $$("[data-photo]").forEach((b) => (b.onclick = () => openMontage(b.dataset.photo))); $$(".m-reply [data-k]").forEach((b) => (b.onclick = () => { if (b.dataset.k === "map") closeMedal(); else { closeSheet(); openChapters(p, true); } })); } });
+    openChapters(p, false, true);
     return;
   }
   buildMedal({ id, img: pic(id), title: p.name, bubble: `${esc(teaser(p))}<span class="m-q">Es-tu arrivé ?</span>`, label: "J'y suis !", originRect, bind: () => bindArrive(p) });
@@ -1044,9 +1043,11 @@ function fitRevImg(im) {
 function fitChapTalk() {
   const sh = $("#sheet.chap"), bt = sh && $("#b-talk", sh);
   if (!bt || !$(".m-bubble:not(.typing)", bt)) return;
+  const conclusion = sh.classList.contains("chap-conclusion");
   const limit = sh.clientHeight - SAFE_T() - 72; // laisse libres les commandes du coin haut
   bt.style.setProperty("--cqfix", "auto");
-  for (let size = Math.min(24, Math.max(18, sh.clientWidth * .06)); size >= 12; size -= .5) {
+  const start = conclusion ? Math.min(36, Math.max(28, sh.clientWidth * .086)) : Math.min(24, Math.max(18, sh.clientWidth * .06));
+  for (let size = start; size >= (conclusion ? 18 : 12); size -= .5) {
     bt.style.setProperty("--cqfont", size + "px");
     if (bt.offsetHeight <= limit) break;
   }
@@ -1348,7 +1349,7 @@ function chapAudioCard(s) {
 }
 const EXIT_SVG = '<svg viewBox="0 0 48 48" width="24" height="24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M26 5a10 10 0 0 1 10 10c0 8-10 19-10 19S16 23 16 15A10 10 0 0 1 26 5z"/><circle cx="26" cy="15" r="3.5"/><path d="M6 41h18M11 36l-5 5 5 5"/></svg>';
 const PLAN_SVG = '<svg viewBox="0 0 48 48" width="24" height="24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="38" height="38" rx="6"/><path d="M19 39V27H11v-7h8v-8h10v8h8v7h-8v12z"/></svg>';
-function openChapters(p, replay = false) {
+function openChapters(p, replay = false, conclusionOnly = false) {
   chapCur = p; suspended = null; openId = "chap"; chatSel = "#b-talk"; $("#next").hidden = true; $("#bridge-btn").hidden = true;
   const sh = $("#sheet"); sh.hidden = false; sh.className = "medal-wrap bridge-wrap chap"; delete sh.dataset.k;
   sh.innerHTML = `<div class="chap-bg" style="background-image:url(${pic(p.id)})"></div><div class="chap-g chap-g-top"></div><div class="chap-g chap-g-bot"></div>
@@ -1356,7 +1357,7 @@ function openChapters(p, replay = false) {
   // Épreuve : Corto parle comme partout ailleurs (bande en bas, texte à gauche, sa tête à droite) ; plus de pastille de Corto ni de boutons du coin.
   document.body.classList.add("chap-open");
   { const bt = $("#b-talk"); if (window.ResizeObserver) new ResizeObserver(() => { sh.style.setProperty("--cqh", bt.offsetHeight + "px"); $$(".rev-img").forEach(fitRevImg); }).observe(bt); }
-  if (DEV) { const sk = document.createElement("button"); sk.type = "button"; sk.className = "dev-skip"; sk.textContent = "⏭ Fin"; sk.onclick = () => skipEnd && skipEnd(); sh.appendChild(sk); } // mode dev : sauter à l'écran final
+  if (DEV && !conclusionOnly) { const sk = document.createElement("button"); sk.type = "button"; sk.className = "dev-skip"; sk.textContent = "⏭ Fin"; sk.onclick = () => skipEnd && skipEnd(); sh.appendChild(sk); } // mode dev : sauter à l'écran final
   { // coin bas gauche, permanent : sortir vers la carte de Venise, et (si le lieu en a un) voir le plan
     const dk = document.createElement("div"); dk.className = "dock";
     dk.innerHTML = `<button type="button" class="dk dk-exit" aria-label="Revenir à la carte de Venise">${EXIT_SVG}</button>${p.plan ? `<button type="button" class="dk dk-plan" aria-label="Voir le plan du lieu">${PLAN_SVG}</button>` : ""}`;
@@ -1366,17 +1367,16 @@ function openChapters(p, replay = false) {
   try { history.pushState({ vqBridge: 1 }, ""); } catch {}
   sh.style.backgroundColor = "#0a1c28";
   $(".chap-bg", sh).animate([{ opacity: 0, transform: "scale(1)" }, { opacity: 1, transform: "scale(1.04)", offset: .08 }, { opacity: 1, transform: "scale(1.16)" }], { duration: 20000, easing: "ease-out", fill: "forwards" }); // l'image reste en fond, avec un très lent zoom
-  setTimeout(() => { if (openId === "chap") runChapters(p, replay); }, 350);
+  setTimeout(() => { if (openId === "chap") { if (conclusionOnly) chapEnd(p, true); else runChapters(p, replay); } }, 350);
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
 const endMessage = (p, again = false) => {
   const bravo = again ? "**Tu as déjà mené toutes ces épreuves jusqu'au bout.**" : `**Bravo, ${gradeLc()} ! Tu as mené toutes ces épreuves jusqu'au bout.**`;
   return p.reward ? `${bravo} ${again ? "Rappelle-toi mon indice :" : "Je vais te confier un secret :"} **${p.reward.hint}** Ouvre le plan et regarde cet endroit de près.` : `${bravo} Garde en mémoire ce que tu as découvert ici. Quand tu seras prêt, reprends la carte de Venise.`;
 };
-const endCardHtml = (p) => `<div class="end-card"><div class="end-face"></div><div class="m-bubble">${richText(endMessage(p, true))}</div>${p.plan ? `<button type="button" class="end-photo plan" data-plan="${p.id}">🗺️ Voir le plan</button>` : ""}${MONTAGES[p.id] ? `<button type="button" class="end-photo" data-photo="${p.id}">📸 Photo souvenir</button>` : ""}</div>`;
 async function chapEnd(p, replay) {
   await clearTalk();
-  const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.dataset.k = "one";
+  const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.classList.add("chap-conclusion"); sh.dataset.k = "one";
   const msg = chatAdd(typingHtml, "fc chap-final-msg"); cortoFill(msg, endMessage(p, replay));
   if (p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
   if (MONTAGES[p.id]) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-photo"; b.textContent = "📸 Photo souvenir"; b.onclick = () => openMontage(p.id); sh.appendChild(b); }
