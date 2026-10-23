@@ -94,5 +94,27 @@
   "s5": {
    "txt": "Parfait, alors c'est décidé ! Voici mon bateau. Il sera bientôt amarré à l'embarcadère de Santo Spirito. Retrouvons-nous là-bas quand tu seras prêt."
   }
+ },
+ "s4": {
+  "txt": {
+   "x": -0.58,
+   "y": 4.4,
+   "s": 1
+  },
+  "ask": {
+   "x": -0.7,
+   "y": 50.76,
+   "s": 1
+  },
+  "img": {
+   "x": -1.97,
+   "y": -35.03,
+   "s": 1.38
+  },
+  "btn": {
+   "x": 1.25,
+   "y": 54.66,
+   "s": 1.21
+  }
  }
 }
