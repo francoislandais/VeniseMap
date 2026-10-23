@@ -597,6 +597,9 @@ $("#up-me").onclick = async () => {
   if (!PROFILE) return;
   const p = await editProfile(PROFILE); if (!p) return;
   if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; } // nouvelle photo = plus de tenue
+  applyProfile(p);
+};
+function applyProfile(p) {
   PROFILE = p; saveProfile(p);
   S.kids = [{ name: p.name, avatar: p.avatar || (S.kids[0] && S.kids[0].avatar) || "🦁" }]; S.cfgT = Date.now(); save();
   renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
@@ -1829,7 +1832,7 @@ function renderSettings() {
   const inst = $("#inst", v); if (inst) inst.onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall = null; renderSettings(); };
   $("#syncnow", v).onclick = sync;
   $("#chteam", v).onclick = async () => { try { localStorage.removeItem(TEAMKEY); } catch {} TEAM = null; await joinGame(); await sync(); if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); } refreshAll(); renderSettings(); };
-  $("#intro", v).onclick = () => { setTab("map"); runIntro({ replay: true, name: PROFILE && PROFILE.name }); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
+  $("#intro", v).onclick = async () => { setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
   $("#devtog", v).onchange = (e) => { try { if (e.target.checked) localStorage.setItem("vq_dev", "1"); else localStorage.removeItem("vq_dev"); } catch {} location.reload(); };
   $("#reset", v).onclick = () => {
     if (!confirm("Effacer TOUTE la progression (points, lettres, collections) ?")) return;

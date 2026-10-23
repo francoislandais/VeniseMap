@@ -211,9 +211,9 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       { key: "s5", img: 5, layout: "center-top", text: () => "Parfait, alors c'est décidé ! Mon bateau sera bientôt amarré à l'embarcadère de Santo Spirito. Retrouvons-nous là-bas quand tu seras prêt." },
       { key: "s6", img: 5, layout: "center-bottom", text: () => "Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller." },
     ];
-    const devMode = (() => { try { return ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) || !!localStorage.getItem("vq_dev") || new URL(location.href).searchParams.has("dev"); } catch { return false; } })();
-    const SCREENS = opts.replay && !devMode ? ALL.filter((sc) => sc.layout !== "who") : ALL; // « Revoir l'histoire » saute l'écran d'identité, sauf en mode dev (pour pouvoir le régler)
-    let photoRes = null; // { photo, cut, frame } si l'enfant a pris sa tête
+    const SCREENS = ALL; // l'écran d'identité s'affiche toujours ; en rejeu il reprend le profil existant (nom, photo) et permet de le modifier
+    const cur0 = opts.profile || null;
+    let photoRes = cur0 && cur0.photo ? { photo: cur0.photo, cut: !!cur0.cut, frame: cur0.frame } : null; // { photo, cut, frame } : la tête de l'enfant (reprise du profil en rejeu)
     SCREENS.forEach((sc) => { const i = new Image(); i.src = IMG(sc.img); }); // préchargées
     // Verrou d'écran : la hauteur est figée à celle du départ (le clavier ne change plus la mise en page) ; le clavier ne rétrécit que la vue visible.
     const meta = document.querySelector('meta[name="viewport"]'), metaOld = meta && meta.content;
@@ -249,8 +249,9 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       return d;
     };
     const finish = () => {
-      const profile = opts.replay ? null : photoRes ? { name, photo: photoRes.photo, cut: true, frame: true } : { name, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
-      if (profile) saveProfile(profile);
+      const profile = photoRes ? { name, photo: photoRes.photo, ...(photoRes.cut ? { cut: true } : {}), ...(photoRes.frame ? { frame: true } : {}) } : { name, avatar: (cur0 && cur0.avatar) || AVATARS[Math.floor(Math.random() * AVATARS.length)] };
+      if (cur0 && cur0.photo && cur0.photo === profile.photo) { profile.outfit = cur0.outfit; profile.outfitPhoto = cur0.outfitPhoto; } // même photo : on garde la tenue
+      saveProfile(profile);
       resolve(profile); restore(); document.body.classList.remove("intro-open");
       const msg = document.createElement("div"); msg.className = "in2-end"; // écran 7 : la carte est révélée pour la première fois, Corto parle en bas
       msg.innerHTML = `<p>En attendant notre rencontre, je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt=""><span class="in2-hint">toucher pour continuer</span>`;
