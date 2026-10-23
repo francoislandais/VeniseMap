@@ -210,7 +210,7 @@ function renderBadge() {
 function userEl() {
   const el = document.createElement("div"); el.className = "pin mep";
   el.innerHTML = `<div class="me-ring"></div><div class="me ${PROFILE && PROFILE.photo ? "ph" : "em"}${DEV ? " dev" : ""}">${PROFILE ? profileHtml() : "🙂"}</div>`;
-  el.querySelector(".me").addEventListener("click", (e) => { e.stopPropagation(); openMenuFrom(e.currentTarget); }); // toucher sa propre image ouvre le menu (profil, défis, ponts…)
+  // (le personnage n'est plus cliquable : l'espace de l'enfant s'ouvre par la pastille maison, en bas à gauche)
   return el;
 }
 function refreshUserMarker() { if (userMarker) { const ll = userMarker.getLngLat(); userMarker.remove(); userMarker = null; if (pos) onPos(pos.lat, pos.lon, pos.acc, true); } }
@@ -668,6 +668,8 @@ function renderMap() {
 $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientRect());
 // Pastille de Corto (en bas à gauche, toujours visible) : un toucher fait parler Corto — pour l'instant il salue seulement ; plus tard il donnera ici ses indices.
 $("#corto-btn").onclick = () => cortoSays("Bonjour matelot, comment ça va ?");
+// Pastille maison (à côté de Corto, toujours visible) : ouvre l'espace de l'enfant (profil, défis, ponts, photos, trophées, réglages).
+$("#home-btn").onclick = (e) => { if (tab === "map") openMenuFrom(e.currentTarget); };
 
 /* ───────── Éditeur d'icônes de bâtiments (aperçu local uniquement) ─────────
    Bouton « 🏛 Icônes » : on touche une icône pour la choisir, on la glisse pour déplacer son centre (sa position sur la carte), et à chaque niveau de zoom on règle sa taille
