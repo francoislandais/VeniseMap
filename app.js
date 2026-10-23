@@ -223,6 +223,7 @@ try {
   if (QS.has("dev")) { if (QS.get("dev") === "0") localStorage.removeItem("vq_dev"); else localStorage.setItem("vq_dev", "1"); }
   DEV = localStorage.getItem("vq_dev") !== "0" || QS.has("fake"); // phase de test : actif par défaut, ?dev=0 le coupe
 } catch { DEV = QS.has("fake"); }
+const LOCAL_DEV = DEV && (location.hostname === "localhost" || location.hostname === "127.0.0.1");
 let devPinned = false; // le bateau a été posé à la main : le GPS réel est ignoré
 function startGeo() {
   const fake = QS.get("fake");
@@ -296,7 +297,7 @@ async function arrivalReveal(p) {
   const cl = $(".m-close", sh); if (cl) cl.remove(); // pas de croix sur cet écran
   const arr = document.createElement("div"); arr.className = "arr";
   arr.innerHTML = `<div class="arr-top"><div class="msg fc"><span class="arr-face"></span><div class="m-bubble typing"><i></i><i></i><i></i></div></div></div>
-    <div class="arr-bot"><div class="arr-name">${esc(p.name)}</div><button class="arr-go" id="arr-go">${done === 0 ? "Commencer l'épreuve" : done < p.tasks.length ? "Continuer l'épreuve" : "Revoir le lieu"}</button></div>`;
+    <div class="arr-bot"><div class="arr-name">${esc(p.name)}</div><button class="arr-go" id="arr-go">${done === 0 ? "Commencer l'épreuve" : done < p.tasks.length ? "Continuer l'épreuve" : "Revoir le lieu"}</button>${LOCAL_DEV && p.chapters ? '<button type="button" class="arr-dev-finish" style="opacity:0">🔧 Dev · Aller à la conclusion</button>' : ""}</div>`;
   sh.appendChild(arr);
   $(".arr-top", arr).animate([{ opacity: 0, transform: "translateY(-18px)" }, { opacity: 1, transform: "none" }], { duration: 700, easing: "ease-out" });
   $(".arr-face", arr).animate([{ opacity: 0, transform: "translateY(-30px) scale(.4)" }, { opacity: 0, offset: .35 }, { opacity: 1, transform: "scale(1.12)", offset: .8 }, { opacity: 1, transform: "none" }], { duration: 1300, easing: "ease-out" });
@@ -309,6 +310,22 @@ async function arrivalReveal(p) {
   await sleep(500);
   go.animate([{ opacity: 0, transform: "translateY(22px)" }, { opacity: 1, transform: "none" }], { duration: 700, fill: "forwards", easing: "cubic-bezier(.2,.9,.25,1.1)" });
   go.onclick = () => { stopMusic(1200); openQuest(p.id); };
+  const devFinish = $(".arr-dev-finish", arr);
+  if (devFinish) {
+    devFinish.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 700, fill: "forwards", easing: "ease-out" });
+    devFinish.onclick = () => devCompleteChapter(p);
+  }
+}
+// Raccourci réservé à l'aperçu local : termine les questions et les toiles, puis révèle l'indice sans ramasser le trésor.
+function devCompleteChapter(p) {
+  if (!LOCAL_DEV || !p.chapters) return;
+  if (!arrived(p.id)) award("a:" + p.id, POINTS.arrive, meIdx());
+  p.tasks.forEach((t) => { if (!taskDone(p.id, t.idx)) award(`t:${p.id}:${t.idx}`, t.pts, meIdx()); });
+  const steps = p.chapters.flatMap((c) => c.steps.filter((s) => !s.pending).flatMap(chainOf));
+  new Set(steps.map((s) => s.work).filter(Boolean)).forEach((id) => { if (!workFound(id)) award("w:" + id, POINTS.work, meIdx()); });
+  if (has("fin:" + p.id)) unaward("fin:" + p.id);
+  if (has("tr:" + p.id)) unaward("tr:" + p.id);
+  save(); closeSheet(); refreshAll(); openChapters(p, false, true);
 }
 function doArrive(p, manual) {
   award("a:" + p.id, POINTS.arrive); save();
@@ -790,10 +807,14 @@ function openPlace(id, originRect) {
   // Épreuve terminée : retrouver la même conclusion, sur la photo du lieu, sans relancer le questionnaire.
   if (p.chapters && complete(p)) {
     if (p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
-    openChapters(p, false, true);
+    openChapters(p, true, true);
     return;
   }
   buildMedal({ id, img: pic(id), title: p.name, bubble: `${esc(teaser(p))}<span class="m-q">Es-tu arrivé ?</span>`, label: "J'y suis !", originRect, bind: () => bindArrive(p) });
+  if (LOCAL_DEV && p.chapters) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "medal-dev-finish"; b.textContent = "🔧 Dev · Aller à la conclusion";
+    b.onclick = () => devCompleteChapter(p); $("#sheet").appendChild(b);
+  }
   // Épreuve entamée (au moins une question répondue) : le test GPS se fait tout de suite, sans attendre « J'y suis ! ».
   if (inProgress(p)) setTimeout(() => { if (openId === id) tryArrive(p, false); }, 1000);
 }
@@ -1233,6 +1254,7 @@ function bindArrive(p) {
 }
 async function tryArrive(p, forced) {
   if (busy) return; busy = true;
+  const devFinish = $(".medal-dev-finish"); if (devFinish) devFinish.remove();
   primeMusic(p);
   const btn = $("#arrive"); btn.disabled = true;
   const c = $("#m-chat"), old = [...c.querySelectorAll(".msg")];
@@ -1367,7 +1389,7 @@ function openChapters(p, replay = false, conclusionOnly = false) {
   try { history.pushState({ vqBridge: 1 }, ""); } catch {}
   sh.style.backgroundColor = "#0a1c28";
   $(".chap-bg", sh).animate([{ opacity: 0, transform: "scale(1)" }, { opacity: 1, transform: "scale(1.04)", offset: .08 }, { opacity: 1, transform: "scale(1.16)" }], { duration: 20000, easing: "ease-out", fill: "forwards" }); // l'image reste en fond, avec un très lent zoom
-  setTimeout(() => { if (openId === "chap") { if (conclusionOnly) chapEnd(p, true); else runChapters(p, replay); } }, 350);
+  setTimeout(() => { if (openId === "chap") { if (conclusionOnly) chapEnd(p, replay); else runChapters(p, replay); } }, 350);
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
 const endMessage = (p, again = false) => {

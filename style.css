@@ -1474,3 +1474,7 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 #sheet.medal-wrap:not(.chap) .end-card .end-face{width:86px;height:86px;margin:0 0 -8px}
 #sheet.medal-wrap:not(.chap) .end-card .m-bubble{max-width:340px;padding:14px 16px;border:1px solid rgba(166,213,229,.5);border-radius:16px;background:rgba(8,32,50,.94);color:#fff;text-align:left;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.35}
 #sheet.medal-wrap:not(.chap) .end-card .end-photo{margin-top:2px;background:rgba(8,43,65,.92);color:#fff;border:1px solid rgba(166,213,229,.6);font-size:14px}
+
+/* Raccourci de l'accueil des épreuves, créé uniquement dans l'aperçu local en mode Dev. */
+#sheet .arr-dev-finish{pointer-events:auto;align-self:center;padding:5px 10px;border:1px solid rgba(255,255,255,.45);border-radius:999px;background:rgba(4,20,32,.55);color:#fff;font-size:11px;font-weight:600}
+#sheet .medal-dev-finish{position:absolute;top:calc(18px + var(--safe-t));left:14px;z-index:9;padding:6px 10px;border:1px solid rgba(255,255,255,.45);border-radius:999px;background:rgba(4,20,32,.65);color:#fff;font-size:11px;font-weight:600}
