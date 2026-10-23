@@ -1210,3 +1210,7 @@ body:not(.jeu) #corto-btn{display:none!important}
 /* Pastille maison : juxtaposée à celle de Corto, même taille */
 .bridge-btn.home-btn{left:calc(10px + 64px + 8px + env(safe-area-inset-left,0px));right:auto}
 body:not(.jeu) #home-btn{display:none!important}
+
+/* Pastille carte : à la suite de la maison */
+.bridge-btn.map-btn{left:calc(10px + 2 * (64px + 8px) + env(safe-area-inset-left,0px));right:auto}
+body:not(.jeu) #map-btn{display:none!important}

@@ -1,4 +1,4 @@
-const VERSION = "v2.101.0";
+const VERSION = "v2.102.0";
 const SHELL = `vq-shell-${VERSION}`;
 // Cœur de l'appli précaché ; tout le reste (images, données, vendor) est mis en cache à la volée.
 const FILES = ["./", "index.html", "style.css", "app.js", "data.js", "intro.js", "mapstyle.js", "config.js", "manifest.webmanifest", "vendor/maplibre-gl.js", "vendor/maplibre-gl.css", "data/petits-canaux.json", "data/outfits.json", "data/bridges.json", "data/facts.json", "icons/icon-192.png", "icons/icon-512.png", "img/corto-face.webp", "img/corto-content.webp", "img/corto-venise-pastel.webp"];

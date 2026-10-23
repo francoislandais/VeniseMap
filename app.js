@@ -670,6 +670,8 @@ $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientR
 $("#corto-btn").onclick = () => cortoSays("Bonjour matelot, comment ça va ?");
 // Pastille maison (à côté de Corto, toujours visible) : ouvre l'espace de l'enfant (profil, défis, ponts, photos, trophées, réglages).
 $("#home-btn").onclick = (e) => { if (tab === "map") openMenuFrom(e.currentTarget); };
+// Pastille carte (à côté de la maison, toujours visible pour l'instant) : ramène à la carte.
+$("#map-btn").onclick = () => { if (tab !== "map") setTab("map"); else if (openId) closeSheet(); };
 
 /* ───────── Éditeur d'icônes de bâtiments (aperçu local uniquement) ─────────
    Bouton « 🏛 Icônes » : on touche une icône pour la choisir, on la glisse pour déplacer son centre (sa position sur la carte), et à chaque niveau de zoom on règle sa taille
