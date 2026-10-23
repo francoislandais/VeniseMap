@@ -209,7 +209,7 @@ function outfitStyle(l, cut, frame) { // place la tenue dans les mêmes coordonn
 }
 function profileHtml() {
   if (!PROFILE) return "🙂";
-  if (PROFILE.photo && PROFILE.outfitOverlay && PROFILE.outfitLayout) {
+  if (PROFILE.photo && PROFILE.outfitOverlay && PROFILE.outfitLayout && PROFILE.outfitOverlayVersion === 2) {
     const style = outfitStyle(PROFILE.outfitLayout, !!PROFILE.cut, PROFILE.frame);
     if (style) {
       const cls = PROFILE.cut ? ` cut${PROFILE.frame ? " frame" : ""}` : "";
@@ -757,7 +757,7 @@ function renderProfileBar() {
 $("#up-me").onclick = async () => {
   if (!PROFILE) return;
   const p = await editProfile(PROFILE); if (!p) return;
-  if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitLayout = PROFILE.outfitLayout; } // nouvelle photo = plus de tenue
+  if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitLayout = PROFILE.outfitLayout; p.outfitOverlayVersion = PROFILE.outfitOverlayVersion; } // nouvelle photo = plus de tenue
   applyProfile(p);
 };
 function applyProfile(p) {
@@ -2095,15 +2095,18 @@ async function composeOutfit(photo, cut, key, o = {}, frame = false) {
   const cs = (m.Wh * cw) / cfg.col.w, chin = pad + (m.chin ?? m.T + (m.B - m.T) * 0.62) + cyy * m.Wh, cx0 = m.cx - cfg.col.ax * cs, cy0 = chin - cfg.col.ay * cs;
   const t = document.createElement("canvas"); t.width = Math.ceil(col.naturalWidth * cs); t.height = Math.ceil(col.naturalHeight * cs); const tx = t.getContext("2d"); tx.drawImage(col, 0, 0, t.width, t.height);
   const g = tx.createLinearGradient(0, 0, 0, t.height); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(Math.min(1, 18 / t.height), "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,1)"); tx.globalCompositeOperation = "destination-in"; tx.fillStyle = g; tx.fillRect(0, 0, t.width, t.height); // fondu du haut seulement (destination-in efface tout hors du rectangle : un seul remplissage)
-  if (!o.hatOnly && !o.plain) x.drawImage(t, cx0, cy0);
-  const colBottom = cy0 + t.height, canvasBottom = H + pad; // si le col s'arrête avant le bas du cadre, on prolonge ses dernières lignes jusqu'en bas
-  if (!o.hatOnly && !o.plain && colBottom < canvasBottom - 1) x.drawImage(t, 0, t.height - 3, t.width, 3, cx0, colBottom - 1, t.width, canvasBottom - colBottom + 2);
+  // Le col s'arrête à sa vraie limite ; son bord suit le cercle doux du portrait enregistré.
+  if (!o.hatOnly && !o.plain) {
+    const radius = Math.min(W, H) * 0.49, feather = Math.min(18, radius * 0.13);
+    const circleX = ox + W / 2 - cx0, circleY = pad + H * (frame ? 0.45 : 0.5) - cy0;
+    const edge = tx.createRadialGradient(circleX, circleY, radius - feather, circleX, circleY, radius);
+    edge.addColorStop(0, "#000"); edge.addColorStop(1, "transparent");
+    tx.globalCompositeOperation = "destination-in"; tx.fillStyle = edge; tx.fillRect(0, 0, t.width, t.height);
+    tx.globalCompositeOperation = "source-over"; x.drawImage(t, cx0, cy0);
+  }
   // chapeau : bord inférieur au niveau du front
   const s = (m.Wh * hs) / cfg.hat.w, brim = pad + m.T + (m.oh ? 0.12 * m.oh : 0.28 * m.Wh) + hy * m.Wh;
   if (!o.noHat && !o.plain) x.drawImage(hat, m.cx - cfg.hat.ax * s, brim - cfg.hat.ay * s, hat.naturalWidth * s, hat.naturalHeight * s);
-  const fz = x.createLinearGradient(0, cv.height * 0.9, 0, cv.height); fz.addColorStop(0, "rgba(0,0,0,1)"); fz.addColorStop(1, "rgba(0,0,0,0)"); // léger fondu en bas, comme la photo
-  const fc = document.createElement("canvas"); fc.width = cv.width; fc.height = cv.height; const fx = fc.getContext("2d"); const fg = fx.createLinearGradient(0, 0, 0, cv.height); fg.addColorStop(0, "rgba(0,0,0,1)"); fg.addColorStop(0.9, "rgba(0,0,0,1)"); fg.addColorStop(1, "rgba(0,0,0,0)"); fx.fillStyle = fg; fx.fillRect(0, 0, cv.width, cv.height);
-  x.globalCompositeOperation = "destination-in"; x.drawImage(fc, 0, 0); x.globalCompositeOperation = "source-over";
   if (o.oval && m.oh) { const y = cv.getContext("2d"); y.save(); y.strokeStyle = "rgba(255,255,255,.95)"; y.lineWidth = 2; y.setLineDash([6, 4]); y.beginPath(); y.ellipse(m.cx, pad + m.T + m.oh / 2, m.Wh / 2, m.oh / 2, 0, 0, Math.PI * 2); y.stroke(); y.restore(); }
   cv.outfitLayout = { w: W, h: H, cw: CW, ch: H + pad, ox, pad };
   return cv;
@@ -2119,8 +2122,8 @@ const CER_TEXT = {
 let ceremonyBusy = false;
 async function wearOutfit(key) { // pose (ou retire, key = null) la tenue sur la photo du profil
   const P = PROFILE; if (!P || !P.photo) return;
-  if (!key) { delete P.outfit; delete P.outfitPhoto; delete P.outfitOverlay; delete P.outfitLayout; }
-  else { OUTFITS ||= await (await fetch("data/outfits.json")).json(); const c = await composeOutfit(P.photo, !!P.cut, key, { garmentsOnly: true }, P.frame || false), du = c.toDataURL("image/webp", 0.9); P.outfit = key; P.outfitOverlay = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); P.outfitLayout = c.outfitLayout; delete P.outfitPhoto; }
+  if (!key) { delete P.outfit; delete P.outfitPhoto; delete P.outfitOverlay; delete P.outfitLayout; delete P.outfitOverlayVersion; }
+  else { OUTFITS ||= await (await fetch("data/outfits.json")).json(); const c = await composeOutfit(P.photo, !!P.cut, key, { garmentsOnly: true }, P.frame || false), du = c.toDataURL("image/webp", 0.9); P.outfit = key; P.outfitOverlay = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); P.outfitLayout = c.outfitLayout; P.outfitOverlayVersion = 2; delete P.outfitPhoto; }
   saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
 }
 async function ceremony(key, li) {
@@ -2362,7 +2365,7 @@ let pendingTeamName = "";
 startFlow();
 async function startFlow() {
   if (!PROFILE) PROFILE = await runIntro(BOAT_OPTS); else ensureBoat();
-  if (PROFILE?.outfit && PROFILE.photo && !PROFILE.outfitOverlay) { try { await wearOutfit(PROFILE.outfit); } catch {} } // ancienne tenue : recrée seulement les vêtements, sans déplacer la photo
+  if (PROFILE?.outfit && PROFILE.photo && PROFILE.outfitOverlayVersion !== 2) { try { await wearOutfit(PROFILE.outfit); } catch {} } // renouvelle les vêtements sans déplacer la photo
   renderBadge(); refreshUserMarker();
   if (JEU) renderHud();
   if (!JEU) { startGeo(); return; }
