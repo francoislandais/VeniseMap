@@ -1410,14 +1410,14 @@ body.menu-open #corto-btn{display:none!important}
 body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 #sheet.chap .chap-g-bot{display:none}
 #sheet.chap .dock{bottom:auto;top:calc(12px + var(--safe-t));left:12px}
-#sheet.chap .b-talk{position:absolute;left:0;right:0;bottom:0;top:auto;height:auto;max-height:52%;z-index:4;padding:56px 108px calc(100px + var(--safe-b)) 20px!important;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;
-  background:linear-gradient(to top,rgba(250,240,222,.97) 0%,rgba(250,240,222,.95) 72%,rgba(250,240,222,0) 100%);pointer-events:none}
+#sheet.chap .b-talk{position:absolute;left:0;right:0;width:100%!important;max-width:none!important;margin:0!important;bottom:0;top:auto;height:auto;max-height:60%;z-index:4;padding:64px 22px calc(100px + var(--safe-b)) 22px!important;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;
+  background:linear-gradient(to top,rgba(250,240,222,.98) 0%,rgba(250,240,222,.97) calc(100% - 34px),rgba(250,240,222,0) 100%);pointer-events:none}
 #sheet.chap .b-talk .msg{display:block;gap:0;padding:0;margin:0}
 #sheet.chap .b-talk .m-face,#sheet.chap .b-talk .arr-face{display:none}
 #sheet.chap .b-talk .m-bubble{background:none;border:0;box-shadow:none;padding:0;margin:0;border-radius:0;color:#141822;font-family:"Special Elite","Courier New",Courier,monospace;font-size:14.5px;line-height:1.34;font-style:normal;text-shadow:0 0 8px #fffaf0,0 0 3px #fffaf0}
 #sheet.chap .b-talk .m-bubble::before,#sheet.chap .b-talk .m-bubble::after{display:none}
 #sheet.chap .b-talk .m-bubble b{font-weight:400;background:linear-gradient(transparent 62%,rgba(240,190,60,.55) 62%)}
-#sheet.chap .cq-head{position:absolute;right:8px;bottom:calc(8px + var(--safe-b));width:100px;height:100px;object-fit:contain;z-index:5;pointer-events:none;filter:drop-shadow(0 3px 5px rgba(0,0,0,.25))}
+#sheet.chap .cq-head{position:absolute;right:8px;bottom:calc(8px + var(--safe-b));width:92px;height:92px;object-fit:contain;z-index:5;pointer-events:none;filter:drop-shadow(0 3px 5px rgba(0,0,0,.25))}
 #sheet.chap .b-actions.stack{position:absolute;left:0;right:0;top:calc(var(--safe-t) + 62px);bottom:calc(var(--cqh,150px) + 10px);z-index:3;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;padding:0 22px}
 #sheet.chap .b-actions.stack .b-btn{width:100%;max-width:340px}
 #sheet.chap .rev-img{position:absolute;left:0;right:0;margin:0 auto;top:calc(var(--safe-t) + 62px)!important;bottom:auto!important;width:auto;height:auto;max-width:calc(100% - 28px);max-height:calc(100% - var(--safe-t) - 62px - var(--cqh,150px) - 76px)!important;object-fit:contain;border-radius:14px;box-shadow:0 0 0 2px #fff,0 6px 18px rgba(0,0,0,.45);background:#f5ecd8;z-index:3}
