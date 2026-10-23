@@ -1,4 +1,4 @@
-import { loadProfile, saveProfile, runIntro, cortoSays, editProfile, FACE } from "./intro.js";
+import { loadProfile, saveProfile, runIntro, cortoSays, editProfile, FACE, typewriter } from "./intro.js";
 import { createMap, WC_URL, OSM_URL, OFM_TILEJSON, FONTS, useStamen } from "./mapstyle.js";
 import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
 
@@ -1522,10 +1522,10 @@ function setTab(t) {
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   $("#up-bar").hidden = t === "map"; if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
-  ["days", "bridges", "photos", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
+  ["days", "bridges", "photos", "works", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
   $("#tab-dev").hidden = !DEV;
   $("#bridge-btn").hidden = t !== "map";
-  if (t === "days") renderDays(); if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
+  if (t === "days") renderDays(); if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
   if (t === "map") { setTimeout(() => map.resize(), 50); renderNext(); } else $("#next").hidden = true;
   if (t !== "map") closeSheetKeep();
 }
@@ -1769,6 +1769,47 @@ const BADGES = [
   { e: "🌟", n: "Maître de Venise", ok: () => PLACES.every(complete) },
   { e: "👑", n: "Gardiens du Lion", ok: () => has("finale") },
 ];
+/* ───────── Œuvres de maîtres : la collection de toiles trouvées au fil des épreuves ─────────
+   Base : data/oeuvres.json (61 œuvres, 19 artistes, 16 lieux, 5 questions par œuvre pour les épreuves à venir). Une toile trouvée = S.done["w:" + id] (étoiles POINTS.work), donc synchronisée comme le reste. */
+let WORKS = null;
+const loadWorks = () => (WORKS ||= fetch("data/oeuvres.json").then((r) => r.json()).catch(() => { WORKS = null; return { artistes: [], lieux: {}, oeuvres: [] }; }));
+const workFound = (id) => has("w:" + id);
+async function findWork(id, opts = {}) { // appelée quand l'enfant réussit l'épreuve qui lui fait gagner cette toile
+  const W = await loadWorks(), w = W.oeuvres.find((x) => x.id === id); if (!w) return false;
+  if (workFound(id)) return false;
+  award("w:" + id, POINTS.work); save(); renderHud(); if (tab === "works") renderWorks();
+  if (!opts.silent) { const a = W.artistes.find((x) => x.cle === w.artiste); cortoSays(`Bravo matelot ! Tu as trouvé une toile de ${a ? a.nom : w.artisteNom} : « ${w.titre.length > 60 ? w.titre.slice(0, 57) + "…" : w.titre} ». +${POINTS.work} ★ !`); }
+  return true;
+}
+window.__works = { find: findWork, load: loadWorks, all: async () => (await loadWorks()).oeuvres.map((w) => w.id), reset: async () => { (await loadWorks()).oeuvres.forEach((w) => { if (workFound(w.id)) unaward("w:" + w.id); }); save(); renderHud(); if (tab === "works") renderWorks(); } };
+const WORKS_MSG = "Trouve des toiles de maîtres à travers la ville : elles s'afficheront ici en hommage à ta ténacité et te rapporteront un max d'étoiles !";
+async function renderWorks() {
+  const v = $("#v-works"), W = await loadWorks(); if (tab !== "works") return;
+  const found = W.oeuvres.filter((w) => workFound(w.id)).length;
+  const tiles = (arts) => arts.map((w) => { const ok = workFound(w.id), ar = Math.max(0.45, Math.min(2.2, w.ratio)); return ok
+    ? `<button type="button" class="wk-t" data-w="${w.id}" style="--ar:${ar}" aria-label="${esc(w.titre)}"><img src="${w.thumb}" alt="" loading="lazy" onerror="this.parentNode.classList.add('noimg')"></button>`
+    : `<button type="button" class="wk-t lock" data-lock="1" style="--ar:${ar}" aria-label="Toile à trouver"><span>?</span></button>`; }).join("");
+  v.innerHTML = `<div class="wk-head"><h2>Œuvres de maîtres</h2><span class="wk-cnt">${found} / ${W.oeuvres.length}</span></div>`
+    + W.artistes.map((a) => { const arts = W.oeuvres.filter((w) => w.artiste === a.cle), n = arts.filter((w) => workFound(w.id)).length; return `<section class="wk-art${n ? "" : " none"}"><h3>${esc(a.nom)} <small>${n} / ${arts.length}</small></h3><div class="wk-row">${tiles(arts)}</div></section>`; }).join("")
+    + `<div class="wk-corto"><span class="wk-face"></span><div class="wk-bub"></div></div>`;
+  const msg = found ? `Déjà ${found} toile${found > 1 ? "s" : ""} sur ${W.oeuvres.length} ! Cherche les autres à travers la ville : chacune te rapporte ${POINTS.work} étoiles.` : WORKS_MSG;
+  typewriter($(".wk-bub", v), msg, 500);
+  $$(".wk-t[data-w]", v).forEach((b) => (b.onclick = () => openWorkView(W, b.dataset.w)));
+  $$(".wk-t.lock", v).forEach((b) => (b.onclick = () => cortoSays("Cette toile t'attend quelque part à Venise… Continue tes épreuves dans les musées et les églises !")));
+}
+function openWorkView(W, id) {
+  const w = W.oeuvres.find((x) => x.id === id); if (!w) return; const a = W.artistes.find((x) => x.cle === w.artiste), lieu = W.lieux[w.lieu];
+  const cc = w.droits && w.droits.statut === "libre_avec_conditions" ? `Photo : ${esc(w.droits.credit || "")} · ${esc(w.droits.licence || "")}` : w.droits && w.droits.credit ? `Photo : ${esc(w.droits.credit)}` : "";
+  const o = document.createElement("div"); o.className = "wview";
+  o.innerHTML = `<div class="wv-img"><img src="${w.img}" alt="" onerror="this.parentNode.classList.add('noimg')"></div>
+    <div class="wv-card"><h3>${esc(a ? a.nom : w.artisteNom)}</h3><p class="wv-title">${esc(w.titre)}</p><p class="wv-desc">${esc(w.desc)}</p>
+    <p class="wv-where">📍 ${esc(lieu ? lieu.nom : "")}${w.ou ? " — " + esc(w.ou) : ""}</p><p class="wv-stars">⭐ +${POINTS.work} étoiles gagnées</p>${cc ? `<p class="wv-credit">${cc}</p>` : ""}</div>
+    <button type="button" class="wv-back" aria-label="Retour">‹ Retour</button>`;
+  document.body.appendChild(o);
+  try { history.pushState({ vqView: 1 }, ""); } catch {}
+  let open = true; viewClose = () => { if (!open) return; open = false; o.remove(); viewClose = null; };
+  $(".wv-back", o).onclick = () => { if (history.state && history.state.vqView) history.back(); else viewClose && viewClose(); };
+}
 function renderTrophies() {
   const v = $("#v-trophies"), pts = pointsOf(meIdx()), li = level(pts), cur = LEVELS[li], nx = LEVELS[li + 1];
   v.innerHTML = `<h2>🏆 Trophées</h2>
@@ -1930,6 +1971,8 @@ async function renderDev() {
   $$("[data-wear]", v).forEach((b) => (b.onclick = async () => { await wearOutfit(b.dataset.wear); toast("Tenue portée : " + b.dataset.wear); renderDev(); }));
   $$("[data-cer]", v).forEach((b) => (b.onclick = () => { setTab("map"); setTimeout(() => ceremony(b.dataset.cer, +b.dataset.li), 350); }));
   const off = $("#dv-off", v); if (off) off.onclick = async () => { await wearOutfit(null); toast("Tenue retirée"); renderDev(); };
+  v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🖼️ Œuvres de maîtres (test)</h2><p class="muted">Simule la découverte des toiles (le vrai déclenchement viendra avec les épreuves).</p><div class="dv-src"><button class="btn ghost" data-wk="one">Trouver une toile</button><button class="btn ghost" data-wk="all">Tout débloquer</button><button class="btn ghost" data-wk="reset">Tout verrouiller</button></div></div>`);
+  $$("[data-wk]", v).forEach((b) => (b.onclick = async () => { const ids = await window.__works.all(); if (b.dataset.wk === "one") { const left = ids.filter((id) => !workFound(id)); if (!left.length) { toast("Toutes les toiles sont déjà trouvées"); return; } await findWork(left[Math.floor(Math.random() * left.length)]); } else if (b.dataset.wk === "all") { for (const id of ids) await findWork(id, { silent: true }); toast("Toutes les toiles sont débloquées"); } else { await window.__works.reset(); toast("Toiles verrouillées"); } }));
   paint();
 }
 function renderSettings() {

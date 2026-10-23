@@ -2791,4 +2791,4 @@ export const PLACES = [
     ] },
 ];
 
-export const POINTS = { arrive: 20, task: 15, coll: 3, page: 25, finale: 100, bridge: 5, quiz: 3 };
+export const POINTS = { arrive: 20, task: 15, coll: 3, page: 25, finale: 100, bridge: 5, quiz: 3, work: 30 }; // work : une toile de maître trouvée

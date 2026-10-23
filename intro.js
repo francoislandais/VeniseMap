@@ -459,7 +459,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
 
 /* ───────── Corto parle (message ponctuel par-dessus la carte) ───────── */
 // Texte « tapé à la machine » : toutes les lettres sont déjà en place (la mise en page ne bouge pas) mais invisibles ; elles apparaissent une à une, avec un curseur et de petites pauses à la ponctuation.
-function typewriter(el, text, delay = 450) {
+export function typewriter(el, text, delay = 450) {
   el.textContent = ""; const chars = [], caret = document.createElement("span"); caret.className = "tw-caret";
   for (const ch of text) { const sp = document.createElement("span"); sp.textContent = ch; sp.style.opacity = "0"; el.appendChild(sp); chars.push(sp); }
   let i = 0, t = null; const api = { done: false, finish() { clearTimeout(t); chars.forEach((c) => (c.style.opacity = "1")); caret.remove(); api.done = true; } };
