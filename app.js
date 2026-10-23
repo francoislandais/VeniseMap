@@ -650,7 +650,7 @@ function renderMap() {
     let el = pinEls[p.id];
     if (!el) {
       const ic = PLACE_ICONS[p.id]; el = document.createElement("div"); el.className = "pin" + (ic ? " has-icon" : ""); el.innerHTML = `<div class="pin-in pic${ic ? " icon" : ""}" style="--img:url(${ic ? ic.src : pic(p.id)})${ic ? `;--iw:${ic.w}px;--ih:${Math.round(ic.w / ic.ratio)}px` : ""}"></div>`;
-      el.addEventListener("click", (e) => { e.stopPropagation(); if (iconEdit && ic) { iconSelect(p.id); return; } openPlace(p.id, el.firstChild.getBoundingClientRect()); });
+      el.addEventListener("click", (e) => { e.stopPropagation(); if (iconEdit && ic) { iconSelect(p.id); return; } openPlaceBump(p.id, el.firstChild.getBoundingClientRect()); });
       const c0 = ICONCFG[p.id], mk = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(ic ? iconPos(p.id, map.getZoom()) : [p.lon, p.lat]).addTo(map);
       if (ic) { iconMarkers[p.id] = { marker: mk, el }; updateIcons(); }
       pinEls[p.id] = el;
@@ -754,7 +754,7 @@ function renderNext() {
   const d = distTo(p);
   b.hidden = false;
   b.innerHTML = `<span class="pth pic" style="--img:url(${pic(p.id)})"></span><span class="grow"><b>${esc(p.name)}</b><small>${d != null ? fmtD(d) + " · " + heat(d, p.r) : "À découvrir"}</small></span>`;
-  b.onclick = () => openPlace(p.id);
+  b.onclick = () => openPlaceBump(p.id);
 }
 
 /* ───────── Fiche d'un lieu ───────── */
@@ -774,10 +774,11 @@ function placeFarLine(p, d) {
   let out = t.replace(/\{G\}/g, g[0].toUpperCase() + g.slice(1)).replace(/\{g\}/g, g).replace(/\{in\}/g, L && L.in || "").replace(/jusqu'\{a\}/g, "jusqu'" + a).replace(/\{la\}/g, la).replace(/\{de\}/g, de).replace(/\{a\}/g, a).replace(/\{dist\}/g, dist).replace(/\{min\}/g, minTxt(d));
   return out[0].toUpperCase() + out.slice(1);
 }
-function bumpPin(id) { const el = pinEls[id] && pinEls[id].firstChild; if (el) el.animate([{ scale: 1 }, { scale: 1.3 }, { scale: 0.93 }, { scale: 1 }], { duration: 420, easing: "ease-out" }); } // petite emphase : le lieu touché grossit puis rétrécit
+// petite emphase : le lieu touché grossit puis rétrécit (transform : la propriété « scale » est verrouillée en !important dans la feuille de style), puis la suite s'ouvre
+function bumpPin(id) { const el = pinEls[id] && pinEls[id].firstChild; if (el) el.animate([{ transform: "scale(1)" }, { transform: "scale(1.4)", offset: 0.35 }, { transform: "scale(0.92)", offset: 0.7 }, { transform: "scale(1)" }], { duration: 440, easing: "ease-in-out" }); }
+function openPlaceBump(id, originRect) { bumpPin(id); setTimeout(() => openPlace(id, originRect), pinEls[id] ? 260 : 0); }
 function openPlace(id, originRect) {
   const p = place(id);
-  bumpPin(id);
   // Trop loin du lieu : plus de pastille agrandie ni de reprise d'épreuve, simplement un message de Corto (phrases near / mid / far avec distance et temps de marche).
   // Le mode dev ne court-circuite plus ce test dès qu'une position est connue (réelle ou épinglée) ; sans aucune position il laisse passer. Un lieu terminé reste consultable.
   { const inReal = !!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX);
@@ -1788,7 +1789,7 @@ function renderDays() {
   menuSay(`Relève des défis, moussaillon, si tu veux progresser dans l'aventure !${n ? ` Déjà **${n}** lieu${n > 1 ? "x" : ""} terminé${n > 1 ? "s" : ""}.` : ""}`);
   v.innerHTML = `<p class="dg-count"><b>${n}</b> / ${PLACES.length} lieux terminés</p>
     <div class="dgrid">${PLACES.map((p) => { const ic = PLACE_ICONS[p.id], ok = complete(p); return `<button type="button" class="dt ${ok ? "ok" : "todo"}${ic ? " ico" : ""}" data-p="${p.id}" aria-label="${esc(p.name)}" title="${esc(p.name)}">${ic ? `<img src="${ic.src}" alt="">` : `<span class="ph" style="background-image:url(${pic(p.id)})"></span>`}</button>`; }).join("")}</div>`;
-  $$(".dt", v).forEach((b) => (b.onclick = () => { setTab("map"); openPlace(b.dataset.p); }));
+  $$(".dt", v).forEach((b) => (b.onclick = () => { setTab("map"); openPlaceBump(b.dataset.p); }));
 }
 
 const cc = (id) => collCount(COLLECTIONS.find((c) => c.id === id));
