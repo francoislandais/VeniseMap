@@ -1138,4 +1138,9 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .in2-editing .in2-txt .in2-ask{pointer-events:auto}
 
 /* Longs paragraphes de l'intro : texte justifié (césure automatique pour éviter les grands blancs) */
-.in2-txt p:not(.in2-ask),.wl-mid p{text-align:justify;text-align-last:left;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word}
+.in2-txt p:not(.in2-ask):not(.in2-part),.wl-mid p{text-align:justify;text-align-last:left;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word}
+
+/* Le bateau (écrans 5 et 6) tangue doucement : roulis léger autour de la coque (propriété « rotate », indépendante de la position / taille réglées dans l'éditeur) */
+@keyframes in2-tangue{0%{rotate:-2.2deg}50%{rotate:2.2deg}100%{rotate:-2.2deg}}
+.in2-s.center-top .in2-img,.in2-s.center-bottom .in2-img{transform-origin:50% 78%;animation:in2-tangue 5.2s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.in2-s.center-top .in2-img,.in2-s.center-bottom .in2-img{animation:none}}
