@@ -211,7 +211,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       { key: "s3", img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
       { key: "s4", img: 4, layout: "top", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.", ask: "Es-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
       { key: "s5", img: 5, layout: "center-top", face: true, parts: ["Parfait, alors c'est décidé !", "Voici mon bateau.", "Il sera bientôt amarré à l'embarcadère de **Santo Spirito**. Retrouvons-nous là-bas quand tu seras prêt."], text: () => "" },
-      { key: "s6", img: 5, layout: "center-bottom", text: () => "Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller." },
+      { key: "s6", base: "s5", img: 5, layout: "center-top", face: true, parts: ["Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller."], text: () => "" },
     ];
     const SCREENS = ALL; // l'écran d'identité s'affiche toujours ; en rejeu il reprend le profil existant (nom, photo) et permet de le modifier
     const cur0 = opts.profile || null;
@@ -226,7 +226,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const restore = () => { if (meta) meta.content = metaOld; };
     root.innerHTML = '<div class="in2-bg"></div><div class="in2-veil"></div><div class="in2-nav"><button type="button" class="in2-prev" aria-label="Précédent">‹</button><button type="button" class="in2-next" aria-label="Suivant">›</button></div>';
     const prevBtn = root.querySelector(".in2-prev"), nextBtn = root.querySelector(".in2-next");
-    let cur = null, idx = -1, busy = false, opening = null, boatPan = null;
+    let cur = null, idx = -1, busy = false, opening = null, boatPan = null, readT = null, finaleStarted = false;
     const build = (sc) => {
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
       const txt = esc(sc.text ? sc.text() : "").replace(/\n\n/g, "<br><br>");
@@ -245,21 +245,21 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         d.innerHTML = `<div class="wl-top"><img class="wl-face" src="img/corto-content.webp" alt=""><p>${esc(sc.head())}</p></div><p class="wl-name">${esc(sc.name2)}</p><p class="wl-name2">${esc(sc.name3)}</p><img class="wl-img" src="img/intro/e2r.webp" alt=""><div class="wl-mid"><p>${esc(sc.text())}</p></div>`;
         return d;
       }
-      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt="">${sc.face ? '<img class="in2-face" src="img/corto-content.webp" alt="">' : ""}<div class="in2-txt">${sc.parts ? sc.parts.map((t, n) => `<p class="in2-part" data-k="p${n + 1}">${rich(esc(t))}</p>`).join("") : `<p>${txt}</p>`}${sc.ask ? `<p class="in2-ask">${esc(sc.ask)}</p>` : ""}${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
+      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt="">${sc.face ? '<img class="in2-face" src="img/corto-content.webp" alt="">' : ""}<div class="in2-txt">${sc.parts ? sc.parts.map((t, n) => `<p class="in2-part${t.length > 90 ? " in2-long" : ""}" data-k="p${n + 1}">${rich(esc(t))}</p>`).join("") : `<p>${txt}</p>`}${sc.ask ? `<p class="in2-ask">${esc(sc.ask)}</p>` : ""}${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
       const im = d.querySelector(".in2-img"); // image à sa proportion réelle, contenue dans la page (le fondu des bords suit l'image elle-même)
       if (sc.layout === "bottom" || sc.layout === "top") { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, lockedH / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
       return d;
     };
-    const finish = () => {
+    const finish = (soft) => {
       const profile = photoRes ? { name, photo: photoRes.photo, ...(photoRes.cut ? { cut: true } : {}), ...(photoRes.frame ? { frame: true } : {}) } : { name, avatar: (cur0 && cur0.avatar) || AVATARS[Math.floor(Math.random() * AVATARS.length)] };
       if (cur0 && cur0.photo && cur0.photo === profile.photo) { profile.outfit = cur0.outfit; profile.outfitPhoto = cur0.outfitPhoto; } // même photo : on garde la tenue
       saveProfile(profile);
-      resolve(profile); restore(); document.body.classList.remove("intro-open");
+      resolve(profile); restore(); document.body.classList.remove("intro-open"); if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
       const msg = document.createElement("div"); msg.className = "in2-end"; // écran 7 : la carte est révélée pour la première fois, Corto parle en bas
       msg.innerHTML = `<p>En attendant notre rencontre, je te laisse découvrir la carte de Venise, qui sera le terrain de notre aventure. Étudie-la bien : elle pourrait t'être précieuse lorsque commencera notre mission…<br><br>À bientôt, moussaillon !</p><img src="img/corto-content.webp" alt=""><span class="in2-hint">toucher pour continuer</span>`;
       msg.style.opacity = 0; document.body.appendChild(msg);
-      root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1400, fill: "forwards", easing: "ease-in-out" }).onfinish = () => root.remove();
-      msg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 700, fill: "forwards" });
+      if (soft) root.remove(); else root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1400, fill: "forwards", easing: "ease-in-out" }).onfinish = () => root.remove();
+      msg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: soft ? 100 : 700, fill: "forwards" });
       setTimeout(() => msg.addEventListener("click", () => msg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).onfinish = () => msg.remove()), 1800);
     };
     const vv = window.visualViewport;
@@ -272,12 +272,55 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     };
     if (vv) { vv.addEventListener("resize", lift); vv.addEventListener("scroll", lift); }
     root.addEventListener("focusin", () => setTimeout(lift, 120)); root.addEventListener("focusout", () => setTimeout(lift, 120));
+    // Écran 6 = même écran que le 5 : le bateau, le tableau et la tête ne bougent pas, seuls les textes d'en haut sont remplacés en fondu
+    const morph = (sc, to) => {
+      const t = cur.querySelector(".in2-txt"), old = [...t.querySelectorAll(".in2-part")];
+      old.forEach((p) => { p.removeAttribute("data-k"); p.classList.remove("in2-part"); p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).onfinish = () => p.remove(); });
+      sc.parts.forEach((txt, n) => { const p = document.createElement("p"); p.className = "in2-part" + (txt.length > 90 ? " in2-long" : ""); p.dataset.k = "p" + (n + 1); p.innerHTML = rich(esc(txt)); p.style.opacity = 0; t.appendChild(p); p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 400, fill: "forwards" }).onfinish = () => (p.style.opacity = ""); });
+      idx = to; applyTexts(cur, sc, to); const els = elsOf(cur, sc); for (const k in els) if (/^p\d+$/.test(k)) applyOne(els[k], (LAYOUT[sc.key] || {})[k]);
+      prevBtn.style.visibility = "visible"; if (editing) select(null);
+      if (sc.key === "s6" && !editing) readT = setTimeout(() => finale(), 4000 + sc.parts.join(" ").length * 55); // le temps de lire, puis la carte apparaît
+      else if (!editing) {} // retour à l'écran 5 : pas de minuterie
+    };
+    // Finale : le bateau rapetisse, le tableau se dissout, la carte de Venise se matérialise ; la caméra reste sur le bateau, posé sur l'eau de la lagune
+    const finale = async () => {
+      if (finaleStarted) return; finaleStarted = true; clearTimeout(readT);
+      if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
+      const m = opts.map, B = opts.boat, bt = cur && cur.querySelector(".in2-img");
+      if (!m || !B || !bt || editing) { finish(); return; }
+      try {
+        B.hide?.();
+        const cr = m.getContainer().getBoundingClientRect(), r = bt.getBoundingClientRect();
+        const px = r.left + r.width / 2 - cr.left, py = r.top + r.height * 0.78 - cr.top, W = cr.width, H = cr.height; // la coque (78 % de la hauteur) est le point d'ancrage
+        m.stop(); m.jumpTo({ center: B.lngLat, zoom: 17.2, bearing: 0, pitch: 0 }); m.panBy([W / 2 - px, H / 2 - py], { animate: false });
+        root.querySelector(".in2-nav")?.remove(); root.querySelector(".in2-ed")?.remove(); root.querySelector(".in2-handle")?.remove();
+        const cream = document.createElement("div"); cream.className = "in2-cream"; root.insertBefore(cream, root.firstChild); root.classList.add("in2-fin");
+        document.body.classList.remove("intro-open"); // la carte (déjà chargée sous le tableau) devient visible dès que le fond s'efface
+        const D = 7000, ease = "cubic-bezier(.45,0,.25,1)";
+        cur.querySelectorAll(".in2-txt, .in2-face").forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1000, fill: "forwards" }));
+        cream.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D * 0.7, delay: D * 0.2, fill: "forwards", easing: "ease-in-out" });
+        root.querySelector(".in2-bg").animate([{ opacity: 1 }, { opacity: 0 }], { duration: D * 0.7, delay: D * 0.2, fill: "forwards", easing: "ease-in-out" });
+        const s0 = parseFloat(getComputedStyle(bt).scale) || 1, s1 = B.w / bt.offsetWidth;
+        // « scale » est appliqué avant le translate(-50%,-50%) de la mise en page : on compense par « translate » pour que la coque reste exactement au même point de l'écran pendant que le bateau rapetisse
+        const tr = (getComputedStyle(bt).translate || "0px 0px").split(" ").map(parseFloat), tx = tr[0] || 0, ty = tr[1] || 0, k = { duration: D, fill: "forwards", easing: ease };
+        bt.animate([{ scale: s0 }, { scale: s1 }], k);
+        bt.animate([{ translate: `${tx}px ${ty}px` }, { translate: `${tx + (s1 - s0) * bt.offsetWidth / 2}px ${ty + (s1 - s0) * bt.offsetHeight / 2}px` }], k);
+        m.easeTo({ center: B.lngLat, zoom: 15, offset: [px - W / 2, py - H / 2], duration: D, easing: (t) => t * t * (3 - 2 * t) });
+        await sleep(D + 80);
+        B.ensure(); // le bateau devient un repère de la carte, exactement au même endroit et à la même taille
+        bt.style.visibility = "hidden";
+      } catch (e) { try { B.ensure(); } catch {} }
+      finish(true);
+    };
     const go = async (to) => {
       if (busy || to < 0) return;
+      clearTimeout(readT);
       if (SCREENS[idx]?.layout === "who" && to > idx) { // le prénom est obligatoire pour quitter l'écran d'identité
         const i = root.querySelector("#in2-name"); const v = i ? i.value.trim() : name; if (!v) { if (i) i.focus(); return; } name = v;
       }
-      if (to >= SCREENS.length) { if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); } if (opening) opening.skip(); finish(); return; }
+      if (to >= SCREENS.length) { if (opening) opening.skip(); finale(); return; }
+      const psc = SCREENS[idx], tsc = SCREENS[to];
+      if (cur && psc && tsc && (tsc.base === psc.key || psc.base === tsc.key)) { busy = true; setTimeout(() => (busy = false), 450); morph(tsc, to); return; } // même écran (bateau, tableau, tête) : seul le texte change
       busy = true; setTimeout(() => (busy = false), 450);
       const sc = SCREENS[to], first = idx === -1, d = build(sc); root.insertBefore(d, root.querySelector(".in2-nav")); idx = to; applyLayout(d, sc, to); if (editing) setTimeout(() => select(null), 0);
       prevBtn.style.visibility = to === 0 ? "hidden" : "visible";
@@ -291,7 +334,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       if (sc.layout === "hello") { opening = openingShot(d, !first); let ready = !!(!first); opening.done.then(() => (ready = true)); if (!first) ready = true; d.addEventListener("click", (e) => { if (ready && !editing) go(to + 1); }); }
       else if (sc.layout === "who") { d.querySelector(".wh-ok").onclick = () => { if (!editing) go(to + 1); }; }
       else if (sc.button) d.querySelector(".in2-btn").onclick = () => go(to + 1);
-      else setTimeout(() => d.addEventListener("click", (e) => { if (!editing && !e.target.closest("input,form,button")) go(to + 1); }), 350);
+      else setTimeout(() => d.addEventListener("click", (e) => { if (!editing && !e.target.closest("input,form,button")) go(idx + 1); }), 350);
     };
     prevBtn.onclick = () => go(idx - 1); nextBtn.onclick = () => go(idx + 1);
     // ───── Éditeur de mise en page (aperçu local uniquement) : on glisse les images et les textes, ± pour la taille, « Enregistrer » écrit data/intro-layout.json ─────
@@ -302,7 +345,8 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const handle = document.createElement("div"); handle.className = "in2-handle"; handle.hidden = true; root.appendChild(handle);
     const placeHandle = () => { if (!selEl || !editing) { handle.hidden = true; return; } const r = selEl.getBoundingClientRect(); handle.style.left = Math.min(innerWidth - 14, r.right) + "px"; handle.style.top = Math.min(lockedH - 14, r.bottom) + "px"; handle.hidden = false; };
     const select = (k) => { root.querySelectorAll(".in2-sel").forEach((e) => e.classList.remove("in2-sel")); selKey = k; selEl = null; if (k) { const e = elsOf(cur, SCREENS[idx])[k]; if (e) { selEl = e; e.classList.add("in2-sel"); } } placeHandle(); };
-    const cfgFor = (k) => { const key = edKey(idx); LAYOUT[key] ||= {}; LAYOUT[key][k] ||= k === "name2" && LAYOUT[key].name ? { ...LAYOUT[key].name } : { x: 0, y: 0, s: 1 }; return LAYOUT[key][k]; };
+    const cfgFor = (k) => { const sc0 = SCREENS[idx], key = sc0.base && ["img", "face", "txt"].includes(k) ? sc0.base : edKey(idx); // l'écran 6 partage le bateau, la tête et le conteneur de l'écran 5
+      LAYOUT[key] ||= {}; LAYOUT[key][k] ||= k === "name2" && LAYOUT[key].name ? { ...LAYOUT[key].name } : { x: 0, y: 0, s: 1 }; return LAYOUT[key][k]; };
     let txtEd = null; const stopText = () => { if (!txtEd) return; for (const [, e] of txtEd) { e.contentEditable = "false"; e.removeAttribute("contenteditable"); e.classList.remove("in2-txted"); e.oninput = null; } txtEd = null; getSelection()?.removeAllRanges(); };
     if (canEdit) {
       const bar = document.createElement("div"); bar.className = "in2-ed";

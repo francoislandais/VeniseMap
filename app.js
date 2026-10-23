@@ -318,6 +318,16 @@ function doArrive(p, manual) {
 }
 /* ───────── Carte ───────── */
 const map = createMap("map", { center: [12.338, 45.4342], zoom: 14 });
+window.__map = map;
+// Le voilier de Corto, amarré dans la lagune près de l'embarcadère de Santo Spirito : repère de la carte, point de rendez-vous. Il apparaît à la fin de l'introduction et reste ensuite.
+const BOAT = { lngLat: [12.3262, 45.4290], w: 64 };
+let boatMarker = null;
+function ensureBoat() {
+  if (boatMarker) { boatMarker.getElement().style.visibility = ""; return; }
+  const el = document.createElement("div"); el.className = "lagoon-boat"; el.innerHTML = '<img src="img/intro/e5.webp" alt="">';
+  boatMarker = new maplibregl.Marker({ element: el, anchor: "center", offset: [0, -0.28 * BOAT.w] }).setLngLat(BOAT.lngLat).addTo(map); // la coque (78 % de la hauteur) est posée sur le point
+}
+const BOAT_OPTS = { map, boat: { lngLat: BOAT.lngLat, w: BOAT.w, ensure: ensureBoat, hide: () => { if (boatMarker) boatMarker.getElement().style.visibility = "hidden"; } } };
 // Taille des macarons selon le zoom : normale de loin, de plus en plus grande à mesure qu'on zoome, tant qu'ils restent séparés les uns des autres.
 const PIN_DMIN = (() => { let m = 1e9; PLACES.forEach((p, i) => PLACES.slice(i + 1).forEach((q) => { m = Math.min(m, Math.hypot((p.lat - q.lat) * 111000, (p.lon - q.lon) * 78000)); })); return Math.max(m, 30); })();
 function updatePinScale() {
@@ -1832,7 +1842,7 @@ function renderSettings() {
   const inst = $("#inst", v); if (inst) inst.onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall = null; renderSettings(); };
   $("#syncnow", v).onclick = sync;
   $("#chteam", v).onclick = async () => { try { localStorage.removeItem(TEAMKEY); } catch {} TEAM = null; await joinGame(); await sync(); if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); } refreshAll(); renderSettings(); };
-  $("#intro", v).onclick = async () => { setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
+  $("#intro", v).onclick = async () => { setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE, ...BOAT_OPTS }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
   $("#devtog", v).onchange = (e) => { try { if (e.target.checked) localStorage.setItem("vq_dev", "1"); else localStorage.removeItem("vq_dev"); } catch {} location.reload(); };
   $("#reset", v).onclick = () => {
     if (!confirm("Effacer TOUTE la progression (points, lettres, collections) ?")) return;
@@ -1959,7 +1969,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
 let pendingTeamName = "";
 startFlow();
 async function startFlow() {
-  if (!PROFILE) PROFILE = await runIntro();
+  if (!PROFILE) PROFILE = await runIntro(BOAT_OPTS); else ensureBoat();
   renderBadge(); refreshUserMarker();
   if (JEU) renderHud();
   if (!JEU) { startGeo(); return; }

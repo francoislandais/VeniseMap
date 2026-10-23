@@ -1153,3 +1153,10 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .in2-s.center-top .in2-txt{background:none;padding-bottom:0}
 .in2-s.center-top::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(var(--safe-t) + 110px);background:linear-gradient(to bottom,#f3ead7 0,#f3ead7 35%,rgba(243,234,215,0) 100%);pointer-events:none}
 .in2-part{text-shadow:0 0 10px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
+
+/* Finale de l'intro : le tableau se dissout sur la carte ; le bateau devient un repère de la carte */
+.in2-cream{position:absolute;inset:0;background:#f3ead7;z-index:0}
+.in2.in2-fin{background:transparent!important}
+.in2-part.in2-long{text-align:justify;text-align-last:left;hyphens:auto;-webkit-hyphens:auto}
+.lagoon-boat{width:64px;height:64px;pointer-events:none}
+.lagoon-boat img{width:100%;height:100%;display:block;transform-origin:50% 78%;animation:in2-tangue 5.2s ease-in-out infinite}
