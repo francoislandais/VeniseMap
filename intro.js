@@ -257,6 +257,13 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     document.body.classList.add("intro-open"); // la carte est masquée pendant l'intro (elle n'apparaît qu'à l'écran 7)
     const root = document.createElement("div"); root.className = "in2"; root.style.setProperty("--lh", lockedH + "px"); document.body.appendChild(root);
     const restore = () => { if (meta) meta.content = metaOld; };
+    // Ambiance marine pendant toute l'introduction (vagues et appels de sternes, CC0, voir audio/credits.txt) ; fondu d'entrée, puis fondu de sortie progressif pendant la finale.
+    const amb = new Audio("audio/mer-mouettes.mp3"); amb.loop = true; amb.volume = 0; amb.preload = "auto";
+    let ambT = null, ambDead = false; const AMB_VOL = 0.5;
+    const ambFade = (to, ms, done) => { clearInterval(ambT); const v0 = amb.volume, t0 = Date.now(); ambT = setInterval(() => { const k = Math.min(1, (Date.now() - t0) / ms); amb.volume = Math.max(0, Math.min(1, v0 + (to - v0) * k)); if (k >= 1) { clearInterval(ambT); done && done(); } }, 60); };
+    const ambStart = () => { if (ambDead) return; amb.play().then(() => { if (!ambDead) ambFade(AMB_VOL, 2500); }).catch(() => { const once = () => { root.removeEventListener("pointerdown", once, true); ambStart(); }; root.addEventListener("pointerdown", once, true); }); }; // les navigateurs exigent parfois un premier toucher
+    const ambStop = (ms) => { if (ambDead) return; ambDead = true; ambFade(0, ms, () => { amb.pause(); amb.src = ""; }); };
+    ambStart();
     root.innerHTML = '<div class="in2-bg"></div><div class="in2-veil"></div><div class="in2-nav"><button type="button" class="in2-prev" aria-label="Précédent">‹</button><button type="button" class="in2-next" aria-label="Suivant">›</button></div>';
     const prevBtn = root.querySelector(".in2-prev"), nextBtn = root.querySelector(".in2-next");
     let cur = null, idx = -1, busy = false, opening = null, boatPan = null, readT = null, finaleStarted = false;
@@ -326,6 +333,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       if (finaleStarted) return; finaleStarted = true; clearTimeout(readT);
       if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
       const m = opts.map, B = opts.boat, bt = cur && cur.querySelector(".in2-img");
+      ambStop(!m || !B || !bt || editing ? 1800 : 7600); // fondu de sortie progressif tout au long de la transition vers la carte
       if (!m || !B || !bt || editing) { finish(); return; }
       try {
         B.hide?.();
