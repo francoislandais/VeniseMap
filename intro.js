@@ -369,8 +369,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     // ───── Éditeur de mise en page (aperçu local uniquement) : on glisse les images et les textes, ± pour la taille, « Enregistrer » écrit data/intro-layout.json ─────
     let editing = false, selEl = null, selKey = null;
     const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
-    let devTok = ""; try { const u = new URL(location.href), t = u.searchParams.get("dev"); if (t) { localStorage.setItem("vq_dev", t); u.searchParams.delete("dev"); history.replaceState(null, "", u); } devTok = localStorage.getItem("vq_dev") || ""; } catch {}
-    const canEdit = local || !!devTok; // en local : toujours ; sur le téléphone : après avoir ouvert une fois l'adresse ?dev=CODE
+    const canEdit = local; // l'éditeur n'existe que dans l'aperçu local (jamais sur les téléphones)
     const handle = document.createElement("div"); handle.className = "in2-handle"; handle.hidden = true; root.appendChild(handle);
     const placeHandle = () => { if (!selEl || !editing) { handle.hidden = true; return; } const r = selEl.getBoundingClientRect(); handle.style.left = Math.min(innerWidth - 14, r.right) + "px"; handle.style.top = Math.min(lockedH - 14, r.bottom) + "px"; handle.hidden = false; };
     const select = (k) => { root.querySelectorAll(".in2-sel").forEach((e) => e.classList.remove("in2-sel")); selKey = k; selEl = null; if (k) { const e = elsOf(cur, SCREENS[idx])[k]; if (e) { selEl = e; e.classList.add("in2-sel"); } } placeHandle(); };
@@ -385,7 +384,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       bar.addEventListener("click", async (e) => {
         const a = e.target.closest("button")?.dataset.a; if (!a) return;
         if (a === "toggle") { stopText(); editing = !editing; if (editing) applyLayout(cur, SCREENS[idx], idx); else fit(cur, SCREENS[idx]); /* en édition : positions brutes ; sinon : positions garanties visibles */ root.classList.toggle("in2-editing", editing); tools.hidden = !editing; select(null); return; }
-        if (a === "save") { try { const r = await fetch("api/intro-layout", { method: "POST", headers: { "Content-Type": "application/json", "X-Dev-Token": devTok }, body: JSON.stringify(LAYOUT) }); if (r.status === 403 && !local) { try { localStorage.removeItem("vq_dev"); } catch {} } say(r.ok ? "Enregistré ✔ (centralisé)" : "Échec : code refusé ou serveur sans --dev"); } catch { say("Échec de l'enregistrement"); } return; }
+        if (a === "save") { try { const r = await fetch("api/intro-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(LAYOUT) }); say(r.ok ? "Enregistré ✔ (data/intro-layout.json)" : "Échec : serveur sans --dev ?"); } catch { say("Échec de l'enregistrement"); } return; }
         if (a === "text") {
           if (txtEd) { stopText(); return; }
           if (!selKey) { say("Touche d'abord un texte"); return; }
