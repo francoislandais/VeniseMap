@@ -1438,3 +1438,13 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 /* Révélation : flou progressif du seul décor, derrière la photo et les commandes. */
 #sheet.chap .chap-bg{filter:blur(0);transition:filter 350ms ease-in-out}
 #sheet.chap.chap-reveal .chap-bg{filter:blur(7px)}
+
+/* Épreuves : lavis bleu nuit sous les paroles de Corto, fondu vers le décor. */
+#sheet.chap .b-talk{
+  background:
+    radial-gradient(ellipse 85% 75% at 18% 88%,rgba(51,91,115,.38),transparent 72%),
+    radial-gradient(ellipse 78% 70% at 88% 70%,rgba(22,67,91,.34),transparent 74%),
+    linear-gradient(to top,rgba(7,24,39,.98) 0%,rgba(8,29,46,.97) 38%,rgba(10,35,53,.88) 62%,rgba(11,38,57,.56) 82%,rgba(11,38,57,0) 100%);
+}
+#sheet.chap .b-talk .m-bubble{color:#fff;text-shadow:0 1px 3px rgba(2,13,25,.8),0 0 10px rgba(2,13,25,.42)}
+#sheet.chap .tw-cur::after{border-right-color:#fff}
