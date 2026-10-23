@@ -1796,7 +1796,9 @@ const objectList = () => PLACES.filter((p) => p.reward).map((p) => ({ id: p.id, 
 const HELD_KEY = "vq_held", HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
 const saveHeld = () => { try { heldId ? localStorage.setItem(HELD_KEY, heldId) : localStorage.removeItem(HELD_KEY); } catch {} };
-const heldSpot = () => ({ left: innerWidth - HELD_SIZE - 8, top: Math.round(innerHeight * 0.36) });
+const HELD_POS = "vq_held_pos";
+const clampHeld = (p) => ({ left: Math.max(4, Math.min(innerWidth - HELD_SIZE - 4, p.left)), top: Math.max(4, Math.min(innerHeight - HELD_SIZE - 4, p.top)) });
+const heldSpot = () => { try { const p = JSON.parse(localStorage.getItem(HELD_POS)); if (p && isFinite(p.left) && isFinite(p.top)) return clampHeld(p); } catch {} return { left: innerWidth - HELD_SIZE - 8, top: Math.round(innerHeight * 0.36) }; }; // là où l'enfant l'a laissé, sinon sur le côté droit
 function mountHeld(id, fromRect) {
   const o = objectList().find((x) => x.id === id && x.found); if (!o) { heldId = null; saveHeld(); return; }
   if (heldEl) heldEl.remove();
@@ -1804,17 +1806,22 @@ function mountHeld(id, fromRect) {
   const p = heldSpot(); el.style.cssText = `left:${p.left}px;top:${p.top}px;width:${HELD_SIZE}px;height:${HELD_SIZE}px`;
   document.body.appendChild(el); heldEl = el;
   if (fromRect) el.animate([{ transform: `translate(${fromRect.left + fromRect.width / 2 - (p.left + HELD_SIZE / 2)}px, ${fromRect.top + fromRect.height / 2 - (p.top + HELD_SIZE / 2)}px) scale(${fromRect.width / HELD_SIZE})` }, { transform: "scale(1.12)", offset: 0.7 }, { transform: "none" }], { duration: 560, easing: "cubic-bezier(.2,.9,.3,1)" }).onfinish = () => el.classList.add("wob"); else el.classList.add("wob");
-  el.onclick = () => { if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
+  // L'enfant peut le déplacer où il veut avec le doigt (il restera là où il le lâche) ; un simple toucher, dans l'onglet Objets, le repose.
+  el.style.touchAction = "none"; let st = null;
+  el.onpointerdown = (e) => { e.preventDefault(); const r = el.getBoundingClientRect(); st = { x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false }; try { el.setPointerCapture(e.pointerId); } catch {} };
+  el.onpointermove = (e) => { if (!st) return; if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return; st.moved = true; el.classList.add("drag"); const q = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy }); el.style.left = q.left + "px"; el.style.top = q.top + "px"; };
+  const end = () => { if (!st) return; const moved = st.moved; st = null; el.classList.remove("drag"); if (moved) { try { localStorage.setItem(HELD_POS, JSON.stringify({ left: parseFloat(el.style.left), top: parseFloat(el.style.top) })); } catch {} } else if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
+  el.onpointerup = end; el.onpointercancel = () => { st = null; el.classList.remove("drag"); };
 }
 function releaseHeld() {
   if (!heldEl) { heldId = null; saveHeld(); return; }
-  const el = heldEl, id = heldId, b = $(`.ob[data-o="${id}"]`); heldEl = null; heldId = null; saveHeld(); el.classList.remove("wob");
+  const el = heldEl, id = heldId, b = $(`.ob[data-o="${id}"]`); heldEl = null; heldId = null; saveHeld(); el.classList.remove("wob"); try { localStorage.removeItem(HELD_POS); } catch {}
   if (b) { b.classList.remove("away"); const from = el.getBoundingClientRect(), to = b.getBoundingClientRect(); el.animate([{ transform: "none" }, { transform: `translate(${to.left + to.width / 2 - (from.left + from.width / 2)}px, ${to.top + to.height / 2 - (from.top + from.height / 2)}px) scale(${to.width / from.width})` }], { duration: 380, easing: "ease-in-out", fill: "forwards" }).onfinish = () => el.remove(); } else el.remove();
 }
 function holdObject(btn) {
   const id = btn.dataset.o; if (heldId === id) { releaseHeld(); return; }
   if (heldId) releaseHeld();
-  heldId = id; saveHeld(); btn.classList.add("away"); mountHeld(id, btn.getBoundingClientRect());
+  heldId = id; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} btn.classList.add("away"); mountHeld(id, btn.getBoundingClientRect());
 }
 function renderObjects() {
   const v = $("#v-objects"), got = objectList().filter((o) => o.found);
