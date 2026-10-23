@@ -257,12 +257,15 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     document.body.classList.add("intro-open"); // la carte est masquée pendant l'intro (elle n'apparaît qu'à l'écran 7)
     const root = document.createElement("div"); root.className = "in2"; root.style.setProperty("--lh", lockedH + "px"); document.body.appendChild(root);
     const restore = () => { if (meta) meta.content = metaOld; };
-    // Ambiance marine pendant toute l'introduction (vagues et appels de sternes, CC0, voir audio/credits.txt) ; fondu d'entrée, puis fondu de sortie progressif pendant la finale.
+    // Ambiance sonore de l'introduction : la mer (vagues et appels de sternes, CC0, voir audio/credits.txt) dès le début ; l'« Ave maris stella » de Monteverdi, très doucement, à l'entrée de Corto (écran de présentation).
+    // Tout s'éteint progressivement pendant la finale (le bateau et la carte).
+    const fadeA = (a, to, ms, done) => { clearInterval(a._t); const v0 = a.volume, t0 = Date.now(); a._t = setInterval(() => { const k = Math.min(1, (Date.now() - t0) / ms); a.volume = Math.max(0, Math.min(1, v0 + (to - v0) * k)); if (k >= 1) { clearInterval(a._t); done && done(); } }, 60); };
     const amb = new Audio("audio/mer-mouettes.mp3"); amb.loop = true; amb.volume = 0; amb.preload = "auto";
-    let ambT = null, ambDead = false; const AMB_VOL = 0.5;
-    const ambFade = (to, ms, done) => { clearInterval(ambT); const v0 = amb.volume, t0 = Date.now(); ambT = setInterval(() => { const k = Math.min(1, (Date.now() - t0) / ms); amb.volume = Math.max(0, Math.min(1, v0 + (to - v0) * k)); if (k >= 1) { clearInterval(ambT); done && done(); } }, 60); };
-    const ambStart = () => { if (ambDead) return; amb.play().then(() => { if (!ambDead) ambFade(AMB_VOL, 2500); }).catch(() => { const once = () => { root.removeEventListener("pointerdown", once, true); ambStart(); }; root.addEventListener("pointerdown", once, true); }); }; // les navigateurs exigent parfois un premier toucher
-    const ambStop = (ms) => { if (ambDead) return; ambDead = true; ambFade(0, ms, () => { amb.pause(); amb.src = ""; }); };
+    const mus = new Audio("audio/ave-maris-stella-intro.mp3"); mus.volume = 0; mus.preload = "auto"; let musOn = false;
+    let ambDead = false; const AMB_VOL = 0.34, MUS_VOL = 0.42;
+    const ambStart = () => { if (ambDead) return; amb.play().then(() => { if (!ambDead) fadeA(amb, AMB_VOL, 2500); }).catch(() => { const once = () => { root.removeEventListener("pointerdown", once, true); ambStart(); }; root.addEventListener("pointerdown", once, true); }); }; // les navigateurs exigent parfois un premier toucher
+    const musStart = () => { if (musOn || ambDead) return; musOn = true; mus.play().then(() => { if (!ambDead) fadeA(mus, MUS_VOL, 5000); }).catch(() => {}); }; // entre doucement quand Corto se présente
+    const ambStop = (ms) => { if (ambDead) return; ambDead = true; for (const a of [amb, mus]) fadeA(a, 0, ms, () => { a.pause(); a.src = ""; }); };
     ambStart();
     root.innerHTML = '<div class="in2-bg"></div><div class="in2-veil"></div><div class="in2-nav"><button type="button" class="in2-prev" aria-label="Précédent">‹</button><button type="button" class="in2-next" aria-label="Suivant">›</button></div>';
     const prevBtn = root.querySelector(".in2-prev"), nextBtn = root.querySelector(".in2-next");
@@ -374,6 +377,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
             d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
       cur = d;
+      if (sc.layout === "welcome") musStart(); // Corto se présente : la musique entre
       if (sc.layout.startsWith("center") && !boatPan && !matchMedia("(prefers-reduced-motion: reduce)").matches) { // le bateau reste en place (il tangue seulement) : c'est le tableau de fond qui défile très lentement vers la gauche, ce qui donne l'impression que le bateau avance
         boatPan = root.querySelector(".in2-bg").animate([{ backgroundPosition: "10% 50%" }, { backgroundPosition: "30% 50%" }], { duration: 60000, easing: "linear", fill: "forwards" });
       }
