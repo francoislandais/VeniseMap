@@ -1031,6 +1031,13 @@ const shuffle = (arr) => arr.map((x) => [Math.random(), x]).sort((p, q) => p[0] 
 let curLoop = 0; // une seule boucle d'épreuve vivante à la fois (évite les doublons si on touche « J'y suis ! » pendant la reprise automatique)
 const bsleep = async (ms) => { await sleep(ms); if (openId !== "bridges" && openId !== "chap" && !suspended) throw 0; };
 // Fait remonter un message en haut de la zone de conversation : les anciens messages passent au-dessus (on peut encore les relire en défilant).
+// Photo de révélation : la plus grande possible dans l'espace libre (de la marge haute jusqu'au bord de la bande de Corto), sans déformation ; ses bords se fondent dans l'image de fond.
+const SAFE_T = () => { if (SAFE_T.v == null) { const p = document.createElement("div"); p.style.cssText = "position:fixed;left:0;top:0;visibility:hidden;padding-top:var(--safe-t)"; document.body.appendChild(p); SAFE_T.v = p.offsetHeight; p.remove(); } return SAFE_T.v; };
+function fitRevImg(im) {
+  const sh = $("#sheet"); if (!sh || !im.naturalWidth) return;
+  const cq = parseFloat(sh.style.getPropertyValue("--cqh")) || 150, top = SAFE_T() + 8, H = Math.max(120, sh.clientHeight - cq - top + 6), W = sh.clientWidth, r = im.naturalWidth / im.naturalHeight, w = Math.min(W, H * r);
+  im.style.width = Math.round(w) + "px"; im.style.height = Math.round(w / r) + "px";
+}
 const bToTop = (el) => { const c = $("#b-talk"); if (c && el) c.scrollTo({ top: el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop, behavior: "smooth" }); };
 // Les bulles gardent la hauteur de leur texte. Quand la conversation devient plus longue que la place disponible, elle défile
 // pour que le dernier message descende jusqu'en bas (au-dessus des boutons s'il y en a), avec une petite respiration.
@@ -1122,7 +1129,6 @@ function nextBar(more, label) {
     bar.innerHTML = `${inChap ? "" : '<button class="b-btn ghost small" data-k="map">Revenir à la carte</button>'}${more ? `<button class="b-btn go-next" data-k="next">${label}</button>` : ""}`;
     bar.classList.toggle("end", inChap);
     bar.hidden = false; const sh = $("#sheet"); sh.dataset.k = "one";
-    if (inChap) { const im = $(".rev-img"), sr = sh.getBoundingClientRect(); bar.style.bottom = "auto"; bar.style.top = (im ? im.getBoundingClientRect().bottom - sr.top + 12 : (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-t")) || 0) + 80) + "px"; } // le bouton « Suite » se place sous l'image de révélation
     bar.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 320, easing: "cubic-bezier(.2,.9,.25,1.1)" });
     $$("button", bar).forEach((b) => (b.onclick = () => { const k = b.dataset.k; bar.hidden = true; bar.innerHTML = ""; bar.style.top = bar.style.bottom = ""; delete sh.dataset.k; res(k); }));
   });
@@ -1333,7 +1339,7 @@ function openChapters(p, replay = false) {
     <div class="m-chat b-talk" id="b-talk"></div><div class="b-actions" id="b-actions" hidden></div><img class="cq-head" src="img/corto-content.webp" alt="">`;
   // Épreuve : Corto parle comme partout ailleurs (bande en bas, texte à gauche, sa tête à droite) ; plus de pastille de Corto ni de boutons du coin.
   document.body.classList.add("chap-open");
-  { const bt = $("#b-talk"); if (window.ResizeObserver) new ResizeObserver(() => sh.style.setProperty("--cqh", bt.offsetHeight + "px")).observe(bt); }
+  { const bt = $("#b-talk"); if (window.ResizeObserver) new ResizeObserver(() => { sh.style.setProperty("--cqh", bt.offsetHeight + "px"); $$(".rev-img").forEach(fitRevImg); }).observe(bt); }
   if (DEV) { const sk = document.createElement("button"); sk.type = "button"; sk.className = "dev-skip"; sk.textContent = "⏭ Fin"; sk.onclick = () => skipEnd && skipEnd(); sh.appendChild(sk); } // mode dev : sauter à l'écran final
   { // coin bas gauche, permanent : sortir vers la carte de Venise, et (si le lieu en a un) voir le plan
     const dk = document.createElement("div"); dk.className = "dock";
@@ -1460,7 +1466,8 @@ async function runChapters(p, replay = false) {
     const sh = $("#sheet");
     const chainBar = (qs, from) => qs.slice(from).reduce((m, x) => Math.max(m, barHeight(x.opts)), 0);
     // Place l'image de révélation sous la bulle de Corto, et la fait finir (fondue) avant les boutons ou les pastilles.
-    const placeImg = () => {}; // l'image de révélation occupe la partie haute de l'écran (voir la feuille de style : .chap .rev-img), au-dessus de la bande de Corto
+    const placeImg = () => {};
+    window.__fitRev = () => $$(".rev-img").forEach(fitRevImg); // l'image de révélation occupe la partie haute de l'écran (voir la feuille de style : .chap .rev-img), au-dessus de la bande de Corto
     outer: for (let k = 0; k < todo.length; k++) {
       const s = todo[k], qs = chainOf(s);
       let j = replay ? 0 : qs.findIndex((x) => !taskDone(p.id, x.idx)), rv = null, im = null;
@@ -1471,7 +1478,7 @@ async function runChapters(p, replay = false) {
         im = new Image(); im.className = "rev-img"; im.alt = ""; im.src = s.img; if (s.imgPos) im.style.objectPosition = s.imgPos;
         await new Promise((ok) => { im.onload = im.onerror = ok; });
         sh.appendChild(im);
-        if (s.cap) { const cp = document.createElement("div"); cp.className = "rev-cap"; cp.textContent = s.cap; const ir = im.getBoundingClientRect(), sr = sh.getBoundingClientRect(); cp.style.bottom = Math.max(0, sr.bottom - ir.bottom + 6) + "px"; sh.appendChild(cp); cp.animate([{ opacity: 0 }, { opacity: 0, offset: .5 }, { opacity: 1 }], { duration: 900 }); }
+        fitRevImg(im); // plus de légende : la photo prend toute la place disponible, juste au-dessus du texte de Corto
         im.animate([{ opacity: 0, transform: "translateY(16px) scale(.97)" }, { opacity: 1, transform: "none" }], { duration: 600, easing: "ease-out" });
       };
       const newRev = async (text, bar) => { // écran de révélation : Corto content en haut, image dessous
