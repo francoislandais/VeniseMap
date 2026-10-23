@@ -192,7 +192,8 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt", ask: ".in2-ask", btn: ".in2-btn" } };
     const edKey = (to) => SCREENS[to].key; // clé stable de chaque écran (s1…s6, who) : les réglages enregistrés ne bougent pas si on insère un écran
     const elsOf = (d, sc) => { const map = { ...EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.face) map.face = ".in2-face"; if (sc.ask) map.txt = ".in2-txt p:not(.in2-ask)"; if (sc.parts) sc.parts.forEach((_, n) => (map["p" + (n + 1)] = `.in2-part[data-k=p${n + 1}]`)); /* écran avec question + bouton : le texte, la question et le bouton sont trois éléments indépendants */ const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
-    const applyOne = (e, v) => { if (!v) { e.style.translate = ""; e.style.scale = ""; return; } e.style.translate = `${v.x || 0}vw calc(${v.y || 0} * var(--lh) / 100)`; e.style.scale = v.s && v.s !== 1 ? String(v.s) : ""; };
+    // Position / taille d'un élément = réglage de l'éditeur (x en vw, y en % de la hauteur d'écran, échelle) + petite correction automatique (_fx, _fy en px, _fs) qui le ramène dans l'écran
+    const applyOne = (e, v) => { const fx = e._fx || 0, fy = e._fy || 0, fs = e._fs || 1, sc0 = ((v && v.s) || 1) * fs; e.style.translate = v || fx || fy ? `calc(${(v && v.x) || 0} * 1vw + ${fx}px) calc(${(v && v.y) || 0} * var(--lh) / 100 + ${fy}px)` : ""; e.style.scale = sc0 !== 1 ? String(Math.round(sc0 * 1000) / 1000) : ""; };
     // Textes modifiables : réglages dans LAYOUT._t[sN][clé] ; « {nom} » est remplacé par le prénom
     const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", mid: ".wl-mid p" }, who: { lab: ".wh-lab", ok: ".wh-ok" }, other: { txt: ".in2-txt p:not(.in2-ask)", ask: ".in2-ask", btn: ".in2-btn" } };
     const textsOf = (d, sc) => { const map = { ...TEXTSEL[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.parts) { delete map.txt; sc.parts.forEach((_, n) => (map["p" + (n + 1)] = `.in2-part[data-k=p${n + 1}]`)); } const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
@@ -200,7 +201,34 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const htmlOf = (t) => rich(esc(String(t).replace(/\{nom\}/g, name))).replace(/\n/g, "<br>");
     const mdOf = (el) => { let o = ""; el.childNodes.forEach((n) => { o += n.nodeType === 3 ? n.nodeValue : n.nodeName === "BR" ? "\n" : /^(B|STRONG)$/.test(n.nodeName) ? "**" + n.textContent + "**" : n.textContent; }); return o; };
     const applyTexts = (d, sc, to) => { const T = (LAYOUT._t || {})[edKey(to)] || {}, els = textsOf(d, sc); for (const k in els) if (typeof T[k] === "string") els[k].innerHTML = htmlOf(T[k]); };
-    const applyLayout = (d, sc, to) => { applyTexts(d, sc, to); const L = LAYOUT[edKey(to)] || {}, els = elsOf(d, sc); for (const k in els) applyOne(els[k], L[k] || (k === "name2" ? L.name : undefined)); }; // « Corto Maltese » reprend d'abord la position de l'ancienne ligne unique
+    const applyLayout = (d, sc, to) => { applyTexts(d, sc, to); const L = LAYOUT[edKey(to)] || {}, els = elsOf(d, sc); for (const k in els) { if (sc.base && ["img", "face", "txt"].includes(k)) continue; els[k]._fx = els[k]._fy = 0; els[k]._fs = 1; applyOne(els[k], L[k] || (k === "name2" ? L.name : undefined)); } }; // « Corto Maltese » reprend d'abord la position de l'ancienne ligne unique
+    // Garantie « tout est visible » : quelle que soit la taille / le format de l'écran, les textes, boutons et champs sont ramenés dans la zone visible (rétrécis s'ils sont trop grands, décalés s'ils débordent). Images laissées libres : un Corto coupé par le bord est voulu.
+    const probe = document.createElement("div"); probe.style.cssText = "position:fixed;visibility:hidden;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)"; document.body.appendChild(probe);
+    const pcs = getComputedStyle(probe), safeT = parseFloat(pcs.paddingTop) || 0, safeB = parseFloat(pcs.paddingBottom) || 0; probe.remove();
+    const FIT = /^(txt|ask|btn|head|name|name2|mid|hi|q|lab|ok|cam|p\d+)$/;
+    const cfgOf = (sc, k) => { const L = LAYOUT[sc.base && ["img", "face", "txt"].includes(k) ? sc.base : sc.key] || {}; return L[k] || (k === "name2" ? L.name : undefined); };
+    const boxOf = (e) => { if (e.classList.contains("in2-txt")) { const rs = [...e.children].map((c) => c.getBoundingClientRect()).filter((r) => r.width); if (!rs.length) return e.getBoundingClientRect(); return { left: Math.min(...rs.map((r) => r.left)), right: Math.max(...rs.map((r) => r.right)), top: Math.min(...rs.map((r) => r.top)), bottom: Math.max(...rs.map((r) => r.bottom)), width: 1, height: 1 }; } return e.getBoundingClientRect(); };
+    const fit = (d, sc) => {
+      if (editing || !d || !sc) return;
+      const els = elsOf(d, sc), W = innerWidth, H = Math.min(lockedH, innerHeight), ml = 10 /* hauteur réellement visible */, mt = 10 + safeT, mb = 14 + safeB;
+      for (const k in els) {
+        if (!FIT.test(k) || (k === "txt" && sc.parts)) continue; const e = els[k], cfg = cfgOf(sc, k); e._fx = e._fy = 0; e._fs = 1; applyOne(e, cfg);
+        let r = boxOf(e); if (!r.width && !r.height) continue; e._o = r.top; // ordre de lecture voulu (avant correction)
+        const rw = r.right - r.left, rh = r.bottom - r.top; let fs = 1;
+        if (rw > W - 2 * ml) fs = Math.min(fs, (W - 2 * ml) / rw); if (rh > H - mt - mb) fs = Math.min(fs, (H - mt - mb) / rh);
+        if (fs < 1) { e._fs = fs; applyOne(e, cfg); r = boxOf(e); }
+        const lim = k === "btn" || k === "ok" ? H - (56 + safeB) : H - mb; // le bouton reste au-dessus des flèches de navigation
+        let dx = 0, dy = 0; if (r.bottom > lim) dy = lim - r.bottom; if (r.top + dy < mt) dy = mt - r.top; if (r.right > W - ml) dx = W - ml - r.right; if (r.left + dx < ml) dx = ml - r.left;
+        if (dx || dy) { e._fx = Math.round(dx); e._fy = Math.round(dy); applyOne(e, cfg); }
+      }
+      // Les éléments ramenés dans l'écran ne se marchent pas dessus : on les empile de bas en haut (ex. la question puis le bouton)
+      const moved = Object.keys(els).filter((k) => FIT.test(k) && !(k === "txt" && sc.parts) && (els[k]._fx || els[k]._fy)).map((k) => els[k]).sort((a, b) => b._o - a._o); // du plus bas au plus haut selon la disposition voulue
+      for (let i = 1; i < moved.length; i++) {
+        const below = boxOf(moved[i - 1]), e = moved[i], r = boxOf(e); if (r.bottom > below.top - 8) { e._fy = Math.round((e._fy || 0) + (below.top - 8 - r.bottom)); applyOne(e, cfgOf(sc, Object.keys(els).find((k) => els[k] === e))); }
+      }
+    };
+    let fitT = null; const fitSoon = () => { clearTimeout(fitT); fitT = setTimeout(() => fit(cur, SCREENS[idx]), 60); };
+    window.addEventListener("resize", fitSoon); window.addEventListener("orientationchange", fitSoon);
     let name = opts.replay ? opts.name || "" : "";
     const IMG = (n) => `img/intro/e${n}.webp`;
     const CAM_SVG = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 16h8l3-5h10l3 5h8a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V18a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><circle cx="24" cy="26" r="7" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>';
@@ -278,6 +306,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       old.forEach((p) => { p.removeAttribute("data-k"); p.classList.remove("in2-part"); p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).onfinish = () => p.remove(); });
       sc.parts.forEach((txt, n) => { const p = document.createElement("p"); p.className = "in2-part" + (txt.length > 90 ? " in2-long" : ""); p.dataset.k = "p" + (n + 1); p.innerHTML = rich(esc(txt)); p.style.opacity = 0; t.appendChild(p); p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 400, fill: "forwards" }).onfinish = () => (p.style.opacity = ""); });
       idx = to; applyTexts(cur, sc, to); const els = elsOf(cur, sc); for (const k in els) if (/^p\d+$/.test(k)) applyOne(els[k], (LAYOUT[sc.key] || {})[k]);
+      fit(cur, sc); setTimeout(() => fit(cur, sc), 350);
       prevBtn.style.visibility = "visible"; if (editing) select(null);
       if (sc.key === "s6" && !editing) readT = setTimeout(() => finale(), 4000 + sc.parts.join(" ").length * 55); // le temps de lire, puis la carte apparaît
       else if (!editing) {} // retour à l'écran 5 : pas de minuterie
@@ -322,7 +351,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       const psc = SCREENS[idx], tsc = SCREENS[to];
       if (cur && psc && tsc && (tsc.base === psc.key || psc.base === tsc.key)) { busy = true; setTimeout(() => (busy = false), 450); morph(tsc, to); return; } // même écran (bateau, tableau, tête) : seul le texte change
       busy = true; setTimeout(() => (busy = false), 450);
-      const sc = SCREENS[to], first = idx === -1, d = build(sc); root.insertBefore(d, root.querySelector(".in2-nav")); idx = to; applyLayout(d, sc, to); if (editing) setTimeout(() => select(null), 0);
+      const sc = SCREENS[to], first = idx === -1, d = build(sc); root.insertBefore(d, root.querySelector(".in2-nav")); idx = to; applyLayout(d, sc, to); fit(d, sc); setTimeout(() => fit(d, sc), 350); if (editing) setTimeout(() => select(null), 0);
       prevBtn.style.visibility = to === 0 ? "hidden" : "visible";
             d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
@@ -355,7 +384,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       const say = (t) => { msg.textContent = t; clearTimeout(say.t); say.t = setTimeout(() => (msg.textContent = ""), 2500); };
       bar.addEventListener("click", async (e) => {
         const a = e.target.closest("button")?.dataset.a; if (!a) return;
-        if (a === "toggle") { stopText(); editing = !editing; root.classList.toggle("in2-editing", editing); tools.hidden = !editing; select(null); return; }
+        if (a === "toggle") { stopText(); editing = !editing; if (editing) applyLayout(cur, SCREENS[idx], idx); else fit(cur, SCREENS[idx]); /* en édition : positions brutes ; sinon : positions garanties visibles */ root.classList.toggle("in2-editing", editing); tools.hidden = !editing; select(null); return; }
         if (a === "save") { try { const r = await fetch("api/intro-layout", { method: "POST", headers: { "Content-Type": "application/json", "X-Dev-Token": devTok }, body: JSON.stringify(LAYOUT) }); if (r.status === 403 && !local) { try { localStorage.removeItem("vq_dev"); } catch {} } say(r.ok ? "Enregistré ✔ (centralisé)" : "Échec : code refusé ou serveur sans --dev"); } catch { say("Échec de l'enregistrement"); } return; }
         if (a === "text") {
           if (txtEd) { stopText(); return; }
