@@ -1,6 +1,7 @@
 import { loadProfile, saveProfile, runIntro, cortoSays, editProfile, FACE, typewriter } from "./intro.js";
 import { createMap, WC_URL, OSM_URL, OFM_TILEJSON, FONTS, useStamen } from "./mapstyle.js";
 import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
+import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -760,12 +761,27 @@ function renderNext() {
 let openId = null;
 let medalOrigin = null;
 const inZone = (p) => DEV || (!!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX));
+// Phrase de Corto citant le lieu (corto-lieux.js) : distance et temps de marche ; pas deux fois la même de suite pour un même niveau.
+const placeFarLast = {};
+function placeFarLine(p, d) {
+  const kind = d < 200 ? "near" : d > 1500 ? "far" : "mid", L = LIEUX[p.id], idx = level(pointsOf(meIdx())), g = LEVELS[idx].name.toLowerCase();
+  const pool = PLACE_FAR[kind].filter((l) => typeof l === "string" || ((!l.in || (L && L.in)) && (l.lo == null || idx >= l.lo) && (l.hi == null || idx <= l.hi)));
+  const rec = placeFarLast[kind] = placeFarLast[kind] || []; let i; do { i = Math.floor(Math.random() * pool.length); } while (pool.length > 2 && rec.includes(i)); rec.push(i); if (rec.length > 2) rec.shift();
+  const l = pool[i], t = typeof l === "string" ? l : l.t, la = L ? L.la : p.name.replace(/^L'/, "l'").replace(/^(Le|La|Les) /, (m) => m.toLowerCase());
+  const de = la.replace(/^le /, "du ").replace(/^les /, "des ").replace(/^la /, "de la ").replace(/^l'/, "de l'"), a = la.replace(/^le /, "au ").replace(/^les /, "aux ").replace(/^la /, "à la ").replace(/^l'/, "à l'");
+  const dist = d < 1000 ? Math.max(10, Math.round(d / 10) * 10) + " mètres" : (d / 1000).toFixed(1).replace(".", ",") + " km";
+  // « jusqu'{a} » → « jusqu'à la… » : l'apostrophe est déjà dans {a} pour l'élision, on la retire quand {a} commence par « à »
+  let out = t.replace(/\{G\}/g, g[0].toUpperCase() + g.slice(1)).replace(/\{g\}/g, g).replace(/\{in\}/g, L && L.in || "").replace(/jusqu'\{a\}/g, "jusqu'" + a).replace(/\{la\}/g, la).replace(/\{de\}/g, de).replace(/\{a\}/g, a).replace(/\{dist\}/g, dist).replace(/\{min\}/g, minTxt(d));
+  return out[0].toUpperCase() + out.slice(1);
+}
+function bumpPin(id) { const el = pinEls[id] && pinEls[id].firstChild; if (el) el.animate([{ scale: 1 }, { scale: 1.3 }, { scale: 0.93 }, { scale: 1 }], { duration: 420, easing: "ease-out" }); } // petite emphase : le lieu touché grossit puis rétrécit
 function openPlace(id, originRect) {
   const p = place(id);
+  bumpPin(id);
   // Trop loin du lieu : plus de pastille agrandie ni de reprise d'épreuve, simplement un message de Corto (phrases near / mid / far avec distance et temps de marche).
   // Le mode dev ne court-circuite plus ce test dès qu'une position est connue (réelle ou épinglée) ; sans aucune position il laisse passer. Un lieu terminé reste consultable.
   { const inReal = !!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX);
-    if (!(p.chapters && complete(p)) && (DEV ? !!pos && !inReal : !inZone(p))) { const d = distTo(p); if (suspended) closeSheet(); cortoSays(say(d == null ? "nogps" : d < 200 ? "near" : d > 1500 ? "far" : "mid", p)); return; } }
+    if (!(p.chapters && complete(p)) && (DEV ? !!pos && !inReal : !inZone(p))) { const d = distTo(p); if (suspended) closeSheet(); cortoSays(d == null ? say("nogps", p) : placeFarLine(p, d)); return; } }
   // Épreuve mise en pause : même lieu et enfant toujours dans la zone → on retombe exactement sur l'écran quitté.
   if (suspended) { if (suspended.id === id && inZone(p)) { resumeSuspended(); return; } closeSheet(); }
   // Enquête commencée et enfant toujours dans la zone : on reprend instantanément là où il en était, sans repasser par l'accueil.
