@@ -299,8 +299,10 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       }
       if (sc.layout === "who") { // écran d'identité : « Je m'appelle… », le champ prénom, le rond caméra (la tête), la validation en bas
         d.innerHTML = `<div class="wh"><p class="wh-lab">${esc(sc.lab)}</p><input class="wh-in" id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button type="button" class="wh-cam" aria-label="Prendre ma tête en photo">${CAM_SVG}</button><button type="button" class="wh-ok">${esc(sc.ok)}</button></div>`;
-        const cam = d.querySelector(".wh-cam"), inp = d.querySelector(".wh-in"), paint = () => { cam.classList.toggle("has", !!photoRes); cam.innerHTML = photoRes ? `<img src="${photoRes.photo}" alt="">` : CAM_SVG; };
-        paint(); inp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } };
+        const cam = d.querySelector(".wh-cam"), inp = d.querySelector(".wh-in"), ok = d.querySelector(".wh-ok");
+        const update = () => { const ready = !!inp.value.trim() && !!photoRes; ok.hidden = !ready; nextBtn.disabled = !ready; nextBtn.style.visibility = ready ? "" : "hidden"; fitSoon(); };
+        const paint = () => { cam.classList.toggle("has", !!photoRes); cam.innerHTML = photoRes ? `<img src="${photoRes.photo}" alt="">` : CAM_SVG; update(); };
+        paint(); inp.oninput = update; inp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } };
         cam.onclick = async () => { if (editing) return; inp.blur(); const r = await selfie(); if (r) { photoRes = r; paint(); } };
         return d;
       }
@@ -410,14 +412,17 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       if (busy || to < 0) return;
       clearTimeout(readT);
       if (curTyping && !curTyping.done) { if (to > idx) { curTyping.finish(); return; } curTyping.cancel(); } // premier toucher : le texte s'affiche en entier
-      if (SCREENS[idx]?.layout === "who" && to > idx) { // le prénom est obligatoire pour quitter l'écran d'identité
-        const i = root.querySelector("#in2-name"); const v = i ? i.value.trim() : name; if (!v) { if (i) i.focus(); return; } name = v;
+      if (SCREENS[idx]?.layout === "who" && to > idx) { // prénom et photo obligatoires pour quitter l'écran d'identité
+        const i = root.querySelector("#in2-name"), v = i ? i.value.trim() : name;
+        if (!v) { if (i) i.focus(); return; }
+        if (!photoRes) { const cam = root.querySelector(".wh-cam"); if (cam) cam.focus(); return; }
+        name = v;
       }
       if (to >= SCREENS.length) { if (opening) opening.skip(); finale(); return; }
       const psc = SCREENS[idx], tsc = SCREENS[to];
       if (cur && psc && tsc && (tsc.base === psc.key || psc.base === tsc.key)) { busy = true; setTimeout(() => (busy = false), 450); morph(tsc, to); return; } // même écran (bateau, tableau, tête) : seul le texte change
       busy = true; setTimeout(() => (busy = false), 450);
-      const sc = SCREENS[to], first = idx === -1, d = build(sc); root.insertBefore(d, root.querySelector(".in2-nav")); idx = to; applyLayout(d, sc, to); fit(d, sc); setTimeout(() => fit(d, sc), 350); if (editing) setTimeout(() => select(null), 0);
+      const sc = SCREENS[to], first = idx === -1, d = build(sc); root.insertBefore(d, root.querySelector(".in2-nav")); idx = to; if (sc.layout !== "who") { nextBtn.disabled = false; nextBtn.style.visibility = ""; } applyLayout(d, sc, to); fit(d, sc); setTimeout(() => fit(d, sc), 350); if (editing) setTimeout(() => select(null), 0);
       prevBtn.style.visibility = to === 0 ? "hidden" : "visible";
             d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
