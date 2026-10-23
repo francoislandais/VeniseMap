@@ -1754,7 +1754,7 @@ function renderBridges() {
     let cur = [], sum = 0;
     withImg.forEach((b) => { const ar = arOf(b[0]), h0 = heights[rows.length % heights.length]; cur.push({ b, ar }); sum += ar; if (sum * h0 + (cur.length - 1) >= W) { rows.push({ cur, h: Math.min(h0 * 1.35, (W - (cur.length - 1)) / sum), full: true }); cur = []; sum = 0; } });
     if (cur.length) rows.push({ cur, h: heights[rows.length % heights.length] * 0.95, full: false });
-    v.innerHTML = `<div class="bmos">${rows.map((r) => `<div class="bmr" style="height:${Math.round(r.h)}px">${r.cur.map(({ b, ar }) => `<button type="button" class="bm" data-b="${b[0]}" aria-label="${esc(b[1] || "Pont sans nom")}" style="flex:${r.full ? ar : 0} 1 ${r.full ? 0 : Math.round(ar * r.h)}px;background-image:url(img/ponts/${b[0]}.webp)"><span>${esc(b[1] || "Pont sans nom")}</span></button>`).join("")}</div>`).join("")}</div>${noImg ? `<p class="bm-more">+ ${noImg} pont${noImg > 1 ? "s" : ""} sans image</p>` : ""}`;
+    v.innerHTML = `<div class="bmos">${rows.map((r) => `<div class="bmr" style="height:${Math.round(r.h)}px">${r.cur.map(({ b, ar }) => `<button type="button" class="bm" data-b="${b[0]}" aria-label="${esc(b[1] || "Pont sans nom")}" style="flex:${r.full ? ar : 0} 1 ${r.full ? 0 : Math.round(ar * r.h)}px;background-image:url(img/ponts/${b[0]}.webp)"></button>`).join("")}</div>`).join("")}</div>${noImg ? `<p class="bm-more">+ ${noImg} pont${noImg > 1 ? "s" : ""} sans image</p>` : ""}`;
     $$(".bm", v).forEach((d) => (d.onclick = () => bridgeCard(byId.get(d.dataset.b))));
   });
 }
