@@ -1201,3 +1201,8 @@ body.ic-edit .pin.has-icon.ic-sel .pin-in.icon{outline:2px dashed #e0457b;outlin
 .corto-btn img{width:100%;height:100%;object-fit:cover;object-position:50% 20%;display:block}
 body:not(.jeu) #corto-btn{display:none!important}
 .corto-say{bottom:calc(140px + var(--safe-b))}
+/* Pastilles du bas : plus grandes, dans les coins, avec un peu d'air */
+.bridge-btn{width:64px;height:64px;bottom:calc(10px + var(--safe-b));right:calc(10px + env(safe-area-inset-right,0px))}
+.bridge-btn.corto-btn{left:calc(10px + env(safe-area-inset-left,0px));right:auto}
+.bridge-btn svg{width:38px;height:38px}
+.corto-say{bottom:calc(88px + var(--safe-b))}
