@@ -584,7 +584,7 @@ const PLACE_ICONS = {
   dogana: { src: "img/places/dogana-icon.webp", w: 34, ratio: 0.4292 },
 };
 // Position et taille (par niveau de zoom) de chaque icône : réglées à la main en mode édition (aperçu local), enregistrées dans data/place-icons.json.
-// { id: { lon, lat, stops: [[zoom, largeur en px], …] } } — entre deux niveaux réglés, la taille varie en douceur (interpolation géométrique) ; au-delà, l'icône suit l'échelle de la carte (×2 par niveau de zoom).
+// { id: { lon, lat, stops: [[zoom, largeur en px], …], pos: [[zoom, lon, lat], …] } } — pos (facultatif) : position du centre à certains niveaux de zoom ; entre deux repères la position glisse en douceur, au-delà elle reste celle du repère le plus proche ; sans repère, lon/lat. — entre deux niveaux réglés, la taille varie en douceur (interpolation géométrique) ; au-delà, l'icône suit l'échelle de la carte (×2 par niveau de zoom).
 const ICONCFG = await fetch("data/place-icons.json?" + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
 const iconMarkers = {};
 const iconStops = (id) => ((ICONCFG[id] && ICONCFG[id].stops) || []).slice().sort((a, b) => a[0] - b[0]);
@@ -595,8 +595,18 @@ function iconSize(id, z) {
   for (let i = 1; i < st.length; i++) if (z <= st[i][0]) { const [z0, w0] = st[i - 1], [z1, w1] = st[i], t = (z - z0) / (z1 - z0); return Math.exp(Math.log(w0) + (Math.log(w1) - Math.log(w0)) * t); }
   return L[1];
 }
+const iconPosKeys = (id) => ((ICONCFG[id] && ICONCFG[id].pos) || []).slice().sort((a, b) => a[0] - b[0]);
+function iconPos(id, z) {
+  const k = iconPosKeys(id), c = ICONCFG[id], pl = PLACES.find((p) => p.id === id);
+  if (!k.length) return c && c.lon != null ? [c.lon, c.lat] : [pl.lon, pl.lat];
+  if (z <= k[0][0]) return [k[0][1], k[0][2]];
+  const L = k[k.length - 1]; if (z >= L[0]) return [L[1], L[2]];
+  for (let i = 1; i < k.length; i++) if (z <= k[i][0]) { const [z0, a0, b0] = k[i - 1], [z1, a1, b1] = k[i], t = (z - z0) / (z1 - z0); return [a0 + (a1 - a0) * t, b0 + (b1 - b0) * t]; }
+  return [L[1], L[2]];
+}
 function updateIcons() {
   const z = map.getZoom();
+  for (const id in iconMarkers) { const { el, marker } = iconMarkers[id]; if (!marker._ic_drag) marker.setLngLat(iconPos(id, z)); }
   for (const id in iconMarkers) { const { el } = iconMarkers[id], w = iconSize(id, z), h = w / PLACE_ICONS[id].ratio; for (const e of [el, el.firstChild]) { e.style.setProperty("--iw", w.toFixed(2) + "px"); e.style.setProperty("--ih", h.toFixed(2) + "px"); } }
 }
 map.on("zoom", updateIcons);
@@ -608,7 +618,7 @@ function renderMap() {
     if (!el) {
       const ic = PLACE_ICONS[p.id]; el = document.createElement("div"); el.className = "pin" + (ic ? " has-icon" : ""); el.innerHTML = `<div class="pin-in pic${ic ? " icon" : ""}" style="--img:url(${ic ? ic.src : pic(p.id)})${ic ? `;--iw:${ic.w}px;--ih:${Math.round(ic.w / ic.ratio)}px` : ""}"></div>`;
       el.addEventListener("click", (e) => { e.stopPropagation(); if (iconEdit && ic) { iconSelect(p.id); return; } openPlace(p.id, el.firstChild.getBoundingClientRect()); });
-      const c0 = ICONCFG[p.id], mk = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(c0 && c0.lon != null ? [c0.lon, c0.lat] : [p.lon, p.lat]).addTo(map);
+      const c0 = ICONCFG[p.id], mk = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(ic ? iconPos(p.id, map.getZoom()) : [p.lon, p.lat]).addTo(map);
       if (ic) { iconMarkers[p.id] = { marker: mk, el }; updateIcons(); }
       pinEls[p.id] = el;
     }
@@ -622,7 +632,7 @@ $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientR
    (poignée ronde, − / +, curseur). Chaque réglage devient un repère [zoom → largeur] ; « Enregistrer » écrit data/place-icons.json. */
 if (["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) && Object.keys(PLACE_ICONS).length) {
   const bar = document.createElement("div"); bar.id = "ic-dev";
-  bar.innerHTML = '<button type="button" class="ic-tg">🏛 Icônes</button><div class="ic-pn" hidden><div class="ic-hd"><b class="ic-t"></b><span class="ic-z"></span></div><div class="ic-row"><button type="button" class="ic-m">−</button><input type="range" class="ic-r" min="6" max="700" step="1"><button type="button" class="ic-p">+</button><b class="ic-w"></b></div><div class="ic-st"></div><div class="ic-row"><button type="button" class="ic-sv">💾 Enregistrer</button><em class="ic-msg"></em></div><small>Glisse l\'icône : son centre se déplace. Zoome, puis règle sa taille : chaque réglage est un repère de zoom.</small></div>';
+  bar.innerHTML = '<button type="button" class="ic-tg">🏛 Icônes</button><div class="ic-pn" hidden><div class="ic-hd"><b class="ic-t"></b><span class="ic-z"></span></div><div class="ic-row"><button type="button" class="ic-m">−</button><input type="range" class="ic-r" min="6" max="700" step="1"><button type="button" class="ic-p">+</button><b class="ic-w"></b></div><div class="ic-st"></div><div class="ic-row"><button type="button" class="ic-pin">📍 Repère de position ici</button><label class="ic-lb"><input type="checkbox" class="ic-all"> tous les zooms</label></div><div class="ic-row"><button type="button" class="ic-sv">💾 Enregistrer</button><em class="ic-msg"></em></div><small>Glisse l\'icône : son centre se déplace à CE zoom (la position glisse en douceur d\'un repère à l\'autre). « tous les zooms » : déplace tous les repères ensemble. Zoome, puis règle la taille : chaque réglage est un repère.</small></div>';
   document.body.appendChild(bar);
   const q = (c) => bar.querySelector(c), pn = q(".ic-pn"); let sel = null, handle = null;
   const say = (t) => { const m = q(".ic-msg"); m.textContent = t; clearTimeout(say.t); say.t = setTimeout(() => (m.textContent = ""), 2500); };
@@ -632,18 +642,25 @@ if (["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) && Object.ke
   const refresh = () => {
     q(".ic-z").textContent = "zoom " + map.getZoom().toFixed(2); if (!sel) { q(".ic-t").textContent = "Touche une icône"; q(".ic-st").innerHTML = ""; return; }
     const w = iconSize(sel, map.getZoom()); q(".ic-t").textContent = sel; q(".ic-w").textContent = Math.round(w) + " px"; q(".ic-r").value = Math.round(w);
-    q(".ic-st").innerHTML = iconStops(sel).map((x, i) => `<span class="ic-chip" data-z="${x[0]}">z${x[0]} → ${Math.round(x[1])}px <i data-d="${i}">✕</i></span>`).join("") || "<small>Aucun repère : taille d'origine (suit le zoom)</small>";
+    q(".ic-st").innerHTML = (iconStops(sel).map((x, i) => `<span class="ic-chip" data-z="${x[0]}">z${x[0]} → ${Math.round(x[1])}px <i data-d="${i}">✕</i></span>`).join("") || "<small>Aucun repère de taille : taille d'origine (suit le zoom)</small>") + iconPosKeys(sel).map((x, i) => `<span class="ic-chip pos" data-z="${x[0]}">📍 z${x[0]} <i data-pd="${i}">✕</i></span>`).join("");
   };
   const placeHandle = () => { handle?.remove(); handle = null; if (!sel || !iconEdit) return; const el = iconMarkers[sel].el; handle = document.createElement("div"); handle.className = "ic-handle"; el.appendChild(handle);
     for (const ev of ["mousedown", "touchstart"]) handle.addEventListener(ev, (e) => e.stopPropagation()); // la poignée ne déplace ni l'icône ni la carte
     handle.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, d0 = Math.hypot(e.clientX - cx, e.clientY - cy) || 1, w0 = iconSize(sel, map.getZoom()); try { handle.setPointerCapture(e.pointerId); } catch {}
       const mv = (ev) => setSize(w0 * Math.hypot(ev.clientX - cx, ev.clientY - cy) / d0), up = () => { handle.removeEventListener("pointermove", mv); handle.removeEventListener("pointerup", up); }; handle.addEventListener("pointermove", mv); handle.addEventListener("pointerup", up); }); };
   iconSelect = (id) => { sel = id; for (const k in iconMarkers) iconMarkers[k].el.classList.toggle("ic-sel", k === id); placeHandle(); refresh(); };
-  const hookDrag = () => { for (const id in iconMarkers) { const m = iconMarkers[id]; if (m.hooked) continue; m.hooked = true; m.marker.on("dragend", () => { const l = m.marker.getLngLat(), c = cfg(id); c.lon = +l.lng.toFixed(6); c.lat = +l.lat.toFixed(6); say("Centre déplacé"); }); } }; // les repères existent après le premier rendu de la carte
+  const hookDrag = () => { for (const id in iconMarkers) { const m = iconMarkers[id]; if (m.hooked) continue; m.hooked = true; m.marker.on("dragstart", () => { m.marker._ic_drag = true; });
+      m.marker.on("dragend", () => {
+        m.marker._ic_drag = false; const l = m.marker.getLngLat(), c = cfg(id), zr = map.getZoom(), z = Math.round(zr * 100) / 100, prev = iconPos(id, zr), nl = +l.lng.toFixed(6), nt = +l.lat.toFixed(6);
+        if (q(".ic-all").checked) { const dx = nl - prev[0], dy = nt - prev[1]; if (c.pos && c.pos.length) c.pos = c.pos.map((k) => [k[0], +(k[1] + dx).toFixed(6), +(k[2] + dy).toFixed(6)]); else { c.lon = nl; c.lat = nt; } say("Tous les repères déplacés"); }
+        else { c.pos = (c.pos || []).filter((k) => Math.abs(k[0] - z) > 0.019); c.pos.push([z, nl, nt]); say("Position fixée à ce zoom"); }
+        updateIcons(); refresh();
+      }); } }; // les repères existent après le premier rendu de la carte
   q(".ic-tg").onclick = () => { hookDrag(); iconEdit = !iconEdit; pn.hidden = !iconEdit; document.body.classList.toggle("ic-edit", iconEdit); for (const k in iconMarkers) iconMarkers[k].marker.setDraggable(iconEdit); if (iconEdit) iconSelect(sel || Object.keys(iconMarkers)[0]); else { iconSelect(null); } };
   q(".ic-m").onclick = () => setSize(iconSize(sel, map.getZoom()) * 0.92); q(".ic-p").onclick = () => setSize(iconSize(sel, map.getZoom()) * 1.08);
   q(".ic-r").oninput = (e) => setSize(+e.target.value);
-  q(".ic-st").onclick = (e) => { const d = e.target.closest("[data-d]"); if (d) { const st = iconStops(sel); st.splice(+d.dataset.d, 1); cfg(sel).stops = st; updateIcons(); refresh(); return; } const c = e.target.closest("[data-z]"); if (c) map.easeTo({ zoom: +c.dataset.z, duration: 400 }); };
+  q(".ic-pin").onclick = () => { if (!sel) return; const c = cfg(sel), zr = map.getZoom(), z = Math.round(zr * 100) / 100, p = iconPos(sel, zr); c.pos = (c.pos || []).filter((k) => Math.abs(k[0] - z) > 0.019); c.pos.push([z, +p[0].toFixed(6), +p[1].toFixed(6)]); say("Repère posé à ce zoom"); updateIcons(); refresh(); };
+  q(".ic-st").onclick = (e) => { const pd = e.target.closest("[data-pd]"); if (pd) { const k = iconPosKeys(sel); k.splice(+pd.dataset.pd, 1); cfg(sel).pos = k; updateIcons(); refresh(); return; } const d = e.target.closest("[data-d]"); if (d) { const st = iconStops(sel); st.splice(+d.dataset.d, 1); cfg(sel).stops = st; updateIcons(); refresh(); return; } const c = e.target.closest("[data-z]"); if (c) map.easeTo({ zoom: +c.dataset.z, duration: 400 }); };
   q(".ic-sv").onclick = async () => { try { const r = await fetch("api/place-icons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(ICONCFG) }); say(r.ok ? "Enregistré ✔ (data/place-icons.json)" : "Échec : serveur sans --dev ?"); } catch { say("Échec de l'enregistrement"); } };
   map.on("zoom", refresh); window.__icons = ICONCFG;
 }

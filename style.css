@@ -1190,3 +1190,5 @@ body.ic-edit .pin.has-icon.ic-sel .pin-in.icon{outline:2px dashed #e0457b;outlin
 #ic-dev em{font-style:normal;font-size:12px}
 #ic-dev small{opacity:.7;font-size:11px}
 #ic-dev [hidden]{display:none!important}
+#ic-dev .ic-chip.pos{background:rgba(224,69,123,.35)}
+#ic-dev .ic-lb{font-size:12px;display:flex;gap:4px;align-items:center}
