@@ -496,12 +496,12 @@ export function cortoSays(text) {
   const m = document.createElement("div"); m.className = "doge-msg";
   m.innerHTML = `<div class="dm-txt">${esc(text)}</div><img class="dm-corto" src="img/corto-content.webp" alt="">`;
   document.body.appendChild(m); document.body.classList.add("corto-talk");
-  const big = m.querySelector(".dm-corto"), tw = typewriter(m.querySelector(".dm-txt"), text); // le texte se tape après l'arrivée de Corto
+  const big = m.querySelector(".dm-corto"); // le texte s'affiche d'un coup (police machine à écrire conservée, plus d'effet de frappe)
   const from = () => { const r = big.getBoundingClientRect(); return br ? `translate(${br.left + br.width / 2 - (r.left + r.width / 2)}px, ${br.bottom - r.bottom}px) scale(${br.width / r.width})` : "none"; };
   m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, fill: "forwards" });
   if (br) big.animate([{ transformOrigin: "50% 100%", transform: from() }, { transformOrigin: "50% 100%", transform: "none" }], { duration: 420, easing: "cubic-bezier(.2,.9,.3,1.1)" });
   let gone = false;
-  const bye = () => { if (gone) return; if (!tw.done) { tw.finish(); return; } /* premier toucher : le texte s'affiche en entier ; le suivant ferme */ gone = true; document.removeEventListener("pointerdown", bye, true);
+  const bye = () => { if (gone) return; gone = true; document.removeEventListener("pointerdown", bye, true);
     if (br) big.animate([{ transformOrigin: "50% 100%", transform: "none" }, { transformOrigin: "50% 100%", transform: from() }], { duration: 260, easing: "ease-in", fill: "forwards" });
     m.querySelector(".dm-txt").animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" });
     m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 120, fill: "forwards" }).onfinish = () => { m.remove(); document.body.classList.remove("corto-talk"); }; };
