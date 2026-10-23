@@ -1065,10 +1065,10 @@ function fitChapTalk() {
   const sh = $("#sheet.chap"), bt = sh && $("#b-talk", sh);
   if (!bt || !$(".m-bubble:not(.typing)", bt)) return;
   const conclusion = sh.classList.contains("chap-conclusion");
-  const limit = sh.clientHeight - SAFE_T() - 72; // laisse libres les commandes du coin haut
+  const limit = sh.clientHeight - SAFE_T() - (conclusion && chapCur && chapCur.plan ? 128 : 72); // place libre pour le bouton du plan
   bt.style.setProperty("--cqfix", "auto");
-  const start = conclusion ? Math.min(36, Math.max(28, sh.clientWidth * .086)) : Math.min(24, Math.max(18, sh.clientWidth * .06));
-  for (let size = start; size >= (conclusion ? 18 : 12); size -= .5) {
+  const start = conclusion ? Math.min(22, Math.max(18, sh.clientWidth * .05)) : Math.min(24, Math.max(18, sh.clientWidth * .06));
+  for (let size = start; size >= (conclusion ? 15 : 12); size -= .5) {
     bt.style.setProperty("--cqfont", size + "px");
     if (bt.offsetHeight <= limit) break;
   }
@@ -1370,7 +1370,6 @@ function chapAudioCard(s) {
   ($("#sheet.chap") ? $("#sheet") : $("#b-talk")).appendChild(card);
 }
 const EXIT_SVG = '<svg viewBox="0 0 48 48" width="24" height="24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M26 5a10 10 0 0 1 10 10c0 8-10 19-10 19S16 23 16 15A10 10 0 0 1 26 5z"/><circle cx="26" cy="15" r="3.5"/><path d="M6 41h18M11 36l-5 5 5 5"/></svg>';
-const PLAN_SVG = '<svg viewBox="0 0 48 48" width="24" height="24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="38" height="38" rx="6"/><path d="M19 39V27H11v-7h8v-8h10v8h8v7h-8v12z"/></svg>';
 function openChapters(p, replay = false, conclusionOnly = false) {
   chapCur = p; suspended = null; openId = "chap"; chatSel = "#b-talk"; $("#next").hidden = true; $("#bridge-btn").hidden = true;
   const sh = $("#sheet"); sh.hidden = false; sh.className = "medal-wrap bridge-wrap chap"; delete sh.dataset.k;
@@ -1380,10 +1379,10 @@ function openChapters(p, replay = false, conclusionOnly = false) {
   document.body.classList.add("chap-open");
   { const bt = $("#b-talk"); if (window.ResizeObserver) new ResizeObserver(() => { sh.style.setProperty("--cqh", bt.offsetHeight + "px"); $$(".rev-img").forEach(fitRevImg); }).observe(bt); }
   if (DEV && !conclusionOnly) { const sk = document.createElement("button"); sk.type = "button"; sk.className = "dev-skip"; sk.textContent = "⏭ Fin"; sk.onclick = () => skipEnd && skipEnd(); sh.appendChild(sk); } // mode dev : sauter à l'écran final
-  { // coin bas gauche, permanent : sortir vers la carte de Venise, et (si le lieu en a un) voir le plan
+  { // coin haut gauche : seul le retour à la carte reste présent pendant l'épreuve
     const dk = document.createElement("div"); dk.className = "dock";
-    dk.innerHTML = `<button type="button" class="dk dk-exit" aria-label="Revenir à la carte de Venise">${EXIT_SVG}</button>${p.plan ? `<button type="button" class="dk dk-plan" aria-label="Voir le plan du lieu">${PLAN_SVG}</button>` : ""}`;
-    sh.appendChild(dk); $(".dk-exit", dk).onclick = () => suspendChap(); const pb = $(".dk-plan", dk); if (pb) pb.onclick = () => { if (locUI && locUI.planOpen && locUI.closePlan) locUI.closePlan(); else openPlanPanel(p.plan, p); };
+    dk.innerHTML = `<button type="button" class="dk dk-exit" aria-label="Revenir à la carte de Venise">${EXIT_SVG}</button>`;
+    sh.appendChild(dk); $(".dk-exit", dk).onclick = () => suspendChap();
   }
   sh.onclick = null; // dans une épreuve, un toucher à côté des bulles et des boutons ne ferme rien : on y reste
   try { history.pushState({ vqBridge: 1 }, ""); } catch {}
@@ -1399,8 +1398,10 @@ const endMessage = (p, again = false) => {
 async function chapEnd(p, replay) {
   await clearTalk();
   const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.classList.add("chap-conclusion"); sh.dataset.k = "one";
+  const devSkip = $(".dev-skip", sh); if (devSkip) devSkip.remove();
   const msg = chatAdd(typingHtml, "fc chap-final-msg"); cortoFill(msg, endMessage(p, replay));
   if (p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
+  if (p.plan) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-plan"; b.textContent = "🗺️ Voir le plan"; b.onclick = () => openPlanPanel(p.plan, p); sh.appendChild(b); }
   if (MONTAGES[p.id]) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-photo"; b.textContent = "📸 Photo souvenir"; b.onclick = () => openMontage(p.id); sh.appendChild(b); }
   if (!replay) confetti(45);
 }
@@ -1447,7 +1448,7 @@ function openPlanPanel(plan, pl) {
   const ui = locUI;
   if (ui.planOpen) return;
   let panel = null, stage = null, box = null, bottom = null;
-  const hide = () => { panel && panel.remove(); ui.els = ui.els.filter((e) => e !== panel); panel = stage = box = bottom = null; ui.planOpen = false; sh.classList.remove("plan-open"); const dkp = $(".dk-plan"); if (dkp) { dkp.innerHTML = PLAN_SVG; dkp.setAttribute("aria-label", "Voir le plan du lieu"); dkp.classList.remove("back"); } };
+  const hide = () => { panel && panel.remove(); ui.els = ui.els.filter((e) => e !== panel); panel = stage = box = bottom = null; ui.planOpen = false; sh.classList.remove("plan-open"); };
   const layout = () => { // le plan est posé une fois pour toutes, centré entre le titre et le bas ; seul le bas change
     if (!panel) return; const PW = stage.clientWidth, PH = stage.clientHeight, sc = Math.min(PW / plan.w, (PH - 8) / plan.h);
     box.style.width = plan.w * sc + "px"; box.style.height = plan.h * sc + "px"; box.style.fontSize = Math.max(13, plan.w * sc * 0.026) + "px";
@@ -1478,7 +1479,7 @@ function openPlanPanel(plan, pl) {
     $(".pc-img", bottom).onclick = () => openPhoto(pt);
   };
   {
-    ui.planOpen = true; ui.closePlan = hide; sh.classList.add("plan-open"); const dkp = $(".dk-plan"); if (dkp) { dkp.innerHTML = '<span class="dk-face"></span>'; dkp.setAttribute("aria-label", "Retourner à la question"); dkp.classList.add("back"); }
+    ui.planOpen = true; ui.closePlan = hide; sh.classList.add("plan-open");
     panel = document.createElement("div"); panel.className = "plan-panel";
     panel.innerHTML = `<div class="plan-head"><b>${esc(plan.title || "")}</b></div><div class="plan-stage"><div class="plan-box"><img class="plan-img" src="${plan.img}" alt="">${plan.points.map((p) => `<button type="button" class="plan-pt" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%">${p.id}</button>`).join("")}</div></div><div class="plan-bottom"></div><button type="button" class="loc-x plan-x" aria-label="Fermer le plan">✕</button>`;
     if (!sh.classList.contains("chap") && pl) panel.style.cssText += `;background:linear-gradient(to bottom,rgba(2,10,16,.45),rgba(2,10,16,.72)),url(${pic(pl.id)}) center/cover #05121c`; // hors épreuve : fond opaque (l'écran du lieu ne doit pas transparaître)

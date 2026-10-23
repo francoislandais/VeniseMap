@@ -1468,8 +1468,10 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 /* Fin d'épreuve : la parole de Corto garde le même lavis bleu nuit que les questions. */
 #sheet.chap .chap-final-msg .m-bubble::before{content:"✦  ÉPREUVES ACCOMPLIES";display:block;margin-bottom:12px;color:#f0d58f;font-size:11px;font-weight:700;letter-spacing:.14em;text-shadow:0 1px 3px rgba(0,0,0,.5)}
 #sheet.chap.chap-conclusion .chap-bg{opacity:1!important;filter:blur(0)!important}
-#sheet.chap.chap-conclusion .b-talk .m-bubble{border:0;box-shadow:none;background:none;font-size:var(--cqfont,32px);line-height:1.27}
-#sheet.chap.chap-conclusion .chap-end-photo{position:absolute;top:calc(13px + var(--safe-t));right:14px;z-index:13;white-space:nowrap;padding:8px 12px;border:1px solid rgba(207,230,238,.38);border-radius:999px;background:rgba(8,32,50,.72);color:#fff;font-size:12px;font-weight:600;box-shadow:0 2px 8px rgba(0,8,18,.3)}
+#sheet.chap.chap-conclusion .b-talk .m-bubble{border:0;box-shadow:none;background:none;font-size:var(--cqfont,20px);line-height:1.34}
+#sheet.chap.chap-conclusion .chap-final-msg .m-bubble::before{position:static;border:0;margin-bottom:10px;line-height:1.3}
+#sheet.chap.chap-conclusion .chap-end-plan{position:absolute;left:22px;bottom:calc(var(--cqh,150px) + 12px);z-index:6;padding:10px 16px;border:1px solid rgba(201,230,238,.75);border-radius:999px;background:rgba(8,38,57,.92);color:#fff;font-size:15px;font-weight:700;box-shadow:0 3px 10px rgba(0,8,18,.4)}
+#sheet.chap.chap-conclusion .chap-end-photo{position:absolute;top:calc(56px + var(--safe-t));right:14px;z-index:13;white-space:nowrap;padding:8px 12px;border:1px solid rgba(207,230,238,.38);border-radius:999px;background:rgba(8,32,50,.72);color:#fff;font-size:12px;font-weight:600;box-shadow:0 2px 8px rgba(0,8,18,.3)}
 #sheet.medal-wrap:not(.chap) .end-card{gap:10px;padding-top:0}
 #sheet.medal-wrap:not(.chap) .end-card .end-face{width:86px;height:86px;margin:0 0 -8px}
 #sheet.medal-wrap:not(.chap) .end-card .m-bubble{max-width:340px;padding:14px 16px;border:1px solid rgba(166,213,229,.5);border-radius:16px;background:rgba(8,32,50,.94);color:#fff;text-align:left;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.35}
