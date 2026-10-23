@@ -1279,3 +1279,7 @@ body.corto-talk #map-btn,body.corto-talk #home-btn,body.corto-talk #corto-btn,bo
 .up-tabs button{font-size:11.5px;letter-spacing:-.3px;padding:9px 0 10px}
 .wk-t{flex:calc(var(--ar) * 100) 1 calc(var(--ar) * 82px);height:82px}
 .up-tabs button{font-size:11px;letter-spacing:-.35px;overflow:hidden}
+/* 7 onglets : la rangée défile horizontalement si besoin (l'onglet actif reste visible) */
+.up-tabs{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.up-tabs::-webkit-scrollbar{display:none}
+.up-tabs button{flex:1 0 auto;padding:9px 9px 10px;font-size:12px;letter-spacing:0;overflow:visible}
