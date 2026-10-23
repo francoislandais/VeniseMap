@@ -265,6 +265,9 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     let ambDead = false; const AMB_VOL = 0.34, MUS_VOL = 0.42;
     const ambStart = () => { if (ambDead) return; amb.play().then(() => { if (!ambDead) fadeA(amb, AMB_VOL, 2500); }).catch(() => { const once = () => { root.removeEventListener("pointerdown", once, true); ambStart(); }; root.addEventListener("pointerdown", once, true); }); }; // les navigateurs exigent parfois un premier toucher
     const musStart = () => { if (musOn || ambDead) return; musOn = true; mus.play().then(() => { if (!ambDead) fadeA(mus, MUS_VOL, 5000); }).catch(() => {}); }; // entre doucement quand Corto se présente
+    // La mer s'éloigne au fil des écrans : de plus en plus faible, très faible à partir du 5e écran, coupée complètement au 7e (avant la finale).
+    const SEA = [0.34, 0.27, 0.19, 0.11, 0.045, 0.02, 0];
+    const seaTo = (i) => { if (ambDead) return; const v = SEA[Math.min(i, SEA.length - 1)]; if (v > 0 && amb.paused) amb.play().catch(() => {}); fadeA(amb, v, 3000, () => { if (v === 0) amb.pause(); }); };
     const ambStop = (ms) => { if (ambDead) return; ambDead = true; for (const a of [amb, mus]) fadeA(a, 0, ms, () => { a.pause(); a.src = ""; }); };
     ambStart();
     root.innerHTML = '<div class="in2-bg"></div><div class="in2-veil"></div><div class="in2-nav"><button type="button" class="in2-prev" aria-label="Précédent">‹</button><button type="button" class="in2-next" aria-label="Suivant">›</button></div>';
@@ -328,6 +331,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       const els = typeTargets(d, sc).flatMap((q) => [...d.querySelectorAll(q)]); curTyping = typeSeq(els, { delay, onDone, manual });
     };
     const morph = (sc, to) => {
+      seaTo(to);
       const t = cur.querySelector(".in2-txt"), old = [...t.querySelectorAll(".in2-part")];
       old.forEach((p) => { p.removeAttribute("data-k"); p.classList.remove("in2-part"); p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).onfinish = () => p.remove(); });
       sc.parts.forEach((txt, n) => { const p = document.createElement("p"); p.className = "in2-part" + (txt.length > 90 ? " in2-long" : ""); p.dataset.k = "p" + (n + 1); p.innerHTML = rich(esc(txt)); p.style.opacity = 0; t.appendChild(p); p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 400, fill: "forwards" }).onfinish = () => (p.style.opacity = ""); });
@@ -382,8 +386,10 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       prevBtn.style.visibility = to === 0 ? "hidden" : "visible";
             d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
-      cur = d;
-      if (sc.layout === "hello") { if (first) startTyping(d, sc, 0, undefined, true); else startTyping(d, sc, 300); } else startTyping(d, sc, 800);
+      cur = d; if (to > 0) seaTo(to);
+      if (sc.button && !editing) { const b = d.querySelector(".in2-btn"); if (b) b.style.visibility = "hidden"; } // le bouton n'apparaît qu'une fois la question entièrement posée
+      const showBtn = sc.button ? () => { const b = d.querySelector(".in2-btn"); if (b) { b.style.visibility = ""; b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500 }); } } : undefined;
+      if (sc.layout === "hello") { if (first) startTyping(d, sc, 0, undefined, true); else startTyping(d, sc, 300); } else startTyping(d, sc, 800, showBtn);
       if (sc.layout === "welcome") musStart(); // Corto se présente : la musique entre
       if (sc.layout.startsWith("center") && !boatPan && !matchMedia("(prefers-reduced-motion: reduce)").matches) { // le bateau reste en place (il tangue seulement) : c'est le tableau de fond qui défile très lentement vers la gauche, ce qui donne l'impression que le bateau avance
         boatPan = root.querySelector(".in2-bg").animate([{ backgroundPosition: "10% 50%" }, { backgroundPosition: "30% 50%" }], { duration: 60000, easing: "linear", fill: "forwards" });
