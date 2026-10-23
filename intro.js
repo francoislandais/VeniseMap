@@ -191,12 +191,12 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     let LAYOUT = {}; try { const r = await fetch("data/intro-layout.json?" + Date.now()); if (r.ok) LAYOUT = await r.json(); } catch {} // réglages de position/taille enregistrés depuis l'éditeur
     const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", sea: ".wl-sea", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt", ask: ".in2-ask", btn: ".in2-btn" } };
     const edKey = (to) => SCREENS[to].key; // clé stable de chaque écran (s1…s6, who) : les réglages enregistrés ne bougent pas si on insère un écran
-    const elsOf = (d, sc) => { const map = { ...EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.face) map.face = ".in2-face"; if (sc.ask) map.txt = ".in2-txt p:not(.in2-ask)"; if (sc.parts) sc.parts.forEach((_, n) => (map["p" + (n + 1)] = `.in2-part[data-k=p${n + 1}]`)); /* écran avec question + bouton : le texte, la question et le bouton sont trois éléments indépendants */ const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
+    const elsOf = (d, sc) => { const map = { ...EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.face) map.face = ".in2-face"; if (sc.ask) map.txt = ".in2-txt p:not(.in2-ask)"; if (sc.bye) map.bye = ".in2-bye"; if (sc.parts) sc.parts.forEach((_, n) => (map["p" + (n + 1)] = `.in2-part[data-k=p${n + 1}]`)); /* écran avec question + bouton : le texte, la question et le bouton sont trois éléments indépendants */ const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     // Position / taille d'un élément = réglage de l'éditeur (x en vw, y en % de la hauteur d'écran, échelle) + petite correction automatique (_fx, _fy en px, _fs) qui le ramène dans l'écran
     const applyOne = (e, v) => { const fx = e._fx || 0, fy = e._fy || 0, fs = e._fs || 1, sc0 = ((v && v.s) || 1) * fs; e.style.translate = v || fx || fy ? `calc(${(v && v.x) || 0} * 1vw + ${fx}px) calc(${(v && v.y) || 0} * var(--lh) / 100 + ${fy}px)` : ""; e.style.scale = sc0 !== 1 ? String(Math.round(sc0 * 1000) / 1000) : ""; };
     // Textes modifiables : réglages dans LAYOUT._t[sN][clé] ; « {nom} » est remplacé par le prénom
     const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", sea: ".wl-sea", mid: ".wl-mid p" }, who: { lab: ".wh-lab", ok: ".wh-ok" }, other: { txt: ".in2-txt p:not(.in2-ask)", ask: ".in2-ask", btn: ".in2-btn" } };
-    const textsOf = (d, sc) => { const map = { ...TEXTSEL[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.parts) { delete map.txt; sc.parts.forEach((_, n) => (map["p" + (n + 1)] = `.in2-part[data-k=p${n + 1}]`)); } const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
+    const textsOf = (d, sc) => { const map = { ...TEXTSEL[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.bye) map.bye = ".in2-bye"; if (sc.parts) { delete map.txt; sc.parts.forEach((_, n) => (map["p" + (n + 1)] = `.in2-part[data-k=p${n + 1}]`)); } const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     const rich = (h) => h.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); // **mot** = gras
     const htmlOf = (t) => rich(esc(String(t).replace(/\{nom\}/g, name))).replace(/\n/g, "<br>");
     const mdOf = (el) => { let o = ""; el.childNodes.forEach((n) => { o += n.nodeType === 3 ? n.nodeValue : n.nodeName === "BR" ? "\n" : /^(B|STRONG)$/.test(n.nodeName) ? "**" + n.textContent + "**" : n.textContent; }); return o; };
@@ -244,7 +244,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       { key: "s3", img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
       { key: "s4", img: 4, layout: "top", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une **mission de la plus haute importance**, une aventure qui te mènera au cœur de ses secrets et de son histoire.", ask: "Es-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
       { key: "s5", img: 5, layout: "center-top", face: true, parts: ["Parfait, alors c'est décidé !", "Voici mon bateau.", "Il sera bientôt amarré à l'embarcadère de **Santo Spirito**. Retrouvons-nous là-bas quand tu seras prêt."], text: () => "" },
-      { key: "s6", base: "s5", img: 5, layout: "center-top", face: true, parts: ["Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller."], text: () => "" },
+      { key: "s6", base: "s5", bye: "À bientôt", img: 5, layout: "center-top", face: true, parts: ["Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller."], text: () => "" },
     ];
     const SCREENS = ALL; // l'écran d'identité s'affiche toujours ; en rejeu il reprend le profil existant (nom, photo) et permet de le modifier
     const cur0 = opts.profile || null;
@@ -343,7 +343,13 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       idx = to; applyTexts(cur, sc, to); const els = elsOf(cur, sc); for (const k in els) if (/^p\d+$/.test(k)) applyOne(els[k], (LAYOUT[sc.key] || {})[k]);
       fit(cur, sc); setTimeout(() => fit(cur, sc), 350);
       prevBtn.style.visibility = "visible"; if (editing) select(null);
-      startTyping(cur, sc, 900, sc.key === "s6" && !editing ? () => { readT = setTimeout(() => finale(), 5000); } : undefined); // 5 s après la fin de la frappe de l'écran 6, la transition vers la carte démarre
+      cur.querySelectorAll(".in2-bye").forEach((e) => e.remove());
+      if (sc.bye) { // « À bientôt » : textbox dédiée sous le bateau, qui apparaît en fondu quand le récit est terminé
+        const b = document.createElement("p"); b.className = "in2-bye"; b.dataset.k = "bye"; b.textContent = sc.bye; if (!editing) b.style.opacity = "0"; cur.appendChild(b);
+        const place = () => { const im = cur.querySelector(".in2-img"); if (!im || !b.isConnected) return; const tr = b.style.translate, sc1 = b.style.scale; b.style.translate = "none"; b.style.scale = "none"; b.style.top = "0px"; const k0 = b.getBoundingClientRect().top, r = im.getBoundingClientRect(); b.style.top = Math.round(r.top + r.height * 0.95 - k0) + "px"; b.style.translate = tr; b.style.scale = sc1; };
+        applyTexts(cur, sc, to); applyOne(b, (LAYOUT[sc.key] || {}).bye); place(); setTimeout(place, 700); setTimeout(place, 1500); b._place = place;
+      }
+      startTyping(cur, sc, 900, sc.key === "s6" && !editing ? () => { const b = cur.querySelector(".in2-bye"); if (b) { b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1400, fill: "forwards" }).onfinish = () => (b.style.opacity = ""); } readT = setTimeout(() => finale(), 5000); } : undefined); // 5 s après la fin de la frappe de l'écran 6, la transition vers la carte démarre
     };
     // Finale : le bateau rapetisse, le tableau se dissout, la carte de Venise se matérialise ; la caméra reste sur le bateau, posé sur l'eau de la lagune
     const finale = async () => {
@@ -361,7 +367,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         const cream = document.createElement("div"); cream.className = "in2-cream"; root.insertBefore(cream, root.firstChild); root.classList.add("in2-fin");
         document.body.classList.remove("intro-open"); // la carte (déjà chargée sous le tableau) devient visible dès que le fond s'efface
         const D = 7000, ease = "cubic-bezier(.45,0,.25,1)";
-        cur.querySelectorAll(".in2-txt, .in2-face").forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1000, fill: "forwards" }));
+        cur.querySelectorAll(".in2-txt, .in2-face, .in2-bye").forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1000, fill: "forwards" }));
         cream.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D * 0.7, delay: D * 0.2, fill: "forwards", easing: "ease-in-out" });
         root.querySelector(".in2-bg").animate([{ opacity: 1 }, { opacity: 0 }], { duration: D * 0.7, delay: D * 0.2, fill: "forwards", easing: "ease-in-out" });
         const s0 = parseFloat(getComputedStyle(bt).scale) || 1, s1 = B.w / bt.offsetWidth;

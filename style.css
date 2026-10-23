@@ -1401,3 +1401,7 @@ body.menu-open #corto-btn{display:none!important}
 /* « Je suis marin. » : sous le nom de Corto */
 .wl-sea{position:absolute;left:0;right:0;top:calc(var(--safe-t) + clamp(14px,3%,30px) + clamp(84px,25vw,140px) + clamp(22px,3.4dvh,40px) + clamp(30px,8vw,40px) + clamp(40px,11vw,58px));margin:0 auto;padding:0 clamp(16px,6vw,32px);max-width:560px;box-sizing:border-box;font-size:clamp(20px,6vw,30px);line-height:1.1;font-weight:400;color:#1d2230;text-shadow:0 0 12px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
 .in2-editing .wl-sea{pointer-events:auto}
+/* « À bientôt » : sous le bateau de l'écran final */
+.in2-bye{position:absolute;left:0;right:0;z-index:3;margin:0;text-align:center;font-size:clamp(24px,7.5vw,38px);line-height:1.1;color:#1d2230;text-shadow:0 0 12px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95);pointer-events:none}
+.in2-editing .in2-bye{pointer-events:auto}
+.in2 .in2-bye{font-family:"Special Elite","Courier New",Courier,monospace}
