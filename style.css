@@ -1460,3 +1460,7 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
   text-shadow:0 1px 2px rgba(0,12,26,.7);
 }
 #sheet.chap .b-actions.stack .b-btn.choice.right{box-shadow:0 0 0 4px rgba(76,175,106,.35)}
+
+/* Tableau gagné : il rejoint le livre, puis les étoiles tombent vers l'escarcelle. */
+.work-flight{position:fixed;z-index:1800;object-fit:contain;pointer-events:none;border:2px solid rgba(245,225,166,.9);border-radius:4px;box-shadow:0 8px 26px rgba(0,0,0,.55);transform-origin:center}
+.work-rain-star{position:fixed;z-index:1790;width:23px;height:23px;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}

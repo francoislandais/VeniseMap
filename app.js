@@ -1514,9 +1514,14 @@ async function runChapters(p, replay = false) {
         sh.classList.add("chap-reveal"); // seule l'image de fond se floute pendant la révélation
         if (!replay) { award(`t:${p.id}:${x.idx}`, r.first ? pts : 0, meIdx()); save(); refreshAll(); }
         if (r.first && !replay) confetti(30);
-        const head = x.free ? `**Merci de me le dire !** ` : r.first ? `**Bravo !** ` : "**C'est la bonne réponse !** ";
+        let wonWork = null, cleared = false;
+        if (x.work && !workFound(x.work)) {
+          await clearTalk(); rv = im = null; cleared = true;
+          wonWork = await claimQuestionWork(x.work);
+        }
+        const head = wonWork ? `**Bravo ! « ${wonWork.titre} » rejoint ton livre : +${POINTS.work} étoiles !** ` : x.free ? `**Merci de me le dire !** ` : r.first ? `**Bravo !** ` : "**C'est la bonne réponse !** ";
         const text = head + x.reveal + (last ? "" : ` ${qs[j + 1].q}`);
-        if (!rv) { await clearTalk(); await newRev(text, chainBar(qs, j + 1)); } // première réponse : tout est effacé
+        if (!rv) { if (!cleared) await clearTalk(); await newRev(text, chainBar(qs, j + 1)); } // première réponse : tout est effacé
         else { cortoType(rv); await bsleep(80); cortoFill(rv, text); await bsleep(100); } // les suivantes : même bulle, même image
       }
       $$(".rev-img").forEach((e) => e.dataset.keep = "1");
@@ -1911,9 +1916,55 @@ const workFound = (id) => has("w:" + id);
 async function findWork(id, opts = {}) { // appelée quand l'enfant réussit l'épreuve qui lui fait gagner cette toile
   const W = await loadWorks(), w = W.oeuvres.find((x) => x.id === id); if (!w) return false;
   if (workFound(id)) return false;
-  award("w:" + id, POINTS.work); save(); renderHud(); if (tab === "works") renderWorks();
+  award("w:" + id, POINTS.work, meIdx()); save(); renderHud(); if (tab === "works") renderWorks();
   if (!opts.silent) { const a = W.artistes.find((x) => x.cle === w.artiste); cortoSays(`Bravo matelot ! Tu as trouvé une toile de ${a ? a.nom : w.artisteNom} : « ${w.titre.length > 60 ? w.titre.slice(0, 57) + "…" : w.titre} ». +${POINTS.work} ★ !`); }
   return true;
+}
+async function flyWorkToBook(w) {
+  const book = $("#home-btn"), target = book && book.getBoundingClientRect();
+  if (!target) return;
+  const cx = innerWidth / 2, cy = innerHeight * .56, tx = target.left + target.width / 2, ty = target.top + target.height / 2;
+  const ratio = w.ratio || .7, height = Math.min(innerHeight * .38, Math.min(innerWidth * .5, 200) / ratio), width = height * ratio;
+  const art = document.createElement("img"); art.className = "work-flight"; art.src = w.thumb; art.alt = "";
+  art.style.cssText = `left:${cx}px;top:${cy}px;width:${width}px;height:${height}px`;
+  document.body.appendChild(art);
+  try { await Promise.race([art.decode().catch(() => {}), sleep(800)]); } catch {}
+  const dx = tx - cx, dy = ty - cy, reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  try {
+    await art.animate(reduced ? [
+      { transform: "translate(-50%,-50%) scale(.9)", opacity: 0 },
+      { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.12)`, opacity: 1 },
+    ] : [
+      { transform: "translate(-50%,-50%) translateY(50px) rotate(-6deg) scale(.7)", opacity: 0 },
+      { transform: "translate(-50%,-50%) translateY(-55px) rotate(8deg) scale(1.12)", opacity: 1, offset: .32 },
+      { transform: "translate(-50%,-50%) translateY(-100px) rotate(-5deg) scale(1.05)", opacity: 1, offset: .58 },
+      { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(12deg) scale(.12)`, opacity: 1 },
+    ], { duration: reduced ? 250 : 1450, easing: "ease-in-out", fill: "forwards" }).finished.catch(() => {});
+  } finally { art.remove(); }
+  book.animate([{ transform: "scale(1)" }, { transform: "scale(1.22)", offset: .45 }, { transform: "scale(1)" }], { duration: 430 });
+}
+function rainWorkStars() {
+  const book = $("#home-btn"), r = book && book.getBoundingClientRect(); if (!r) return;
+  const tx = r.left + r.width / 2, ty = r.top + r.height / 2;
+  for (let i = 0; i < 20; i++) {
+    const x = innerWidth * (.1 + Math.random() * .8), y = -30 - Math.random() * 110;
+    const s = document.createElement("div"); s.className = "work-rain-star"; s.innerHTML = STAR_SVG; s.style.cssText = `left:${x}px;top:${y}px`;
+    document.body.appendChild(s);
+    s.animate([
+      { transform: "translate(0,0) rotate(0deg) scale(.4)", opacity: 0 },
+      { opacity: 1, offset: .25 },
+      { transform: `translate(${tx - x}px,${ty - y}px) rotate(320deg) scale(.45)`, opacity: 0 },
+    ], { duration: 750 + i * 16, delay: i * 32, easing: "ease-in", fill: "forwards" }).finished.finally(() => s.remove()).catch(() => {});
+  }
+  starsToCounter(tx, ty, POINTS.work, true);
+}
+async function claimQuestionWork(id) {
+  const W = await loadWorks(), w = W.oeuvres.find((item) => item.id === id);
+  if (!w || workFound(id)) return null;
+  await flyWorkToBook(w);
+  if (!await findWork(id, { silent: true })) return null;
+  rainWorkStars();
+  return w;
 }
 window.__works = { find: findWork, load: loadWorks, all: async () => (await loadWorks()).oeuvres.map((w) => w.id), reset: async () => { (await loadWorks()).oeuvres.forEach((w) => { if (workFound(w.id)) unaward("w:" + w.id); }); save(); renderHud(); if (tab === "works") renderWorks(); } };
 const WORKS_MSG = "Collectionne les toiles de maîtres : elles s'afficheront ici en hommage à ta ténacité et te rapporteront un max d'étoiles !";

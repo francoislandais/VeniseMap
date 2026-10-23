@@ -2479,6 +2479,7 @@ export const PLACES = [
           },
           {
             "idx": 208,
+            "work": "FRA02",
             "where": "Nef de gauche : observe le grand tableau près du monument du doge.",
             "q": "De quel côté Titien place-t-il la Vierge dans la Madone de Ca’ Pesaro ?",
             "opts": [
@@ -2551,6 +2552,7 @@ export const PLACES = [
         "steps": [
           {
             "idx": 211,
+            "work": "FRA01",
             "where": "Au maître-autel, tout au fond : regarde la figure centrale du grand tableau.",
             "q": "De quelle couleur est la robe de Marie dans L’Assomption de Titien ?",
             "opts": [
