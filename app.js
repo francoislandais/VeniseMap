@@ -1749,7 +1749,12 @@ function renderBridges() {
     menuSay(say);
     // Mosaïque des ponts trouvés qui ont une image (le nom en discret) ; les autres sont simplement comptés à la fin.
     const withImg = found.filter((b) => b[3]), noImg = found.length - withImg.length;
-    v.innerHTML = `<div class="bmos">${withImg.map((b) => `<button type="button" class="bm" data-b="${b[0]}" aria-label="${esc(b[1] || "Pont sans nom")}" style="background-image:url(img/ponts/${b[0]}.webp)"><span>${esc(b[1] || "Pont sans nom")}</span></button>`).join("")}</div>${noImg ? `<p class="bm-more">+ ${noImg} pont${noImg > 1 ? "s" : ""} sans image</p>` : ""}`;
+    // Mosaïque « naturelle » : chaque photo a un format légèrement différent (recadrage), les rangées ont des hauteurs variées et se remplissent jusqu'au bord ; photos collées, fine bordure noire.
+    const arOf = (id) => 0.85 + (((Number(id) * 2654435761) >>> 0) % 1000) / 1000 * 1.15, W = Math.max(200, v.clientWidth - 28), heights = [150, 118, 136, 168, 124], rows = [];
+    let cur = [], sum = 0;
+    withImg.forEach((b) => { const ar = arOf(b[0]), h0 = heights[rows.length % heights.length]; cur.push({ b, ar }); sum += ar; if (sum * h0 + (cur.length - 1) >= W) { rows.push({ cur, h: Math.min(h0 * 1.35, (W - (cur.length - 1)) / sum), full: true }); cur = []; sum = 0; } });
+    if (cur.length) rows.push({ cur, h: heights[rows.length % heights.length] * 0.95, full: false });
+    v.innerHTML = `<div class="bmos">${rows.map((r) => `<div class="bmr" style="height:${Math.round(r.h)}px">${r.cur.map(({ b, ar }) => `<button type="button" class="bm" data-b="${b[0]}" aria-label="${esc(b[1] || "Pont sans nom")}" style="flex:${r.full ? ar : 0} 1 ${r.full ? 0 : Math.round(ar * r.h)}px;background-image:url(img/ponts/${b[0]}.webp)"><span>${esc(b[1] || "Pont sans nom")}</span></button>`).join("")}</div>`).join("")}</div>${noImg ? `<p class="bm-more">+ ${noImg} pont${noImg > 1 ? "s" : ""} sans image</p>` : ""}`;
     $$(".bm", v).forEach((d) => (d.onclick = () => bridgeCard(byId.get(d.dataset.b))));
   });
 }

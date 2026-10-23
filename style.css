@@ -1350,3 +1350,10 @@ body.menu-open #corto-btn{display:none!important}
 .bm{position:relative;flex:1 1 150px;height:118px;border-radius:10px;overflow:hidden;border:0;padding:0;background:#d9cdb0 center/cover no-repeat;box-shadow:0 1px 5px rgba(0,0,0,.3)}
 .bm span{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 5px;font-size:11px;font-weight:700;letter-spacing:.1px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);background:linear-gradient(to top,rgba(0,0,0,.62),rgba(0,0,0,0));text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bm-more{margin:12px 2px 0;font-size:14px;font-weight:700;color:#3b4a55;text-shadow:0 0 8px rgba(243,234,215,.95)}
+
+/* Ponts : photos collées, bordure noire fine, sans angles arrondis ni ombres */
+.bmos{display:flex;flex-direction:column;gap:1px;background:#000;border:1px solid #000;box-shadow:none;box-sizing:border-box;width:100%}
+.bmr{display:flex;gap:1px;background:#000;width:100%;overflow:hidden}
+.bmos::after{content:none}
+.bm{height:auto;flex:1 1 0;border-radius:0;box-shadow:none;min-width:0}
+.bmr .bm{height:100%;align-self:stretch}
