@@ -974,10 +974,7 @@ img.cut{border-radius:0!important;background:none!important;border:0!important;b
 img.cut.frame{object-fit:cover!important;object-position:50% 34%!important}
 .dv-src{display:flex;gap:8px}.dv-src .btn{flex:1;font-size:14px}.dv-src .btn.on{background:#cde8ff;border-color:#2b6ca3}
 
-/* tenue portée : l'image garde tout le buste et le chapeau */
-img.cut.outfit{object-fit:contain!important;object-position:50% 50%!important}
-.me.ph:has(img.outfit){width:70px;height:70px}
-.mb-av:has(img.outfit){overflow:visible}
+/* Tenues et chapeaux de grade : le portrait reste à sa place sous les accessoires. */
 .dv-act{display:flex;gap:6px;margin-top:6px}.dv-act .btn{flex:1;font-size:12px;padding:6px 4px;min-height:34px}
 #dv-off{margin-top:12px;width:100%}
 /* cérémonie */
@@ -1493,3 +1490,12 @@ body.intro-open > .cam.cam{visibility:visible!important}
 
 /* Repère plus confortable à bout de bras ; le cadrage et la photo enregistrée ne changent pas. */
 .cam:not(.has-photo) .cam-oval{transform:scale(1.15)}
+
+/* La photo garde exactement sa place et sa taille ; seule la tenue déborde autour. */
+.avatar-dressed{position:relative;display:block;width:100%;height:100%;overflow:visible}
+.avatar-dressed .avatar-base{display:block;width:100%;height:100%}
+.avatar-dressed .avatar-gear{position:absolute!important;left:var(--gear-left);top:var(--gear-top);width:var(--gear-width)!important;height:var(--gear-height)!important;max-width:none!important;object-fit:fill!important;object-position:initial!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;filter:none!important;pointer-events:none}
+.me.ph:has(.avatar-dressed){width:50px;height:50px;overflow:visible}
+.mb-av:has(.avatar-dressed){overflow:visible}
+.cer-avatar.avatar-dressed{grid-area:1/1;width:min(65vw,280px);height:auto;aspect-ratio:1}
+.cer-avatar .avatar-base:not(.cut){object-fit:cover;object-position:center}

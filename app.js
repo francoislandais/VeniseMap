@@ -198,9 +198,25 @@ let PROFILE = loadProfile();
 const VENICE = { w: 12.24, s: 45.36, e: 12.47, n: 45.55 }; // zone explorable : Venise et ses alentours
 const inVenice = (lat, lon) => lon >= VENICE.w && lon <= VENICE.e && lat >= VENICE.s && lat <= VENICE.n;
 let outside = false, locateAsked = false;
+function outfitStyle(l, cut, frame) { // place la tenue dans les mêmes coordonnées que la photo, sans redimensionner celle-ci
+  if (!l) return null;
+  const { w, h, cw, ch, ox, pad } = l;
+  if (![w, h, cw, ch, ox, pad].every(Number.isFinite) || w <= 0 || h <= 0) return null;
+  const scale = 1 / (frame ? Math.min(w, h) : cut ? Math.max(w, h) : Math.min(w, h));
+  const left = ((1 - w * scale) * 0.5 - ox * scale) * 100;
+  const top = ((1 - h * scale) * (frame ? 0.34 : 0.5) - pad * scale) * 100;
+  return `--gear-left:${left}%;--gear-top:${top}%;--gear-width:${cw * scale * 100}%;--gear-height:${ch * scale * 100}%`;
+}
 function profileHtml() {
   if (!PROFILE) return "🙂";
-  if (PROFILE.outfitPhoto) return `<img class="cut outfit" src="${PROFILE.outfitPhoto}" alt="">`; // tenue de grade portée
+  if (PROFILE.photo && PROFILE.outfitOverlay && PROFILE.outfitLayout) {
+    const style = outfitStyle(PROFILE.outfitLayout, !!PROFILE.cut, PROFILE.frame);
+    if (style) {
+      const cls = PROFILE.cut ? ` cut${PROFILE.frame ? " frame" : ""}` : "";
+      return `<span class="avatar-dressed" style="${style}"><img class="avatar-base${cls}" src="${PROFILE.photo}" alt=""><img class="avatar-gear" src="${PROFILE.outfitOverlay}" alt=""></span>`;
+    }
+  }
+  // Pendant la migration d'une ancienne tenue, on affiche la photo à sa place habituelle.
   return PROFILE.photo ? `<img${PROFILE.cut ? ` class="cut${PROFILE.frame ? " frame" : ""}"` : ""} src="${PROFILE.photo}" alt="">` : PROFILE.avatar;
 }
 function renderBadge() {
@@ -741,7 +757,7 @@ function renderProfileBar() {
 $("#up-me").onclick = async () => {
   if (!PROFILE) return;
   const p = await editProfile(PROFILE); if (!p) return;
-  if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; } // nouvelle photo = plus de tenue
+  if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitLayout = PROFILE.outfitLayout; } // nouvelle photo = plus de tenue
   applyProfile(p);
 };
 function applyProfile(p) {
@@ -2074,7 +2090,7 @@ async function composeOutfit(photo, cut, key, o = {}, frame = false) {
   const ad = cfg.adj || {}, hs = (o.hs ?? 1.25) * (ad.hs ?? 1), hy = (o.hy ?? 0) + (ad.hy ?? 0), cw = (o.cw ?? 3.1) * (ad.cw ?? 1), cyy = (o.cy ?? 0) + (ad.cy ?? 0); // adj : retouche propre à chaque tenue (data/outfits.json)
   const CW = Math.max(W, Math.ceil(m.Wh * cw * 1.04)), ox = Math.round((CW - W) / 2); m.cx += ox; // la toile s'élargit pour que le col imposant ne soit pas rogné
   const cv = document.createElement("canvas"); cv.width = CW; cv.height = H + pad; const x = cv.getContext("2d"); x.imageSmoothingQuality = "high";
-  if (!o.hatOnly) x.drawImage(head, ox, pad);
+  if (!o.hatOnly && !o.garmentsOnly) x.drawImage(head, ox, pad);
   // col : sous le menton, fondu en haut pour se raccorder à la barbe
   const cs = (m.Wh * cw) / cfg.col.w, chin = pad + (m.chin ?? m.T + (m.B - m.T) * 0.62) + cyy * m.Wh, cx0 = m.cx - cfg.col.ax * cs, cy0 = chin - cfg.col.ay * cs;
   const t = document.createElement("canvas"); t.width = Math.ceil(col.naturalWidth * cs); t.height = Math.ceil(col.naturalHeight * cs); const tx = t.getContext("2d"); tx.drawImage(col, 0, 0, t.width, t.height);
@@ -2089,6 +2105,7 @@ async function composeOutfit(photo, cut, key, o = {}, frame = false) {
   const fc = document.createElement("canvas"); fc.width = cv.width; fc.height = cv.height; const fx = fc.getContext("2d"); const fg = fx.createLinearGradient(0, 0, 0, cv.height); fg.addColorStop(0, "rgba(0,0,0,1)"); fg.addColorStop(0.9, "rgba(0,0,0,1)"); fg.addColorStop(1, "rgba(0,0,0,0)"); fx.fillStyle = fg; fx.fillRect(0, 0, cv.width, cv.height);
   x.globalCompositeOperation = "destination-in"; x.drawImage(fc, 0, 0); x.globalCompositeOperation = "source-over";
   if (o.oval && m.oh) { const y = cv.getContext("2d"); y.save(); y.strokeStyle = "rgba(255,255,255,.95)"; y.lineWidth = 2; y.setLineDash([6, 4]); y.beginPath(); y.ellipse(m.cx, pad + m.T + m.oh / 2, m.Wh / 2, m.oh / 2, 0, 0, Math.PI * 2); y.stroke(); y.restore(); }
+  cv.outfitLayout = { w: W, h: H, cw: CW, ch: H + pad, ox, pad };
   return cv;
 }
 /* ───────── Cérémonie de changement de grade ───────── */
@@ -2102,8 +2119,8 @@ const CER_TEXT = {
 let ceremonyBusy = false;
 async function wearOutfit(key) { // pose (ou retire, key = null) la tenue sur la photo du profil
   const P = PROFILE; if (!P || !P.photo) return;
-  if (!key) { delete P.outfit; delete P.outfitPhoto; }
-  else { OUTFITS ||= await (await fetch("data/outfits.json")).json(); const c = await composeOutfit(P.photo, !!P.cut, key, {}, P.frame || false), du = c.toDataURL("image/webp", 0.9); P.outfit = key; P.outfitPhoto = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); }
+  if (!key) { delete P.outfit; delete P.outfitPhoto; delete P.outfitOverlay; delete P.outfitLayout; }
+  else { OUTFITS ||= await (await fetch("data/outfits.json")).json(); const c = await composeOutfit(P.photo, !!P.cut, key, { garmentsOnly: true }, P.frame || false), du = c.toDataURL("image/webp", 0.9); P.outfit = key; P.outfitOverlay = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); P.outfitLayout = c.outfitLayout; delete P.outfitPhoto; }
   saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
 }
 async function ceremony(key, li) {
@@ -2117,34 +2134,26 @@ async function ceremony(key, li) {
     const bub = $(".m-bubble", ov), stage = $(".cer-stage", ov), btns = $(".cer-btns", ov);
     const say = (t) => { bub.textContent = t; bub.animate([{ transform: "scale(.92)", opacity: 0.2 }, { transform: "scale(1)", opacity: 1 }], { duration: 280 }); };
     const ask = (list) => new Promise((res) => { btns.innerHTML = list.map((l, i) => `<button class="b-btn ${i ? "ghost2" : "go-next"}" data-i="${i}">${esc(l)}</button>`).join(""); $$("button", btns).forEach((b) => (b.onclick = () => { btns.innerHTML = ""; res(+b.dataset.i); })); });
-    const show = (c) => { c.className = "cer-cv"; return c; };
     const corto = document.createElement("img"); corto.className = "cer-corto"; corto.src = "img/corto-content.webp"; stage.appendChild(corto); corto.animate([{ transform: "translateY(40px) scale(.8)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 500, easing: "cubic-bezier(.2,.9,.3,1.2)" });
     confetti(70); say(`Bravo ${name} ! ${CER_TEXT[key]}`); await ask(["Merci, Corto !"]);
     if (canDress) { await corto.animate([{ opacity: 1 }, { opacity: 0, transform: "scale(.9)" }], { duration: 250, fill: "forwards" }).finished; corto.remove(); }
     if (canDress) {
       const had = P.outfit && OUTFITS[P.outfit] && P.outfit !== key ? P.outfit : null, f = P.frame || false; // déjà en uniforme : on passe directement de l'un à l'autre
-      let oldBody = null, oldHat = null, plain = null;
-      if (had) {
-        oldBody = show(await composeOutfit(P.photo, !!P.cut, had, { noHat: true }, f)); oldHat = show(await composeOutfit(P.photo, !!P.cut, had, { hatOnly: true }, f)); oldHat.classList.add("cer-hat");
-        stage.append(oldBody, oldHat);
-      } else { plain = show(await composeOutfit(P.photo, !!P.cut, key, { plain: true }, f)); stage.appendChild(plain); }
-      [oldBody, oldHat, plain].filter(Boolean).forEach((c) => c.animate([{ transform: "scale(.7)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], { duration: 450, easing: "cubic-bezier(.2,.9,.3,1.2)" }));
+      const cls = P.cut ? ` cut${f ? " frame" : ""}` : "";
+      const portrait = document.createElement("span"); portrait.className = "avatar-dressed cer-avatar";
+      portrait.innerHTML = `<img class="avatar-base${cls}" src="${P.photo}" alt="">`; stage.appendChild(portrait);
+      const gear = async (grade, options = {}) => { const c = await composeOutfit(P.photo, !!P.cut, grade, { garmentsOnly: true, ...options }, f), im = document.createElement("img"); const du = c.toDataURL("image/webp", 0.9); im.className = "avatar-gear"; im.src = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); im.style.cssText = outfitStyle(c.outfitLayout, !!P.cut, f); return im; };
+      const oldGear = had ? await gear(had) : null; if (oldGear) portrait.appendChild(oldGear);
+      portrait.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: "ease-out" });
       say(had ? `Veux-tu troquer ton uniforme de ${LEVELS.find((l, j) => OUTFIT_LEVELS[j] === had)?.name.toLowerCase() || had} contre celui de ${LEVELS[li].name.toLowerCase()} ?` : `Veux-tu t'habiller en ${LEVELS[li].name.toLowerCase()} ?`);
       if ((await ask([had ? "Oui, change-moi !" : "Oui, habille-moi !", had ? "Je garde le mien" : "Non merci"])) === 0) {
-        const body = show(await composeOutfit(P.photo, !!P.cut, key, { noHat: true }, f)), hat = show(await composeOutfit(P.photo, !!P.cut, key, { hatOnly: true }, f));
-        body.style.opacity = 0; hat.classList.add("cer-hat"); hat.style.opacity = 0;
-        if (had) { // l'ancien chapeau s'envole, l'ancien costume glisse vers le bas pendant que le nouveau monte
-          say("Hop, l'ancien uniforme s'en va…");
-          oldHat.animate([{ transform: "none", opacity: 1 }, { transform: "translate(40%,-130%) rotate(35deg)", opacity: 0 }], { duration: 700, fill: "forwards", easing: "ease-in" });
-          stage.append(body, hat);
-          await Promise.all([oldBody.animate([{ transform: "none", opacity: 1 }, { transform: "translateY(60px)", opacity: 0 }], { duration: 650, fill: "forwards", easing: "ease-in" }).finished, body.animate([{ opacity: 0, transform: "translateY(60px)" }, { opacity: 1, transform: "none" }], { duration: 650, fill: "forwards", easing: "ease-out" }).finished]);
-          oldBody.remove(); oldHat.remove();
-        } else {
-          say("Voici ton uniforme…"); stage.append(body, hat);
-          await body.animate([{ opacity: 0, transform: "translateY(40px)" }, { opacity: 1, transform: "none" }], { duration: 600, fill: "forwards", easing: "ease-out" }).finished; plain.style.opacity = 0;
-        }
+        const body = await gear(key, { noHat: true }), hat = await gear(key, { hatOnly: true });
+        body.style.opacity = "0"; hat.style.opacity = "0"; portrait.append(body, hat);
+        say(had ? "Hop, l'ancien uniforme s'en va…" : "Voici ton uniforme…");
+        if (oldGear) { await oldGear.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).finished; oldGear.remove(); }
+        await body.animate([{ opacity: 0, transform: "translateY(30px)" }, { opacity: 1, transform: "none" }], { duration: 650, fill: "forwards", easing: "ease-out" }).finished; body.style.opacity = "1";
         say("…et ton nouveau chapeau !"); await sleep(250);
-        await hat.animate([{ opacity: 1, transform: "translateY(-120%) rotate(-12deg)" }, { opacity: 1, transform: "translateY(6%) rotate(3deg)", offset: 0.6 }, { opacity: 1, transform: "translateY(-3%) rotate(-1deg)", offset: 0.8 }, { opacity: 1, transform: "none" }], { duration: 900, fill: "forwards", easing: "cubic-bezier(.3,.7,.4,1)" }).finished;
+        await hat.animate([{ opacity: 1, transform: "translateY(-120%) rotate(-12deg)" }, { opacity: 1, transform: "translateY(6%) rotate(3deg)", offset: 0.6 }, { opacity: 1, transform: "translateY(-3%) rotate(-1deg)", offset: 0.8 }, { opacity: 1, transform: "none" }], { duration: 900, fill: "forwards", easing: "cubic-bezier(.3,.7,.4,1)" }).finished; hat.style.opacity = "1";
         confetti(90); await wearOutfit(key);
         say(`Magnifique, ${LEVELS[li].name.toLowerCase()} ${name} ! Cet uniforme te va comme un gant.`); await ask(["Super !"]);
       } else { say(had ? "Comme tu veux, tu gardes ton uniforme !" : "Comme tu veux ! Tu pourras t'habiller plus tard."); await ask(["D'accord"]); }
@@ -2348,6 +2357,7 @@ let pendingTeamName = "";
 startFlow();
 async function startFlow() {
   if (!PROFILE) PROFILE = await runIntro(BOAT_OPTS); else ensureBoat();
+  if (PROFILE?.outfit && PROFILE.photo && !PROFILE.outfitOverlay) { try { await wearOutfit(PROFILE.outfit); } catch {} } // ancienne tenue : recrée seulement les vêtements, sans déplacer la photo
   renderBadge(); refreshUserMarker();
   if (JEU) renderHud();
   if (!JEU) { startGeo(); return; }
