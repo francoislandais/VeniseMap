@@ -1128,3 +1128,8 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .wh-ok{margin-top:auto;min-width:min(60vw,260px);padding:13px 26px;border-radius:999px;background:#1d2230;color:#f3ead7;font-size:clamp(18px,5vw,22px)}
 .in2-editing .wh{pointer-events:none}
 .in2-editing .wh-lab,.in2-editing .wh-in,.in2-editing .wh-cam,.in2-editing .wh-ok{pointer-events:auto}
+
+/* Écran 2 : « Mon nom est… » (petit) puis « Corto Maltese » (grand) à la ligne */
+.wl-name{font-size:clamp(20px,6vw,30px)!important}
+.wl-name2{position:absolute;left:0;right:0;top:calc(var(--safe-t) + clamp(14px,3%,30px) + clamp(84px,25vw,140px) + clamp(22px,3.4dvh,40px) + clamp(30px,8vw,40px));margin:0 auto;padding:0 clamp(16px,6vw,32px);max-width:560px;box-sizing:border-box;font-size:clamp(32px,10vw,52px);line-height:1.1;font-weight:400;color:#1d2230;text-shadow:0 0 12px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
+.in2-editing .wl-name,.in2-editing .wl-name2{pointer-events:auto}

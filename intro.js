@@ -189,23 +189,23 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
   // Introduction : 7 écrans plein page, fondu enchaîné, navigation par toucher ou par les petits boutons précédent / suivant. Images + texte, sans bulle.
   return new Promise(async (resolve) => {
     let LAYOUT = {}; try { const r = await fetch("data/intro-layout.json?" + Date.now()); if (r.ok) LAYOUT = await r.json(); } catch {} // réglages de position/taille enregistrés depuis l'éditeur
-    const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt" } };
+    const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt" } };
     const edKey = (to) => SCREENS[to].key; // clé stable de chaque écran (s1…s6, who) : les réglages enregistrés ne bougent pas si on insère un écran
     const elsOf = (d, sc) => { const map = EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     const applyOne = (e, v) => { if (!v) { e.style.translate = ""; e.style.scale = ""; return; } e.style.translate = `${v.x || 0}vw calc(${v.y || 0} * var(--lh) / 100)`; e.style.scale = v.s && v.s !== 1 ? String(v.s) : ""; };
     // Textes modifiables : réglages dans LAYOUT._t[sN][clé] ; « {nom} » est remplacé par le prénom
-    const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", mid: ".wl-mid p" }, who: { lab: ".wh-lab", ok: ".wh-ok" }, other: { txt: ".in2-txt p", btn: ".in2-btn" } };
+    const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", mid: ".wl-mid p" }, who: { lab: ".wh-lab", ok: ".wh-ok" }, other: { txt: ".in2-txt p", btn: ".in2-btn" } };
     const textsOf = (d, sc) => { const map = TEXTSEL[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     const htmlOf = (t) => esc(String(t).replace(/\{nom\}/g, name)).replace(/\n/g, "<br>");
     const applyTexts = (d, sc, to) => { const T = (LAYOUT._t || {})[edKey(to)] || {}, els = textsOf(d, sc); for (const k in els) if (typeof T[k] === "string") els[k].innerHTML = htmlOf(T[k]); };
-    const applyLayout = (d, sc, to) => { applyTexts(d, sc, to); const L = LAYOUT[edKey(to)] || {}, els = elsOf(d, sc); for (const k in els) applyOne(els[k], L[k]); };
+    const applyLayout = (d, sc, to) => { applyTexts(d, sc, to); const L = LAYOUT[edKey(to)] || {}, els = elsOf(d, sc); for (const k in els) applyOne(els[k], L[k] || (k === "name2" ? L.name : undefined)); }; // « Corto Maltese » reprend d'abord la position de l'ancienne ligne unique
     let name = opts.replay ? opts.name || "" : "";
     const IMG = (n) => `img/intro/e${n}.webp`;
     const CAM_SVG = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 16h8l3-5h10l3 5h8a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V18a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><circle cx="24" cy="26" r="7" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>';
     const ALL = [
       { key: "s1", img: 1, layout: "hello", hello: "Eh oh, bien le bonjour !", text: () => "Comment t'appelles-tu ?" },
       { key: "who", img: 1, layout: "who", lab: "Je m'appelle…", ok: "Valider" }, // écran d'identité (premier lancement seulement) : prénom + photo de tête
-      { key: "s2", img: 2, layout: "welcome", head: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour.`, name2: "Je m'appelle Corto Maltese.", text: () => "J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires." },
+      { key: "s2", img: 2, layout: "welcome", head: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour.`, name2: "Mon nom est…", name3: "Corto Maltese", text: () => "J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires." },
       { key: "s3", img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
       { key: "s4", img: 4, layout: "bottom", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.\n\nEs-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
       { key: "s5", img: 5, layout: "center-top", text: () => "Parfait, alors c'est décidé ! Mon bateau sera bientôt amarré à l'embarcadère de Santo Spirito. Retrouvons-nous là-bas quand tu seras prêt." },
@@ -239,7 +239,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         return d;
       }
       if (sc.layout === "welcome") { // écran 2 : Corto joyeux (fondu en bas) et sa salutation en haut, « Je m'appelle Corto Maltese. » en grand dessous ; Corto de l'aquarelle (sans le bateau) en bas à droite, la suite du texte à gauche
-        d.innerHTML = `<div class="wl-top"><img class="wl-face" src="img/corto-content.webp" alt=""><p>${esc(sc.head())}</p></div><p class="wl-name">${esc(sc.name2)}</p><img class="wl-img" src="img/intro/e2r.webp" alt=""><div class="wl-mid"><p>${esc(sc.text())}</p></div>`;
+        d.innerHTML = `<div class="wl-top"><img class="wl-face" src="img/corto-content.webp" alt=""><p>${esc(sc.head())}</p></div><p class="wl-name">${esc(sc.name2)}</p><p class="wl-name2">${esc(sc.name3)}</p><img class="wl-img" src="img/intro/e2r.webp" alt=""><div class="wl-mid"><p>${esc(sc.text())}</p></div>`;
         return d;
       }
       d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt=""><div class="in2-txt"><p>${txt}</p>${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
@@ -295,7 +295,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const handle = document.createElement("div"); handle.className = "in2-handle"; handle.hidden = true; root.appendChild(handle);
     const placeHandle = () => { if (!selEl || !editing) { handle.hidden = true; return; } const r = selEl.getBoundingClientRect(); handle.style.left = Math.min(innerWidth - 14, r.right) + "px"; handle.style.top = Math.min(lockedH - 14, r.bottom) + "px"; handle.hidden = false; };
     const select = (k) => { root.querySelectorAll(".in2-sel").forEach((e) => e.classList.remove("in2-sel")); selKey = k; selEl = null; if (k) { const e = elsOf(cur, SCREENS[idx])[k]; if (e) { selEl = e; e.classList.add("in2-sel"); } } placeHandle(); };
-    const cfgFor = (k) => { const key = edKey(idx); LAYOUT[key] ||= {}; LAYOUT[key][k] ||= { x: 0, y: 0, s: 1 }; return LAYOUT[key][k]; };
+    const cfgFor = (k) => { const key = edKey(idx); LAYOUT[key] ||= {}; LAYOUT[key][k] ||= k === "name2" && LAYOUT[key].name ? { ...LAYOUT[key].name } : { x: 0, y: 0, s: 1 }; return LAYOUT[key][k]; };
     let txtEd = null; const stopText = () => { if (!txtEd) return; for (const [, e] of txtEd) { e.contentEditable = "false"; e.removeAttribute("contenteditable"); e.classList.remove("in2-txted"); e.oninput = null; } txtEd = null; getSelection()?.removeAllRanges(); };
     if (canEdit) {
       const bar = document.createElement("div"); bar.className = "in2-ed";
