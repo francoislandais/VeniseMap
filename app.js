@@ -889,6 +889,12 @@ function slideUp(old, mine) {
 const typingHtml = '<span class="m-face"></span><div class="m-bubble typing"><i></i><i></i><i></i></div>';
 function cortoType(el) { const b = el && $(".m-bubble", el); if (b) { b.classList.add("typing"); b.innerHTML = "<i></i><i></i><i></i>"; } }
 const richText = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); // **mot** → gras
+// Dans l'espace personnel, la pastille de Corto disparaît : Corto reste affiché en bas, comme dans ses conversations sur la carte (texte à gauche, Corto à droite), avec un message propre à chaque onglet. Texte affiché d'un coup, sans machine à écrire.
+function menuSay(text) {
+  let m = $("#menu-say");
+  if (!m) { m = document.createElement("div"); m.id = "menu-say"; m.className = "doge-msg menu-say"; m.innerHTML = '<div class="dm-txt"></div><img class="dm-corto" src="img/corto-content.webp" alt="">'; document.body.appendChild(m); }
+  $(".dm-txt", m).innerHTML = richText(text); m.hidden = tab === "map";
+}
 function cortoFill(el, text) { const b = el && $(".m-bubble", el); if (b) { b.classList.remove("typing"); b.innerHTML = richText(text); if (chatSel !== "#b-talk") { const c = $(chatSel); if (c && c.scrollHeight > c.clientHeight) c.scrollTop = c.scrollHeight - c.clientHeight; } } }
 let busy = false;
 function enterPlace(p) { if (arrived(p.id)) { closeSheet(); openQuest(p.id); } else doArrive(p); }
@@ -1522,7 +1528,7 @@ function setTab(t) {
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   const onTab = $("#up-bar .up-tabs button.on"); if (onTab && onTab.scrollIntoView) setTimeout(() => onTab.scrollIntoView({ inline: "center", block: "nearest" }), 30);
-  $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
+  $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; document.body.classList.toggle("menu-open", t !== "map"); { const ms = $("#menu-say"); if (ms) ms.hidden = t === "map"; } if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
   ["days", "bridges", "photos", "works", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
   $("#tab-dev").hidden = !DEV;
   $("#bridge-btn").hidden = t !== "map";
@@ -1670,12 +1676,13 @@ function openPhotoView(it) {
 }
 function renderPhotos() {
   const v = $("#v-photos");
-  v.innerHTML = `<div class="bhead"><span class="bface"></span><div class="bbub" id="pbub">Tes photos souvenirs ! Termine une épreuve pour en prendre une nouvelle.</div></div><div class="pgrid" id="pgrid"></div>`;
+  menuSay("Tes photos souvenirs ! Termine une épreuve pour en prendre une nouvelle.");
+  v.innerHTML = `<div class="pgrid" id="pgrid"></div>`;
   allPhotos().then(async (ps) => {
     const g = $("#pgrid", v); if (!g || tab !== "photos") return;
     ps = ps.filter(([k, r]) => r && r.mont && r.blob).sort((x, y) => y[1].t - x[1].t);
-    if (!ps.length) { $("#pbub", v).textContent = "Tu n'as pas encore de photo souvenir. Termine une épreuve : à la fin, tu pourras te prendre en photo !"; return; }
-    $("#pbub", v).textContent = ps.length === 1 ? "Voici ton premier souvenir !" : `Voici tes ${ps.length} souvenirs de Venise !`;
+    if (!ps.length) { menuSay("Tu n'as pas encore de photo souvenir. Termine une épreuve : à la fin, tu pourras te prendre en photo !"); return; }
+    menuSay(ps.length === 1 ? "Voici ton premier souvenir !" : `Voici tes ${ps.length} souvenirs de Venise !`);
     // mosaïque « justifiée » : des rangées pleines largeur, de hauteurs variées, sans trous
     const items = await Promise.all(ps.map(([k, r]) => new Promise((ok) => { const u = URL.createObjectURL(r.blob), im = new Image(); im.onload = () => ok({ u, r, ar: im.width / im.height }); im.onerror = () => ok({ u, r, ar: 0.77 }); im.src = u; })));
     const W = g.clientWidth, GAP = 3, heights = [210, 150, 180, 130];
@@ -1737,8 +1744,8 @@ function renderBridges() {
     if (tab !== "bridges" || !BRIDGES) return;
     const byId = new Map(BRIDGES.map((b) => [String(b[0]), b])), found = bridgeKeys().sort((x, y) => S.done[x].t - S.done[y].t).map((k) => byId.get(k.slice(2))).filter(Boolean);
     const n = found.length, say = n ? `Voici les ponts que tu as trouvés, ${gradeLc()} : **${n}** sur ${BRIDGES.length}. Bravo, camarade !` : `Tu n'as pas encore trouvé de pont, ${gradeLc()}. Dès que tu en traverses un, il viendra s'ajouter ici !`;
-    v.innerHTML = `<div class="bhead"><span class="bface"></span><div class="bbub">${richText(say)}</div></div>
-      <div class="bgrid">${found.map((b, i) => `<button class="bd on" data-b="${b[0]}" aria-label="${esc(b[1] || "Pont sans nom")}" style="--d:${Math.min(i, 30) * 45}ms;background-image:url(${b[3] ? `img/ponts/${b[0]}.webp` : "img/ponts/_generic.webp"})"></button>`).join("")}</div>`;
+    menuSay(say);
+    v.innerHTML = `<div class="bgrid">${found.map((b, i) => `<button class="bd on" data-b="${b[0]}" aria-label="${esc(b[1] || "Pont sans nom")}" style="--d:${Math.min(i, 30) * 45}ms;background-image:url(${b[3] ? `img/ponts/${b[0]}.webp` : "img/ponts/_generic.webp"})"></button>`).join("")}</div>`;
     $$(".bd.on", v).forEach((d) => (d.onclick = () => bridgeCard(byId.get(d.dataset.b))));
   });
 }
@@ -1749,6 +1756,7 @@ function bridgeCard(b) {
 function renderDays() {
   const v = $("#v-days"), n = PLACES.filter(complete).length;
   // Mosaïque des défis : l'icône du lieu quand elle existe, sinon sa pastille photo ; grisés tant que le défi n'est pas réalisé, éclatants une fois terminé.
+  menuSay(`Relève des défis, moussaillon, si tu veux progresser dans l'aventure !${n ? ` Déjà **${n}** lieu${n > 1 ? "x" : ""} terminé${n > 1 ? "s" : ""}.` : ""}`);
   v.innerHTML = `<p class="dg-count"><b>${n}</b> / ${PLACES.length} lieux terminés</p>
     <div class="dgrid">${PLACES.map((p) => { const ic = PLACE_ICONS[p.id], ok = complete(p); return `<button type="button" class="dt ${ok ? "ok" : "todo"}${ic ? " ico" : ""}" data-p="${p.id}" aria-label="${esc(p.name)}" title="${esc(p.name)}">${ic ? `<img src="${ic.src}" alt="">` : `<span class="ph" style="background-image:url(${pic(p.id)})"></span>`}</button>`; }).join("")}</div>`;
   $$(".dt", v).forEach((b) => (b.onclick = () => { setTab("map"); openPlace(b.dataset.p); }));
@@ -1793,9 +1801,9 @@ async function renderWorks() {
     : `<button type="button" class="wk-t lock" data-lock="1" style="--ar:${ar}" aria-label="Toile à trouver"><span>?</span></button>`; }).join("");
   v.innerHTML = `<div class="wk-head"><h2>Œuvres de maîtres</h2><span class="wk-cnt">${found} / ${W.oeuvres.length}</span></div>`
     + W.artistes.map((a) => { const arts = W.oeuvres.filter((w) => w.artiste === a.cle), n = arts.filter((w) => workFound(w.id)).length; return `<section class="wk-art${n ? "" : " none"}"><h3>${esc(a.nom)} <small>${n} / ${arts.length}</small></h3><div class="wk-row">${tiles(arts)}</div></section>`; }).join("")
-    + `<div class="wk-corto"><span class="wk-face"></span><div class="wk-bub"></div></div>`;
+    + "";
   const msg = found ? `Déjà ${found} toile${found > 1 ? "s" : ""} sur ${W.oeuvres.length} ! Cherche les autres à travers la ville : chacune te rapporte ${POINTS.work} étoiles.` : WORKS_MSG;
-  typewriter($(".wk-bub", v), msg, 500);
+  menuSay(msg);
   $$(".wk-t[data-w]", v).forEach((b) => (b.onclick = () => openWorkView(W, b.dataset.w)));
   $$(".wk-t.lock", v).forEach((b) => (b.onclick = () => cortoSays("Cette toile t'attend quelque part à Venise… Continue tes épreuves dans les musées et les églises !")));
 }
@@ -1814,6 +1822,7 @@ function openWorkView(W, id) {
 }
 function renderTrophies() {
   const v = $("#v-trophies"), pts = pointsOf(meIdx()), li = level(pts), cur = LEVELS[li], nx = LEVELS[li + 1];
+  menuSay(nx ? `Tu as **${pts}** étoiles, ${gradeLc()} ! Encore ${nx.min - pts} pour devenir ${nx.name}.` : `Tu as **${pts}** étoiles : tu es au niveau maximum, bravo !`);
   v.innerHTML = `<h2>🏆 Trophées</h2>
     <div class="levelcard"><div class="big">${cur.emoji}</div><h3 style="color:#fff;margin:4px 0">${me().avatar} ${esc(myName())} · ${cur.name}</h3><div style="font-size:30px;font-weight:900">⭐ ${pts}</div>
       <div class="bar"><i style="width:${nx ? ((pts - cur.min) / (nx.min - cur.min)) * 100 : 100}%"></i></div>
@@ -1957,6 +1966,7 @@ setInterval(checkCeremony, 2500);
 window.__ceremony = (key, li) => ceremony(key, li);
 window.__compose = (...a) => composeOutfit(...a); window.__metrics = (i, c) => headMetrics(i, c);
 async function renderDev() {
+  menuSay("Mode test : ici on essaie des choses, matelot.");
   const v = $("#v-dev"), P = typeof PROFILE !== "undefined" ? PROFILE : null;
   OUTFITS ||= await (await fetch("data/outfits.json")).json();
   const st = (renderDev.st ||= { hs: 1.25, hy: 0, cw: 3.1, cy: 0, src: P && P.photo ? "me" : "doge" });
@@ -1979,6 +1989,7 @@ async function renderDev() {
 }
 function renderSettings() {
   const v = $("#v-settings");
+  menuSay("Ici, c'est la salle des machines : demande à tes parents avant de toucher à quelque chose !");
   v.innerHTML = `<h2>⚙️ Réglages</h2>
     <h3>👫 Les joueurs</h3>${S.kids.map((k, i) => `<div class="card"><input class="t" data-name="${i}" placeholder="Prénom du joueur ${i + 1}" value="${esc(k.name)}"><div class="avs" data-av="${i}">${AVATARS.map((a) => `<button class="${a === k.avatar ? "on" : ""}" data-a="${a}">${a}</button>`).join("")}</div></div>`).join("")}${S.kids.length < 6 ? '<button class="btn ghost" id="addp">➕ Ajouter un joueur</button>' : ""}
     <h3>🗺️ Carte hors-ligne</h3><div class="card"><p class="muted">Télécharge la carte de Venise avant de partir pour qu'elle marche sans réseau (environ 12 Mo : mieux vaut être en Wi-Fi).</p><button class="btn blue wide" id="dl" style="margin-top:8px">⬇️ Télécharger la carte</button><div class="bar" style="margin-top:8px"><i id="dlbar" style="width:0"></i></div><p class="muted" id="dltxt"></p></div>

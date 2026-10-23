@@ -491,7 +491,7 @@ function typeSeq(els, { delay = 400, speed = 1, onDone, manual = false } = {}) {
 export function cortoSays(text) {
   // Corto parle : bande basse, texte à gauche, Corto joyeux à droite. Tous les boutons du bas disparaissent le temps de l'échange ; la pastille de Corto devient sa tête (transition),
   // et un toucher n'importe où ferme le message : la tête redevient pastille et les boutons reviennent.
-  document.querySelectorAll(".doge-msg").forEach((e) => e.remove());
+  document.querySelectorAll(".doge-msg:not(.menu-say)").forEach((e) => e.remove());
   const btn = document.getElementById("corto-btn"), br = btn && btn.getBoundingClientRect();
   const m = document.createElement("div"); m.className = "doge-msg";
   m.innerHTML = `<div class="dm-txt">${esc(text)}</div><img class="dm-corto" src="img/corto-content.webp" alt="">`;
