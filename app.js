@@ -1508,6 +1508,7 @@ async function runChapters(p, replay = false) {
         const cf = null; // les propositions se centrent d'elles-mêmes dans l'espace libre au-dessus de la bande de Corto (feuille de style)
         const pts = x.pts ?? 10, r = await bridgeChoose(ch, replay ? 0 : pts, cf); closeLoc();
         if (r.skip) break outer;
+        sh.classList.add("chap-reveal"); // seule l'image de fond se floute pendant la révélation
         if (!replay) { award(`t:${p.id}:${x.idx}`, r.first ? pts : 0, meIdx()); save(); refreshAll(); }
         if (r.first && !replay) confetti(30);
         const head = x.free ? `**Merci de me le dire !** ` : r.first ? `**Bravo !** ` : "**C'est la bonne réponse !** ";
@@ -1518,6 +1519,7 @@ async function runChapters(p, replay = false) {
       const hasMore = k < todo.length - 1;
       $$(".rev-img").forEach((e) => e.dataset.keep = "1");
       const nb = await nextBar(true, hasMore ? "Suite ›" : "Voir mon bilan ›");
+      sh.classList.remove("chap-reveal"); // la question suivante retrouve un fond net
       if (nb === "map") { closeSheet(); return; }
       if (nb === "skip") break;
     }

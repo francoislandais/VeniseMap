@@ -1434,3 +1434,7 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 #sheet.chap .b-actions.two{top:auto!important;bottom:calc(18px + var(--safe-b))!important;left:156px;right:auto;width:auto;padding:0;justify-content:flex-start}
 #sheet.chap .b-talk{justify-content:flex-start!important}
 #sheet.chap .b-talk{height:var(--cqfix,auto)!important;max-height:none!important}
+
+/* Révélation : flou progressif du seul décor, derrière la photo et les commandes. */
+#sheet.chap .chap-bg{filter:blur(0);transition:filter 350ms ease-in-out}
+#sheet.chap.chap-reveal .chap-bg{filter:blur(7px)}
