@@ -221,10 +221,15 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         let dx = 0, dy = 0; if (r.bottom > lim) dy = lim - r.bottom; if (r.top + dy < mt) dy = mt - r.top; if (r.right > W - ml) dx = W - ml - r.right; if (r.left + dx < ml) dx = ml - r.left;
         if (dx || dy) { e._fx = Math.round(dx); e._fy = Math.round(dy); applyOne(e, cfg); }
       }
-      // Les éléments ramenés dans l'écran ne se marchent pas dessus : on les empile de bas en haut (ex. la question puis le bouton)
-      const moved = Object.keys(els).filter((k) => FIT.test(k) && !(k === "txt" && sc.parts) && (els[k]._fx || els[k]._fy)).map((k) => els[k]).sort((a, b) => b._o - a._o); // du plus bas au plus haut selon la disposition voulue
-      for (let i = 1; i < moved.length; i++) {
-        const below = boxOf(moved[i - 1]), e = moved[i], r = boxOf(e); if (r.bottom > below.top - 8) { e._fy = Math.round((e._fy || 0) + (below.top - 8 - r.bottom)); applyOne(e, cfgOf(sc, Object.keys(els).find((k) => els[k] === e))); }
+      // Les textes / boutons ne se marchent jamais dessus : dans l'ordre de lecture voulu, on pousse vers le bas ce qui en recouvre un autre, puis on remonte le tout si le bas de l'écran est dépassé
+      const keys = Object.keys(els).filter((k) => FIT.test(k) && !(k === "txt" && sc.parts) && els[k]._o !== undefined).sort((a, b) => els[a]._o - els[b]._o);
+      const shift = (k, d) => { if (!d) return; els[k]._fy = Math.round((els[k]._fy || 0) + d); applyOne(els[k], cfgOf(sc, k)); };
+      const hov = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 4;
+      for (let i = 1; i < keys.length; i++) for (let j = 0; j < i; j++) { const a = boxOf(els[keys[j]]), b = boxOf(els[keys[i]]); if (hov(a, b) && b.top < a.bottom + 8 && b.bottom > a.top) shift(keys[i], a.bottom + 8 - b.top); }
+      for (let i = keys.length - 1; i >= 0; i--) {
+        const k = keys[i], r = boxOf(els[k]); let lim = k === "btn" || k === "ok" ? H - (56 + safeB) : H - mb;
+        for (let j = i + 1; j < keys.length; j++) { const b = boxOf(els[keys[j]]); if (hov(r, b)) lim = Math.min(lim, b.top - 8); }
+        if (r.bottom > lim) shift(k, Math.max(lim - r.bottom, mt - r.top));
       }
     };
     let fitT = null; const fitSoon = () => { clearTimeout(fitT); fitT = setTimeout(() => fit(cur, SCREENS[idx]), 60); };
