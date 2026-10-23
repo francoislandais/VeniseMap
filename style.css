@@ -1298,3 +1298,9 @@ body.corto-talk #map-btn,body.corto-talk #home-btn,body.corto-talk #corto-btn,bo
 #bridge-btn{background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
 #bridge-btn img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))}
 #bridge-btn:active img{transform:scale(.94)}
+
+/* Carte nue : livre puis carte en colonne en haut à gauche, Corto seul en bas à gauche, pont seul en bas à droite */
+#home-btn,#map-btn,#corto-btn{transition:left .25s ease,top .25s ease,bottom .25s ease}
+body.map-clear #home-btn{left:calc(10px + env(safe-area-inset-left,0px));top:calc(10px + var(--safe-t));bottom:auto}
+body.map-clear #map-btn{left:calc(10px + env(safe-area-inset-left,0px));top:calc(10px + var(--safe-t) + 72px);bottom:auto}
+body.map-clear #corto-btn{left:calc(10px + env(safe-area-inset-left,0px))}

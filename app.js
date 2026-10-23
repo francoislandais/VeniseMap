@@ -667,6 +667,9 @@ $("#home-btn").onclick = (e) => {
 };
 // Pastille carte (à gauche) : ramène toujours à la carte, quoi qu'il y ait à l'écran (fiche de lieu, défi, espace de l'enfant).
 $("#map-btn").onclick = () => { if (quest) closeQuest(); if (openId === "chap") suspendChap(); else if (openId) closeSheet(); if (tab !== "map") { if (history.state && history.state.vqMenu) history.back(); else setTab("map"); } };
+// Sur la carte nue (ni fiche, ni défi, ni espace de l'enfant), les pastilles livre et carte se rangent en colonne en haut à gauche ; Corto reste seul en bas à gauche et le pont seul en bas à droite. Dès qu'un écran s'ouvre, elles reviennent dans la rangée du bas (le haut est alors pris par l'écran).
+const syncMapUi = () => document.body.classList.toggle("map-clear", tab === "map" && $("#sheet").hidden && $("#quest").hidden && $("#up-bar").hidden);
+for (const sel of ["#sheet", "#quest", "#up-bar"]) new MutationObserver(syncMapUi).observe($(sel), { attributes: true, attributeFilter: ["hidden"] });
 
 /* ───────── Éditeur d'icônes de bâtiments (aperçu local uniquement) ─────────
    Bouton « 🏛 Icônes » : on touche une icône pour la choisir, on la glisse pour déplacer son centre (sa position sur la carte), et à chaque niveau de zoom on règle sa taille
@@ -2126,6 +2129,7 @@ function onboarding() {
 function refreshAll() { renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "trophies") renderTrophies(); if (openId) renderSheet(); }
 refreshAll();
 setTab("map");
+syncMapUi();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 let pendingTeamName = "";
 startFlow();
