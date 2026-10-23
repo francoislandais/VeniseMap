@@ -1747,8 +1747,10 @@ function renderBridges() {
     const byId = new Map(BRIDGES.map((b) => [String(b[0]), b])), found = bridgeKeys().sort((x, y) => S.done[x].t - S.done[y].t).map((k) => byId.get(k.slice(2))).filter(Boolean);
     const n = found.length, say = n ? `Voici les ponts que tu as trouvés, ${gradeLc()} : **${n}** sur ${BRIDGES.length}. Bravo, camarade !` : `Tu n'as pas encore trouvé de pont, ${gradeLc()}. Dès que tu en traverses un, il viendra s'ajouter ici !`;
     menuSay(say);
-    v.innerHTML = `<div class="bgrid">${found.map((b, i) => `<button class="bd on" data-b="${b[0]}" aria-label="${esc(b[1] || "Pont sans nom")}" style="--d:${Math.min(i, 30) * 45}ms;background-image:url(${b[3] ? `img/ponts/${b[0]}.webp` : "img/ponts/_generic.webp"})"></button>`).join("")}</div>`;
-    $$(".bd.on", v).forEach((d) => (d.onclick = () => bridgeCard(byId.get(d.dataset.b))));
+    // Mosaïque des ponts trouvés qui ont une image (le nom en discret) ; les autres sont simplement comptés à la fin.
+    const withImg = found.filter((b) => b[3]), noImg = found.length - withImg.length;
+    v.innerHTML = `<div class="bmos">${withImg.map((b) => `<button type="button" class="bm" data-b="${b[0]}" aria-label="${esc(b[1] || "Pont sans nom")}" style="background-image:url(img/ponts/${b[0]}.webp)"><span>${esc(b[1] || "Pont sans nom")}</span></button>`).join("")}</div>${noImg ? `<p class="bm-more">+ ${noImg} pont${noImg > 1 ? "s" : ""} sans image</p>` : ""}`;
+    $$(".bm", v).forEach((d) => (d.onclick = () => bridgeCard(byId.get(d.dataset.b))));
   });
 }
 function bridgeCard(b) {
