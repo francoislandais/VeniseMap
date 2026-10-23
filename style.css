@@ -1375,3 +1375,11 @@ body.menu-open #corto-btn{display:none!important}
 .held-ob{position:fixed;z-index:1200;display:grid;place-items:center;padding:0;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45))}
 .held-ob img{width:100%;height:100%;object-fit:contain;display:block}
 .held-ob .ob-em{font-size:52px}
+
+/* Objets plus petits ; l'objet pris est plus grand, sur le côté, et oscille doucement */
+.ogrid{grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:12px 6px}
+.ob{width:68px;height:68px}
+.ob-em{font-size:44px}
+.held-ob{z-index:1200;padding:0}
+.held-ob.wob{animation:ob-wob 1.15s ease-in-out infinite alternate}
+@keyframes ob-wob{0%{rotate:-7deg;translate:0 -2px}100%{rotate:7deg;translate:0 3px}}

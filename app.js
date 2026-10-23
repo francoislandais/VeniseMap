@@ -1531,7 +1531,7 @@ function setTab(t) {
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   const onTab = $("#up-bar .up-tabs button.on"); if (onTab && onTab.scrollIntoView) setTimeout(() => onTab.scrollIntoView({ inline: "center", block: "nearest" }), 30);
   $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; document.body.classList.toggle("menu-open", t !== "map"); { const ms = $("#menu-say"); if (ms) ms.hidden = t === "map"; } if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
-  ["days", "objects", "bridges", "photos", "works", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t)); if (t !== "objects") dropHeld();
+  ["days", "objects", "bridges", "photos", "works", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
   $("#tab-dev").hidden = !DEV;
   $("#bridge-btn").hidden = t !== "map";
   if (t === "days") renderDays(); if (t === "objects") renderObjects(); if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
@@ -1792,27 +1792,39 @@ const BADGES = [
    Un objet trouvé = S.done["tr:" + id du lieu] (déjà posé par le jeu quand l'enfant le ramasse). Ils pourront servir plus tard à différents moments de l'aventure. */
 const OBJECT_IMG = { frari: "img/objets/coquille.svg", miracoli: "img/objets/perle.svg", basilique: "img/objets/plume.svg" };
 const objectList = () => PLACES.filter((p) => p.reward).map((p) => ({ id: p.id, name: p.reward.name, emoji: p.reward.emoji, img: OBJECT_IMG[p.id] || "", found: has("tr:" + p.id) }));
-let heldEl = null, heldId = null;
-function dropHeld() { if (heldEl) { heldEl.remove(); heldEl = null; heldId = null; } }
+// Objet « pris » : il quitte sa case, s'agrandit, vient se poser sur le côté droit de l'écran et oscille doucement. Il y reste (même sur la carte, même après un rechargement) : l'enfant pourra le donner à quelqu'un. Un nouveau toucher dans l'onglet le repose.
+const HELD_KEY = "vq_held", HELD_SIZE = 88;
+let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
+const saveHeld = () => { try { heldId ? localStorage.setItem(HELD_KEY, heldId) : localStorage.removeItem(HELD_KEY); } catch {} };
+const heldSpot = () => ({ left: innerWidth - HELD_SIZE - 8, top: Math.round(innerHeight * 0.36) });
+function mountHeld(id, fromRect) {
+  const o = objectList().find((x) => x.id === id && x.found); if (!o) { heldId = null; saveHeld(); return; }
+  if (heldEl) heldEl.remove();
+  const el = document.createElement("div"); el.className = "held-ob"; el.dataset.o = id; el.innerHTML = o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${o.emoji}</span>`;
+  const p = heldSpot(); el.style.cssText = `left:${p.left}px;top:${p.top}px;width:${HELD_SIZE}px;height:${HELD_SIZE}px`;
+  document.body.appendChild(el); heldEl = el;
+  if (fromRect) el.animate([{ transform: `translate(${fromRect.left + fromRect.width / 2 - (p.left + HELD_SIZE / 2)}px, ${fromRect.top + fromRect.height / 2 - (p.top + HELD_SIZE / 2)}px) scale(${fromRect.width / HELD_SIZE})` }, { transform: "scale(1.12)", offset: 0.7 }, { transform: "none" }], { duration: 560, easing: "cubic-bezier(.2,.9,.3,1)" }).onfinish = () => el.classList.add("wob"); else el.classList.add("wob");
+  el.onclick = () => { if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
+}
+function releaseHeld() {
+  if (!heldEl) { heldId = null; saveHeld(); return; }
+  const el = heldEl, id = heldId, b = $(`.ob[data-o="${id}"]`); heldEl = null; heldId = null; saveHeld(); el.classList.remove("wob");
+  if (b) { b.classList.remove("away"); const from = el.getBoundingClientRect(), to = b.getBoundingClientRect(); el.animate([{ transform: "none" }, { transform: `translate(${to.left + to.width / 2 - (from.left + from.width / 2)}px, ${to.top + to.height / 2 - (from.top + from.height / 2)}px) scale(${to.width / from.width})` }], { duration: 380, easing: "ease-in-out", fill: "forwards" }).onfinish = () => el.remove(); } else el.remove();
+}
+function holdObject(btn) {
+  const id = btn.dataset.o; if (heldId === id) { releaseHeld(); return; }
+  if (heldId) releaseHeld();
+  heldId = id; saveHeld(); btn.classList.add("away"); mountHeld(id, btn.getBoundingClientRect());
+}
 function renderObjects() {
-  const v = $("#v-objects"), got = objectList().filter((o) => o.found); dropHeld();
+  const v = $("#v-objects"), got = objectList().filter((o) => o.found);
   menuSay(got.length ? "Voici tous les objets que tu as trouvés : peut-être pourront-ils te servir !" : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
-  v.innerHTML = got.length ? `<div class="ogrid">${got.map((o) => `<button type="button" class="ob" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${o.emoji}</span>`}</button>`).join("")}</div>` : "";
+  v.innerHTML = got.length ? `<div class="ogrid">${got.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${o.emoji}</span>`}</button>`).join("")}</div>` : "";
   $$(".ob", v).forEach((b) => (b.onclick = () => holdObject(b)));
 }
-// Un toucher sur un objet : il glisse sur le côté de l'écran (il y reste « en main », visible dans cet onglet seulement) ; un second toucher le repose dans la grille.
-function holdObject(btn) {
-  const id = btn.dataset.o, back = heldId === id;
-  const r = btn.getBoundingClientRect(), hasEl = !!heldEl;
-  if (hasEl) { const prev = $(`.ob[data-o="${heldId}"]`); const from = heldEl.getBoundingClientRect(), to = prev ? prev.getBoundingClientRect() : from, el = heldEl; heldEl = null; heldId = null; if (prev) prev.classList.remove("away"); el.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${to.width / from.width})`, opacity: 1 }], { duration: 380, easing: "ease-in-out", fill: "forwards" }).onfinish = () => el.remove(); if (back) return; }
-  const src = btn.querySelector("img, .ob-em"); const el = document.createElement("div"); el.className = "held-ob"; el.dataset.o = id; el.innerHTML = btn.innerHTML;
-  const size = 72, left = innerWidth - size - 8, top = Math.max(120, Math.min(innerHeight * 0.42, r.top));
-  el.style.cssText = `left:${left}px;top:${top}px;width:${size}px;height:${size}px`;
-  document.body.appendChild(el); heldEl = el; heldId = id; btn.classList.add("away");
-  el.animate([{ transform: `translate(${r.left - left}px, ${r.top - top}px) scale(${r.width / size})` }, { transform: "none" }], { duration: 420, easing: "cubic-bezier(.2,.9,.3,1.1)" });
-  el.onclick = () => { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); };
-}
-window.__objects = { list: objectList, find: (id) => { if (!has("tr:" + id)) { award("tr:" + id, 0, meIdx()); save(); refreshAll(); if (tab === "objects") renderObjects(); } }, reset: () => { PLACES.filter((p) => p.reward && has("tr:" + p.id)).forEach((p) => unaward("tr:" + p.id)); save(); refreshAll(); if (tab === "objects") renderObjects(); } };
+window.__objects = { list: objectList, find: (id) => { if (!has("tr:" + id)) { award("tr:" + id, 0, meIdx()); save(); refreshAll(); if (tab === "objects") renderObjects(); } }, reset: () => { PLACES.filter((p) => p.reward && has("tr:" + p.id)).forEach((p) => unaward("tr:" + p.id)); heldId = null; saveHeld(); if (heldEl) { heldEl.remove(); heldEl = null; } save(); refreshAll(); if (tab === "objects") renderObjects(); }, hold: (id) => { if (!has("tr:" + id)) window.__objects.find(id); heldId = id; saveHeld(); mountHeld(id); if (tab === "objects") renderObjects(); } };
+if (heldId) setTimeout(() => mountHeld(heldId), 0); // objet pris avant un rechargement : il est toujours là
+addEventListener("resize", () => { if (heldEl) { const p = heldSpot(); heldEl.style.left = p.left + "px"; heldEl.style.top = p.top + "px"; } });
 
 /* ───────── Œuvres de maîtres : la collection de toiles trouvées au fil des épreuves ─────────
    Base : data/oeuvres.json (61 œuvres, 19 artistes, 16 lieux, 5 questions par œuvre pour les épreuves à venir). Une toile trouvée = S.done["w:" + id] (étoiles POINTS.work), donc synchronisée comme le reste. */
