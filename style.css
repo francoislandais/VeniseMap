@@ -1490,3 +1490,6 @@ body.intro-open > .cam.cam{visibility:visible!important}
 .cam.has-photo .cam-frame{aspect-ratio:1!important;border-color:transparent;box-shadow:none;background:transparent}
 .cam.has-photo .cam-oval,.cam.has-photo .cam-sh{display:none}
 .cam.has-photo .cam-frame .cam-prev.cut{object-position:50% 30%!important}
+
+/* Repère plus confortable à bout de bras ; le cadrage et la photo enregistrée ne changent pas. */
+.cam:not(.has-photo) .cam-oval{transform:scale(1.15)}
