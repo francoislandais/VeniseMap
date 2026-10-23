@@ -313,7 +313,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       idx = to; applyTexts(cur, sc, to); const els = elsOf(cur, sc); for (const k in els) if (/^p\d+$/.test(k)) applyOne(els[k], (LAYOUT[sc.key] || {})[k]);
       fit(cur, sc); setTimeout(() => fit(cur, sc), 350);
       prevBtn.style.visibility = "visible"; if (editing) select(null);
-      if (sc.key === "s6" && !editing) readT = setTimeout(() => finale(), 4000 + sc.parts.join(" ").length * 55); // le temps de lire, puis la carte apparaît
+      if (sc.key === "s6" && !editing) readT = setTimeout(() => finale(), 5000); // 5 s après l'apparition de l'écran, la transition vers la carte démarre
       else if (!editing) {} // retour à l'écran 5 : pas de minuterie
     };
     // Finale : le bateau rapetisse, le tableau se dissout, la carte de Venise se matérialise ; la caméra reste sur le bateau, posé sur l'eau de la lagune
