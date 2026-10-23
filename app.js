@@ -581,6 +581,7 @@ const PLACE_ICONS = {
   cadoro: { src: "img/places/cadoro-icon.webp", w: 48, ratio: 1.1823 },
   miracoli: { src: "img/places/miracoli-icon.webp", w: 48, ratio: 1.0256 },
   rialto: { src: "img/places/rialto-icon.webp", w: 48, ratio: 1.5824 },
+  dogana: { src: "img/places/dogana-icon.webp", w: 34, ratio: 0.4292 },
 };
 // Position et taille (par niveau de zoom) de chaque icône : réglées à la main en mode édition (aperçu local), enregistrées dans data/place-icons.json.
 // { id: { lon, lat, stops: [[zoom, largeur en px], …] } } — entre deux niveaux réglés, la taille varie en douceur (interpolation géométrique) ; au-delà, l'icône suit l'échelle de la carte (×2 par niveau de zoom).
