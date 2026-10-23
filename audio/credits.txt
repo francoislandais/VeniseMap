@@ -3,3 +3,5 @@ Source : BigSoundBank, « Sea Waves with Tern Calls » (n° 0267) — https://bi
 Licence : CC0 (domaine public), utilisation libre sans attribution. Montage : boucle sans raccord (fondu enchaîné de 3 s), volume normalisé, MP3 128 kbit/s.
 
 ave-maris-stella-intro.mp3 — extrait (150 premières secondes, MP3 64 kbit/s, fondu final de 6 s) de « Ave maris stella », Vespro della Beata Vergine (Claudio Monteverdi, 1610). L'œuvre est dans le domaine public ; l'enregistrement a été fourni par l'auteur du projet (droits de l'enregistrement à vérifier avant toute diffusion publique large).
+
+vepres-depart.mp3 — extrait (61 s, MP3 112 kbit/s, fondu d'entrée 0,5 s et fondu final de 4 s) des « Vêpres de la Vierge » de Claudio Monteverdi (1610), enregistrement fourni par l'auteur du projet (interprètes : Leonardo García Alarcón, Mariana Flores…) ; applaudissements et silence initiaux supprimés. L'œuvre est dans le domaine public ; droits de l'enregistrement à vérifier avant toute diffusion publique large.

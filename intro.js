@@ -268,7 +268,10 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     // La mer s'éloigne au fil des écrans : de plus en plus faible, très faible à partir du 5e écran, coupée complètement au 7e (avant la finale).
     const SEA = [0.34, 0.27, 0.19, 0.11, 0.045, 0.02, 0];
     const seaTo = (i) => { if (ambDead) return; const v = SEA[Math.min(i, SEA.length - 1)]; if (v > 0 && amb.paused) amb.play().catch(() => {}); fadeA(amb, v, 3000, () => { if (v === 0) amb.pause(); }); };
-    const ambStop = (ms) => { if (ambDead) return; ambDead = true; for (const a of [amb, mus]) fadeA(a, 0, ms, () => { a.pause(); a.src = ""; }); };
+    // « Oui, je suis prêt » : l'Ave maris stella s'efface et les Vêpres de Monteverdi (1 min, applaudissements retirés) partent ; elles accompagnent la fin de l'intro puis la carte, avant un fondu de sortie
+    const dep = new Audio("audio/vepres-depart.mp3"); dep.volume = 0; dep.preload = "auto"; let depOn = false; const DEP_VOL = 0.55;
+    const depStart = () => { if (depOn || ambDead) return; depOn = true; fadeA(mus, 0, 1500, () => mus.pause()); dep.play().then(() => { if (!ambDead) fadeA(dep, DEP_VOL, 2000); }).catch(() => {}); };
+    const ambStop = (ms, keepDep) => { if (ambDead) return; ambDead = true; for (const a of keepDep && depOn ? [amb, mus] : [amb, mus, dep]) fadeA(a, 0, ms, () => { a.pause(); a.src = ""; }); };
     ambStart();
     root.innerHTML = '<div class="in2-bg"></div><div class="in2-veil"></div><div class="in2-nav"><button type="button" class="in2-prev" aria-label="Précédent">‹</button><button type="button" class="in2-next" aria-label="Suivant">›</button></div>';
     const prevBtn = root.querySelector(".in2-prev"), nextBtn = root.querySelector(".in2-next");
@@ -347,7 +350,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       if (finaleStarted) return; finaleStarted = true; clearTimeout(readT);
       if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
       const m = opts.map, B = opts.boat, bt = cur && cur.querySelector(".in2-img");
-      ambStop(!m || !B || !bt || editing ? 1800 : 7600); // fondu de sortie progressif tout au long de la transition vers la carte
+      const toMap = m && B && bt && !editing; ambStop(toMap ? 1800 : 1800, toMap); // la mer et l'ancienne musique sont déjà éteintes ; les Vêpres continuent pendant la transition vers la carte
       if (!m || !B || !bt || editing) { finish(); return; }
       try {
         B.hide?.();
@@ -368,6 +371,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         bt.animate([{ translate: `${tx}px ${ty}px` }, { translate: `${tx + (s1 - s0) * bt.offsetWidth / 2}px ${ty + (s1 - s0) * bt.offsetHeight / 2}px` }], k);
         m.easeTo({ center: B.lngLat, zoom: 15, offset: [px - W / 2, py - H / 2], duration: D, easing: (t) => t * t * (3 - 2 * t) });
         await sleep(D + 80);
+        setTimeout(() => fadeA(dep, 0, 5000, () => { dep.pause(); dep.src = ""; }), 3500); // la carte est là : la musique continue un peu, puis s'éteint
         B.ensure(); // le bateau devient un repère de la carte, exactement au même endroit et à la même taille
         bt.style.visibility = "hidden";
       } catch (e) { try { B.ensure(); } catch {} }
@@ -394,6 +398,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       const showBtn = sc.button ? () => { const b = d.querySelector(".in2-btn"); if (b) { b.style.visibility = ""; b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500 }); } } : undefined;
       if (sc.layout === "hello") { if (first) startTyping(d, sc, 0, undefined, true); else startTyping(d, sc, 300); } else startTyping(d, sc, 800, showBtn);
       if (sc.layout === "welcome") musStart(); // Corto se présente : la musique entre
+      if (sc.key === "s5") depStart(); // « Oui, je suis prêt » vient d'être touché
       if (sc.layout.startsWith("center") && !boatPan && !matchMedia("(prefers-reduced-motion: reduce)").matches) { // le bateau reste en place (il tangue seulement) : c'est le tableau de fond qui défile très lentement vers la gauche, ce qui donne l'impression que le bateau avance
         boatPan = root.querySelector(".in2-bg").animate([{ backgroundPosition: "10% 50%" }, { backgroundPosition: "30% 50%" }], { duration: 60000, easing: "linear", fill: "forwards" });
       }
