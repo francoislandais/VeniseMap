@@ -291,7 +291,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         d.innerHTML = `<div class="wl-top"><img class="wl-face" src="img/corto-content.webp" alt=""><p>${esc(sc.head())}</p></div><p class="wl-name">${esc(sc.name2)}</p><p class="wl-name2">${esc(sc.name3)}</p><p class="wl-sea" data-fade>${esc(sc.sea)}</p><img class="wl-img" src="img/intro/e2r.webp" alt=""><div class="wl-mid"><p>${esc(sc.text())}</p></div>`;
         return d;
       }
-      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt="">${sc.face ? '<img class="in2-face" src="img/corto-content.webp" alt="">' : ""}<div class="in2-txt">${sc.parts ? sc.parts.map((t, n) => `<p class="in2-part${t.length > 90 ? " in2-long" : ""}" data-k="p${n + 1}">${rich(esc(t))}</p>`).join("") : `<p>${txt}</p>`}${sc.ask ? `<p class="in2-ask">${esc(sc.ask)}</p>` : ""}${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
+      d.innerHTML = `<img class="in2-img" src="${IMG(sc.img)}" alt="">${sc.face ? '<img class="in2-face" src="img/corto-content.webp" alt="">' : ""}<div class="in2-txt">${sc.parts ? sc.parts.map((t, n) => `<p class="in2-part${t.length > 90 ? " in2-long" : ""}" data-k="p${n + 1}">${rich(esc(t))}</p>`).join("") : `<p>${txt}</p>`}${sc.ask ? `<p class="in2-ask" data-fade="1400">${esc(sc.ask)}</p>` : ""}${sc.button ? `<button type="button" class="in2-btn">${esc(sc.button)}</button>` : ""}</div>`;
       const im = d.querySelector(".in2-img"); // image à sa proportion réelle, contenue dans la page (le fondu des bords suit l'image elle-même)
       if (sc.layout === "bottom" || sc.layout === "top") { const fit = () => { const k = Math.min(innerWidth / im.naturalWidth, lockedH / im.naturalHeight); im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px"; }; if (im.complete && im.naturalWidth) fit(); else im.onload = fit; }
       return d;
@@ -327,10 +327,10 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     // Les textes de Corto se tapent à la machine à écrire, dans l'ordre de lecture ; un premier toucher les affiche en entier (le suivant tourne la page).
     const typeTargets = (d, sc) => sc.layout === "hello" ? [".hl-hi", ".hl-q"] : sc.layout === "welcome" ? [".wl-top p", ".wl-name", ".wl-name2", ".wl-sea", ".wl-mid p"] : sc.layout === "who" ? [] : [".in2-part", ".in2-txt > p:not(.in2-part):not(.in2-ask)", ".in2-ask"];
     // écran « Corto se présente » : le Corto du bas n'apparaît qu'avec « Je suis marin. »
-    const showImg = (d) => { const im = d.querySelector(".wl-img"); if (im) { im.style.transition = "opacity 1.6s ease"; im.style.opacity = "1"; } };
+    const showImg = (d) => { const im = d.querySelector(".wl-img, .in2-img"); if (im) { im.style.transition = "opacity 1.6s ease"; im.style.opacity = "1"; } };
     const startTyping = (d, sc, delay, onDone, manual) => {
-      if (curTyping) curTyping.cancel(); curTyping = null; if (editing) { onDone && onDone(); return; } if (sc.layout === "welcome") { const im = d.querySelector(".wl-img"); if (im) { im.style.transition = "none"; im.style.opacity = "0"; } }
-      const els = typeTargets(d, sc).flatMap((q) => [...d.querySelectorAll(q)]); curTyping = typeSeq(els, { delay, onDone, manual, onFade: sc.layout === "welcome" ? () => showImg(d) : undefined }); if (curTyping.done && sc.layout === "welcome") showImg(d);
+      if (curTyping) curTyping.cancel(); curTyping = null; if (editing) { onDone && onDone(); return; } if (sc.layout === "welcome" || sc.ask) { const im = d.querySelector(".wl-img, .in2-img"); if (im) { im.style.transition = "none"; im.style.opacity = "0"; } }
+      const els = typeTargets(d, sc).flatMap((q) => [...d.querySelectorAll(q)]); curTyping = typeSeq(els, { delay, onDone, manual, onFade: sc.layout === "welcome" || sc.ask ? () => showImg(d) : undefined }); if (curTyping.done && (sc.layout === "welcome" || sc.ask)) showImg(d);
     };
     const morph = (sc, to) => {
       seaTo(to);
@@ -493,10 +493,10 @@ function typeSeq(els, { delay = 400, speed = 1, onDone, onFade, manual = false }
     if (i >= all.length) { api.finish(); return; }
     if (all[i].fade) { // bloc qui apparaît en fondu, d'un seul coup (« Je suis marin. », puis la suite du récit)
       const it = all[i].it; onFade && onFade(it.el); it.chars.forEach((c) => { c.style.transition = "opacity 1.6s ease"; c.style.opacity = "1"; }); i += it.chars.length;
-      t = setTimeout(step, 1700 + (all[i] && all[i].first ? (all[i].fade ? 3000 : 260) : 0)); return;
+      t = setTimeout(step, 1700 + (all[i] && all[i].first ? (all[i].fade ? +all[i].it.el.dataset.fade || 3000 : 260) : 0)); return;
     }
     const { c, first } = all[i++]; c.style.opacity = "1"; if (curC) curC.classList.remove("tw-cur"); c.classList.add("tw-cur"); curC = c; const ch = c.textContent;
-    t = setTimeout(step, (ch === "," ? 140 : ".!?…:".includes(ch) ? 280 : ch === " " ? 26 : 22 + Math.random() * 22) * speed + (all[i] && all[i].first ? (all[i].fade ? 3000 : 260) : 0));
+    t = setTimeout(step, (ch === "," ? 140 : ".!?…:".includes(ch) ? 280 : ch === " " ? 26 : 22 + Math.random() * 22) * speed + (all[i] && all[i].first ? (all[i].fade ? +all[i].it.el.dataset.fade || 3000 : 260) : 0));
   };
   if (!all.length || matchMedia("(prefers-reduced-motion: reduce)").matches) { restore(); onDone && onDone(); } else if (!manual) t = setTimeout(step, delay);
   return api;
