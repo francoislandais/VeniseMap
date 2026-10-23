@@ -789,8 +789,9 @@ function openPlace(id, originRect) {
   if (arrived(p.id) && !complete(p) && inZone(p)) { closeSheet(); openQuest(p.id); return; }
   // Épreuve terminée : plus de « J'y suis ! » ni de test GPS, Corto félicite tout de suite et propose de refaire les épreuves.
   if (p.chapters && complete(p)) {
-    buildMedal({ id, img: pic(id), title: p.name, chatHtml: endCardHtml(p, true), actions: `<button class="b-btn ghost small" data-k="map">Revenir à la carte</button><button class="b-btn go-next" data-k="redo">Refaire les épreuves</button>`, originRect,
-      bind: () => { $$("[data-plan]").forEach((b) => (b.onclick = () => openPlanPanel(place(b.dataset.plan).plan, place(b.dataset.plan)))); $$("[data-final]").forEach((b) => (b.onclick = async () => { await solemn(place(b.dataset.final)); b.remove(); })); $$("[data-photo]").forEach((b) => (b.onclick = () => openMontage(b.dataset.photo))); $$(".m-reply [data-k]").forEach((b) => (b.onclick = () => { if (b.dataset.k === "map") closeMedal(); else { closeSheet(); openChapters(p, true); } })); } });
+    if (p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
+    buildMedal({ id, img: pic(id), title: p.name, chatHtml: endCardHtml(p), actions: `<button class="b-btn ghost small" data-k="map">Revenir à la carte</button><button class="b-btn go-next" data-k="redo">Refaire les épreuves</button>`, originRect,
+      bind: () => { $$("[data-plan]").forEach((b) => (b.onclick = () => openPlanPanel(place(b.dataset.plan).plan, place(b.dataset.plan)))); $$("[data-photo]").forEach((b) => (b.onclick = () => openMontage(b.dataset.photo))); $$(".m-reply [data-k]").forEach((b) => (b.onclick = () => { if (b.dataset.k === "map") closeMedal(); else { closeSheet(); openChapters(p, true); } })); } });
     return;
   }
   buildMedal({ id, img: pic(id), title: p.name, bubble: `${esc(teaser(p))}<span class="m-q">Es-tu arrivé ?</span>`, label: "J'y suis !", originRect, bind: () => bindArrive(p) });
@@ -842,6 +843,7 @@ function renderSheet() { if (openId) updateMedal(); }
 let suspended = null, chapCur = null, destroying = false;
 function suspendChap(fromPop) {
   if (openId !== "chap" || !chapCur) return; document.body.classList.remove("chap-open");
+  if ($("#sheet.chap .chap-final-msg")) { closeSheet(); return; } // fin achevée : le lieu rouvrira sur son bilan et permettra de rejouer
   suspended = { id: chapCur.id }; openId = null; $("#sheet").hidden = true; stopChapAudio();
   if (!fromPop && history.state && history.state.vqBridge) history.back(); // le popstate qui suit ne fait rien : openId est nul
   $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext();
@@ -1366,19 +1368,19 @@ function openChapters(p, replay = false) {
   $(".chap-bg", sh).animate([{ opacity: 0, transform: "scale(1)" }, { opacity: 1, transform: "scale(1.04)", offset: .08 }, { opacity: 1, transform: "scale(1.16)" }], { duration: 20000, easing: "ease-out", fill: "forwards" }); // l'image reste en fond, avec un très lent zoom
   setTimeout(() => { if (openId === "chap") runChapters(p, replay); }, 350);
 }
-// Écran de fin : Corto content, félicitations, bilan des étoiles du lieu ; retour à la carte ou nouvelle partie sans étoiles.
-const placeStars = (p) => Object.entries(S.done).reduce((n, [k, v]) => n + (!v.d && (k === "a:" + p.id || k.startsWith(`t:${p.id}:`)) ? v.p || 0 : 0), 0);
-const gradeUc = () => { const g = LEVELS[level(pointsOf(meIdx()))].name; return g[0].toUpperCase() + g.slice(1); };
-const endCardHtml = (p, again) => `<div class="end-card"><div class="end-face"></div><div class="m-bubble"><b>Tu as ${again ? "déjà " : ""}relevé tous les défis de ce lieu. ${gradeUc()}, félicitations !</b><br>Ici, tu as gagné ${placeStars(p)} ⭐ en tout.</div>${p.plan ? `<button type="button" class="end-photo plan" data-plan="${p.id}">🗺️ Revoir le plan</button>` : ""}${MONTAGES[p.id] ? `<button type="button" class="end-photo" data-photo="${p.id}">📸 Photo souvenir</button>` : p.reward && !has("fin:" + p.id) ? `<button type="button" class="end-photo" data-final="${p.id}">✨ Le dernier mot de Corto</button>` : ""}</div>`;
+// Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
+const endMessage = (p, again = false) => {
+  const bravo = again ? "**Tu as déjà mené toutes ces épreuves jusqu'au bout.**" : `**Bravo, ${gradeLc()} ! Tu as mené toutes ces épreuves jusqu'au bout.**`;
+  return p.reward ? `${bravo} ${again ? "Rappelle-toi mon indice :" : "Je vais te confier un secret :"} **${p.reward.hint}** Ouvre le plan et regarde cet endroit de près.` : `${bravo} Garde en mémoire ce que tu as découvert ici. Quand tu seras prêt, reprends la carte de Venise.`;
+};
+const endCardHtml = (p) => `<div class="end-card"><div class="end-face"></div><div class="m-bubble">${richText(endMessage(p, true))}</div>${p.plan ? `<button type="button" class="end-photo plan" data-plan="${p.id}">🗺️ Voir le plan</button>` : ""}${MONTAGES[p.id] ? `<button type="button" class="end-photo" data-photo="${p.id}">📸 Photo souvenir</button>` : ""}</div>`;
 async function chapEnd(p, replay) {
   await clearTalk();
-  const c = $("#b-talk");
-  const d = document.createElement("div"); d.innerHTML = endCardHtml(p); d.className = "end-wrap";
-  c.appendChild(d); $$("[data-photo]", d).forEach((b) => (b.onclick = () => openMontage(b.dataset.photo))); $$("[data-plan]", d).forEach((b) => (b.onclick = () => openPlanPanel(place(b.dataset.plan).plan, place(b.dataset.plan)))); $$("[data-final]", d).forEach((b) => (b.onclick = async () => { await solemn(place(b.dataset.final)); b.remove(); })); chime(true); if (!replay) confetti(120);
-  d.animate([{ opacity: 0, transform: "translateY(18px) scale(.94)" }, { opacity: 1, transform: "none" }], { duration: 700, easing: "cubic-bezier(.2,.9,.25,1.1)" });
-  $("#sheet").dataset.k = "one";
-  await bsleep(500);
-  return nextBar(true, "Refaire les épreuves");
+  const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.dataset.k = "one";
+  const msg = chatAdd(typingHtml, "fc chap-final-msg"); cortoFill(msg, endMessage(p, replay));
+  if (p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
+  if (MONTAGES[p.id]) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-photo"; b.textContent = "📸 Photo souvenir"; b.onclick = () => openMontage(p.id); sh.appendChild(b); }
+  if (!replay) confetti(45);
 }
 /* ───────── « Où ? » : une petite carte avec une cible sur l'objet désigné par la question (champ loc des étapes) ───────── */
 let skipEnd = null; // (mode dev) saute directement à l'écran final de l'épreuve
@@ -1537,8 +1539,7 @@ async function runChapters(p, replay = false) {
       sh.classList.remove("chap-reveal"); // la question suivante retrouve un fond net
       if (nb === "skip") break;
     }
-    if ((await chapEnd(p, replay)) === "map") { closeSheet(); return; }
-    await clearTalk(); return runChapters(p, true);
+    await chapEnd(p, replay); return;
   } catch (e) { if (e !== 0) throw e; }
 }
 function closeQuest() { quest = null; $("#quest").hidden = true; $("#bridge-btn").hidden = tab !== "map" || !!openId; renderNext(); }
@@ -1709,7 +1710,7 @@ function renderDoge(v = $("#v-doge"), id = "doge", onDone = null) {
         award("ph:" + id, 10, meIdx()); save(); refreshAll(); confetti(60);
         const bb = $(".bbub", v); if (bb) bb.innerHTML = "<b>Bravo, très joli, très imposant !</b>";
         starsIntoPurse(10); await sleep(3300);
-        if (pl && pl.reward) await solemn(pl);
+        if (pl && pl.reward && !has("fin:" + pl.id)) await solemn(pl);
       } else { toast("📸 Photo enregistrée dans tes souvenirs !"); confetti(60); }
       if (onDone) onDone(); else { renderDoge(v, id, onDone); if (tab === "photos") renderPhotos(); }
     }, "image/jpeg", 0.9);

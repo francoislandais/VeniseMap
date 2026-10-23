@@ -1464,3 +1464,11 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 /* Tableau gagné : il rejoint le livre, puis les étoiles tombent vers l'escarcelle. */
 .work-flight{position:fixed;z-index:1800;object-fit:contain;pointer-events:none;border:2px solid rgba(245,225,166,.9);border-radius:4px;box-shadow:0 8px 26px rgba(0,0,0,.55);transform-origin:center}
 .work-rain-star{position:fixed;z-index:1790;width:23px;height:23px;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
+
+/* Fin d'épreuve : la parole de Corto garde le même lavis bleu nuit que les questions. */
+#sheet.chap .chap-final-msg .m-bubble::before{content:"✦  ÉPREUVES ACCOMPLIES";display:block;margin-bottom:12px;color:#f0d58f;font-size:11px;font-weight:700;letter-spacing:.14em;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+#sheet.chap .chap-end-photo{position:absolute;left:50%;bottom:calc(var(--cqh,150px) + 22px);z-index:6;transform:translateX(-50%);white-space:nowrap;padding:11px 18px;border:1.5px solid rgba(166,213,229,.78);border-radius:999px;background:linear-gradient(135deg,rgba(17,63,87,.97),rgba(7,30,49,.97));color:#fff;font-size:15px;font-weight:700;box-shadow:0 3px 12px rgba(0,8,18,.42)}
+#sheet.medal-wrap:not(.chap) .end-card{gap:10px;padding-top:0}
+#sheet.medal-wrap:not(.chap) .end-card .end-face{width:86px;height:86px;margin:0 0 -8px}
+#sheet.medal-wrap:not(.chap) .end-card .m-bubble{max-width:340px;padding:14px 16px;border:1px solid rgba(166,213,229,.5);border-radius:16px;background:rgba(8,32,50,.94);color:#fff;text-align:left;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.35}
+#sheet.medal-wrap:not(.chap) .end-card .end-photo{margin-top:2px;background:rgba(8,43,65,.92);color:#fff;border:1px solid rgba(166,213,229,.6);font-size:14px}
