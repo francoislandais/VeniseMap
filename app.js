@@ -198,19 +198,21 @@ let PROFILE = loadProfile();
 const VENICE = { w: 12.24, s: 45.36, e: 12.47, n: 45.55 }; // zone explorable : Venise et ses alentours
 const inVenice = (lat, lon) => lon >= VENICE.w && lon <= VENICE.e && lat >= VENICE.s && lat <= VENICE.n;
 let outside = false, locateAsked = false;
-function outfitStyle(l, cut, frame) { // place la tenue dans les mêmes coordonnées que la photo, sans redimensionner celle-ci
+function outfitStyle(l, cut, frame, shift = {}) { // place la tenue dans les mêmes coordonnées que la photo, sans redimensionner celle-ci
   if (!l) return null;
   const { w, h, cw, ch, ox, pad } = l;
   if (![w, h, cw, ch, ox, pad].every(Number.isFinite) || w <= 0 || h <= 0) return null;
   const scale = 1 / (frame ? Math.min(w, h) : cut ? Math.max(w, h) : Math.min(w, h));
-  const left = ((1 - w * scale) * 0.5 - ox * scale) * 100;
-  const top = ((1 - h * scale) * (frame ? 0.34 : 0.5) - pad * scale) * 100;
+  const dx = Number.isFinite(shift?.x) ? Math.max(-30, Math.min(30, shift.x)) : 0;
+  const dy = Number.isFinite(shift?.y) ? Math.max(-25, Math.min(25, shift.y)) : 0;
+  const left = ((1 - w * scale) * 0.5 - ox * scale) * 100 + dx;
+  const top = ((1 - h * scale) * (frame ? 0.34 : 0.5) - pad * scale) * 100 + dy;
   return `--gear-left:${left}%;--gear-top:${top}%;--gear-width:${cw * scale * 100}%;--gear-height:${ch * scale * 100}%`;
 }
 function profileHtml() {
   if (!PROFILE) return "🙂";
   if (PROFILE.photo && PROFILE.outfitOverlay && PROFILE.outfitLayout && PROFILE.outfitOverlayVersion === 2) {
-    const style = outfitStyle(PROFILE.outfitLayout, !!PROFILE.cut, PROFILE.frame);
+    const style = outfitStyle(PROFILE.outfitLayout, !!PROFILE.cut, PROFILE.frame, PROFILE.outfitShift);
     if (style) {
       const cls = PROFILE.cut ? ` cut${PROFILE.frame ? " frame" : ""}` : "";
       return `<span class="avatar-dressed" style="${style}"><img class="avatar-base${cls}" src="${PROFILE.photo}" alt=""><img class="avatar-gear" src="${PROFILE.outfitOverlay}" alt=""></span>`;
@@ -757,7 +759,7 @@ function renderProfileBar() {
 $("#up-me").onclick = async () => {
   if (!PROFILE) return;
   const p = await editProfile(PROFILE); if (!p) return;
-  if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitLayout = PROFILE.outfitLayout; p.outfitOverlayVersion = PROFILE.outfitOverlayVersion; } // nouvelle photo = plus de tenue
+  if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitLayout = PROFILE.outfitLayout; p.outfitOverlayVersion = PROFILE.outfitOverlayVersion; p.outfitShift = PROFILE.outfitShift; } // nouvelle photo = plus de tenue
   applyProfile(p);
 };
 function applyProfile(p) {
@@ -2122,8 +2124,8 @@ const CER_TEXT = {
 let ceremonyBusy = false;
 async function wearOutfit(key) { // pose (ou retire, key = null) la tenue sur la photo du profil
   const P = PROFILE; if (!P || !P.photo) return;
-  if (!key) { delete P.outfit; delete P.outfitPhoto; delete P.outfitOverlay; delete P.outfitLayout; delete P.outfitOverlayVersion; }
-  else { OUTFITS ||= await (await fetch("data/outfits.json")).json(); const c = await composeOutfit(P.photo, !!P.cut, key, { garmentsOnly: true }, P.frame || false), du = c.toDataURL("image/webp", 0.9); P.outfit = key; P.outfitOverlay = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); P.outfitLayout = c.outfitLayout; P.outfitOverlayVersion = 2; delete P.outfitPhoto; }
+  if (!key) { delete P.outfit; delete P.outfitPhoto; delete P.outfitOverlay; delete P.outfitLayout; delete P.outfitOverlayVersion; delete P.outfitShift; }
+  else { OUTFITS ||= await (await fetch("data/outfits.json")).json(); const c = await composeOutfit(P.photo, !!P.cut, key, { garmentsOnly: true }, P.frame || false), du = c.toDataURL("image/webp", 0.9); P.outfit = key; P.outfitOverlay = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); P.outfitLayout = c.outfitLayout; P.outfitOverlayVersion = 2; P.outfitShift = { x: 0, y: 0 }; delete P.outfitPhoto; }
   saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
 }
 async function ceremony(key, li) {
@@ -2146,25 +2148,47 @@ async function ceremony(key, li) {
       ov.addEventListener("click", advance); ov.addEventListener("keydown", onKey); ov.focus({ preventScroll: true });
     });
     ov.classList.add("cer-dressing");
-    if (canDress) { await corto.animate([{ opacity: 1 }, { opacity: 0, transform: "scale(.9)" }], { duration: 250, fill: "forwards" }).finished; corto.remove(); }
     if (canDress) {
       const had = P.outfit && OUTFITS[P.outfit] && P.outfit !== key ? P.outfit : null, f = P.frame || false;
       const cls = P.cut ? ` cut${f ? " frame" : ""}` : "";
       const portrait = document.createElement("span"); portrait.className = "avatar-dressed cer-avatar";
-      portrait.innerHTML = `<img class="avatar-base${cls}" src="${P.photo}" alt="">`; stage.appendChild(portrait);
-      const gear = async (grade, options = {}) => { const c = await composeOutfit(P.photo, !!P.cut, grade, { garmentsOnly: true, ...options }, f), im = document.createElement("img"); const du = c.toDataURL("image/webp", 0.9); im.className = "avatar-gear"; im.src = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); im.style.cssText = outfitStyle(c.outfitLayout, !!P.cut, f); return im; };
-      const oldGear = had ? await gear(had) : null; if (oldGear) portrait.appendChild(oldGear);
+      portrait.innerHTML = `<img class="avatar-base${cls}" src="${P.photo}" alt="">`;
+      const base = $(".avatar-base", portrait); if (base.decode) await base.decode().catch(() => {});
+      const gear = async (grade, options = {}, shift = {}) => { const c = await composeOutfit(P.photo, !!P.cut, grade, { garmentsOnly: true, ...options }, f), im = document.createElement("img"); const du = c.toDataURL("image/webp", 0.9); im.className = "avatar-gear"; im.src = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); im.style.cssText = outfitStyle(c.outfitLayout, !!P.cut, f, shift); if (im.decode) await im.decode().catch(() => {}); return im; };
+      const oldGear = had ? await gear(had, {}, P.outfitShift) : null;
       const body = await gear(key, { noHat: true }), hat = await gear(key, { hatOnly: true });
-      body.style.opacity = "0"; hat.style.opacity = "0"; portrait.append(body, hat);
-      await portrait.animate([{ opacity: 0, transform: "scale(.9)" }, { opacity: 1, transform: "none" }], { duration: 500, easing: "ease-out" }).finished;
-      say(had ? "Ton nouvel uniforme arrive…" : "Voici ton uniforme…");
-      if (oldGear) { await oldGear.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).finished; oldGear.remove(); }
-      await body.animate([{ opacity: 0, transform: "translateY(35px)" }, { opacity: 1, transform: "none" }], { duration: 750, fill: "forwards", easing: "ease-out" }).finished; body.style.opacity = "1";
-      await sleep(180);
-      await hat.animate([{ opacity: 1, transform: "translateY(-120%) rotate(-12deg)" }, { opacity: 1, transform: "translateY(6%) rotate(3deg)", offset: 0.6 }, { opacity: 1, transform: "translateY(-3%) rotate(-1deg)", offset: 0.8 }, { opacity: 1, transform: "none" }], { duration: 1050, fill: "forwards", easing: "cubic-bezier(.3,.7,.4,1)" }).finished; hat.style.opacity = "1";
+      if (oldGear) portrait.appendChild(oldGear);
+      const clothes = document.createElement("span"); clothes.className = "cer-clothes";
+      await corto.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, fill: "forwards" }).finished; corto.remove();
+      stage.appendChild(portrait);
+      await portrait.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: "ease-out" }).finished;
+      say(had ? "L'ancien uniforme s'en va…" : "Voici ton uniforme…");
+      if (oldGear) { await oldGear.animate([{ opacity: 1 }, { opacity: 0, transform: "translateY(16px)" }], { duration: 450, fill: "forwards", easing: "ease-in" }).finished; oldGear.remove(); }
+      body.style.opacity = "0"; hat.style.opacity = "0"; clothes.append(body, hat); portrait.appendChild(clothes);
+      await body.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 700, fill: "forwards", easing: "ease-out" }).finished; body.style.opacity = "1";
+      await hat.animate([{ opacity: 0, transform: "translateY(-48px) rotate(-6deg)" }, { opacity: 1, transform: "translateY(5px) rotate(2deg)", offset: 0.75 }, { opacity: 1, transform: "none" }], { duration: 850, fill: "forwards", easing: "cubic-bezier(.3,.7,.4,1)" }).finished; hat.style.opacity = "1";
       await wearOutfit(key); confetti(100);
       say(`Magnifique, ${LEVELS[li].name.toLowerCase()} ${name} ! Cet uniforme te va comme un gant.`);
-      await sleep(2300);
+      const hint = $(".cer-hint", ov); hint.textContent = "Glisse la tenue pour l'ajuster · touche ailleurs pour terminer";
+      ov.classList.add("cer-adjusting");
+      const shift = { x: 0, y: 0 }; let drag = null;
+      const move = (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const w = portrait.getBoundingClientRect().width || 1;
+        shift.x = Math.round(Math.max(-30, Math.min(30, drag.x + (e.clientX - drag.px) / w * 100)) * 10) / 10;
+        shift.y = Math.round(Math.max(-25, Math.min(25, drag.y + (e.clientY - drag.py) / w * 100)) * 10) / 10;
+        clothes.style.transform = `translate(${shift.x}%, ${shift.y}%)`;
+      };
+      portrait.addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse" && e.button !== 0) return; drag = { id: e.pointerId, px: e.clientX, py: e.clientY, x: shift.x, y: shift.y }; portrait.setPointerCapture(e.pointerId); e.preventDefault(); });
+      portrait.addEventListener("pointermove", move);
+      const endDrag = (e) => { if (drag?.id === e.pointerId) { move(e); drag = null; } };
+      portrait.addEventListener("pointerup", endDrag); portrait.addEventListener("pointercancel", endDrag);
+      await new Promise((resolve) => {
+        const finish = (e) => { if (e?.type === "click" && portrait.contains(e.target)) return; ov.removeEventListener("click", finish); ov.removeEventListener("keydown", onKey); resolve(); };
+        const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); finish(); } };
+        ov.addEventListener("click", finish); ov.addEventListener("keydown", onKey);
+      });
+      P.outfitShift = shift; saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
     }
     await ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).finished;
   } finally { ov?.remove(); ceremonyBusy = false; }

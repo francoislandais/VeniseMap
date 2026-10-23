@@ -1513,3 +1513,7 @@ body.intro-open > .cam.cam{visibility:visible!important}
 .cer-hint{margin:0;min-height:24px;font:15px/1.4 Georgia,serif;letter-spacing:.02em;text-align:center;color:#173b55;text-shadow:0 1px 8px #fff7e9;animation:cerHint 2s ease-in-out infinite}
 .cer-dressing .cer-hint{visibility:hidden}
 @keyframes cerHint{50%{opacity:.45}}
+.cer-clothes{position:absolute;inset:0;display:block;pointer-events:none}
+.cer-adjusting .cer-avatar{touch-action:none;cursor:grab}
+.cer-adjusting .cer-avatar:active{cursor:grabbing}
+.cer-adjusting .cer-hint{visibility:visible}
