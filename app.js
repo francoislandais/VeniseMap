@@ -574,7 +574,13 @@ Promise.all(WALKERS.map(startWalker)).then(() => requestAnimationFrame(walkTick)
 window.__walkTick = walkTick; window.__doge = () => walkerAt(WALKERS[0]); window.__monte = () => walkerAt(WALKERS[1]); window.__walkerAt = (i, t) => walkerAt(WALKERS[i], t); window.__WK = WALKERS; window.__marc = () => walkerAt(WALKERS[2]); window.__lion = () => walkerAt(WALKERS[4]); window.__gond = () => walkerAt(WALKERS[3]);
 const pinEls = {};
 // Icônes dessinées à la place de la pastille photo (fond transparent) ; w = largeur en px (à régler ici), ratio = largeur/hauteur de l'image.
-const PLACE_ICONS = { frari: { src: "img/places/frari-icon.webp", w: 48, ratio: 1 } };
+const PLACE_ICONS = {
+  frari: { src: "img/places/frari-icon.webp", w: 48, ratio: 1 },
+  salute: { src: "img/places/salute-icon.webp", w: 48, ratio: 0.8953 },
+  basilique: { src: "img/places/basilique-icon.webp", w: 48, ratio: 1.045 },
+  cadoro: { src: "img/places/cadoro-icon.webp", w: 48, ratio: 1.1823 },
+  miracoli: { src: "img/places/miracoli-icon.webp", w: 48, ratio: 1.0256 },
+};
 // Position et taille (par niveau de zoom) de chaque icône : réglées à la main en mode édition (aperçu local), enregistrées dans data/place-icons.json.
 // { id: { lon, lat, stops: [[zoom, largeur en px], …] } } — entre deux niveaux réglés, la taille varie en douceur (interpolation géométrique) ; au-delà, l'icône suit l'échelle de la carte (×2 par niveau de zoom).
 const ICONCFG = await fetch("data/place-icons.json?" + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
