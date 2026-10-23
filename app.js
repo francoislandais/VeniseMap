@@ -2125,41 +2125,46 @@ async function wearOutfit(key) { // pose (ou retire, key = null) la tenue sur la
 }
 async function ceremony(key, li) {
   if (ceremonyBusy) return; ceremonyBusy = true;
+  let ov;
   try {
     OUTFITS ||= await (await fetch("data/outfits.json")).json();
     const P = PROFILE, name = myName(), canDress = !!(P && P.photo && OUTFITS[key]);
-    const ov = document.createElement("div"); ov.className = "cer";
-    ov.innerHTML = `<div class="cer-top"><div class="msg fc"><span class="m-face"></span><div class="m-bubble"></div></div></div><div class="cer-stage"></div><div class="cer-btns"></div>`;
-    document.body.appendChild(ov); ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350, fill: "both" });
-    const bub = $(".m-bubble", ov), stage = $(".cer-stage", ov), btns = $(".cer-btns", ov);
-    const say = (t) => { bub.textContent = t; bub.animate([{ transform: "scale(.92)", opacity: 0.2 }, { transform: "scale(1)", opacity: 1 }], { duration: 280 }); };
-    const ask = (list) => new Promise((res) => { btns.innerHTML = list.map((l, i) => `<button class="b-btn ${i ? "ghost2" : "go-next"}" data-i="${i}">${esc(l)}</button>`).join(""); $$("button", btns).forEach((b) => (b.onclick = () => { btns.innerHTML = ""; res(+b.dataset.i); })); });
+    ov = document.createElement("div"); ov.className = "cer"; ov.tabIndex = 0;
+    ov.innerHTML = `<div class="cer-top"><p class="cer-label">Un nouveau grade</p><p class="cer-message" aria-live="polite"></p></div><div class="cer-stage"></div><p class="cer-hint">Touche l'écran pour continuer</p>`;
+    document.body.appendChild(ov);
+    const bub = $(".cer-message", ov), stage = $(".cer-stage", ov);
+    const say = (t) => { bub.textContent = t; bub.animate([{ transform: "translateY(8px)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 350 }); };
     const corto = document.createElement("img"); corto.className = "cer-corto"; corto.src = "img/corto-content.webp"; stage.appendChild(corto); corto.animate([{ transform: "translateY(40px) scale(.8)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 500, easing: "cubic-bezier(.2,.9,.3,1.2)" });
-    confetti(70); say(`Bravo ${name} ! ${CER_TEXT[key]}`); await ask(["Merci, Corto !"]);
+    say(`Bravo ${name} ! ${CER_TEXT[key]}`); confetti(70);
+    await ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350, fill: "both" }).finished;
+    await new Promise((resolve) => {
+      const advance = () => { ov.removeEventListener("click", advance); ov.removeEventListener("keydown", onKey); resolve(); };
+      const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); advance(); } };
+      ov.addEventListener("click", advance); ov.addEventListener("keydown", onKey); ov.focus({ preventScroll: true });
+    });
+    ov.classList.add("cer-dressing");
     if (canDress) { await corto.animate([{ opacity: 1 }, { opacity: 0, transform: "scale(.9)" }], { duration: 250, fill: "forwards" }).finished; corto.remove(); }
     if (canDress) {
-      const had = P.outfit && OUTFITS[P.outfit] && P.outfit !== key ? P.outfit : null, f = P.frame || false; // déjà en uniforme : on passe directement de l'un à l'autre
+      const had = P.outfit && OUTFITS[P.outfit] && P.outfit !== key ? P.outfit : null, f = P.frame || false;
       const cls = P.cut ? ` cut${f ? " frame" : ""}` : "";
       const portrait = document.createElement("span"); portrait.className = "avatar-dressed cer-avatar";
       portrait.innerHTML = `<img class="avatar-base${cls}" src="${P.photo}" alt="">`; stage.appendChild(portrait);
       const gear = async (grade, options = {}) => { const c = await composeOutfit(P.photo, !!P.cut, grade, { garmentsOnly: true, ...options }, f), im = document.createElement("img"); const du = c.toDataURL("image/webp", 0.9); im.className = "avatar-gear"; im.src = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); im.style.cssText = outfitStyle(c.outfitLayout, !!P.cut, f); return im; };
       const oldGear = had ? await gear(had) : null; if (oldGear) portrait.appendChild(oldGear);
-      portrait.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: "ease-out" });
-      say(had ? `Veux-tu troquer ton uniforme de ${LEVELS.find((l, j) => OUTFIT_LEVELS[j] === had)?.name.toLowerCase() || had} contre celui de ${LEVELS[li].name.toLowerCase()} ?` : `Veux-tu t'habiller en ${LEVELS[li].name.toLowerCase()} ?`);
-      if ((await ask([had ? "Oui, change-moi !" : "Oui, habille-moi !", had ? "Je garde le mien" : "Non merci"])) === 0) {
-        const body = await gear(key, { noHat: true }), hat = await gear(key, { hatOnly: true });
-        body.style.opacity = "0"; hat.style.opacity = "0"; portrait.append(body, hat);
-        say(had ? "Hop, l'ancien uniforme s'en va…" : "Voici ton uniforme…");
-        if (oldGear) { await oldGear.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).finished; oldGear.remove(); }
-        await body.animate([{ opacity: 0, transform: "translateY(30px)" }, { opacity: 1, transform: "none" }], { duration: 650, fill: "forwards", easing: "ease-out" }).finished; body.style.opacity = "1";
-        say("…et ton nouveau chapeau !"); await sleep(250);
-        await hat.animate([{ opacity: 1, transform: "translateY(-120%) rotate(-12deg)" }, { opacity: 1, transform: "translateY(6%) rotate(3deg)", offset: 0.6 }, { opacity: 1, transform: "translateY(-3%) rotate(-1deg)", offset: 0.8 }, { opacity: 1, transform: "none" }], { duration: 900, fill: "forwards", easing: "cubic-bezier(.3,.7,.4,1)" }).finished; hat.style.opacity = "1";
-        confetti(90); await wearOutfit(key);
-        say(`Magnifique, ${LEVELS[li].name.toLowerCase()} ${name} ! Cet uniforme te va comme un gant.`); await ask(["Super !"]);
-      } else { say(had ? "Comme tu veux, tu gardes ton uniforme !" : "Comme tu veux ! Tu pourras t'habiller plus tard."); await ask(["D'accord"]); }
+      const body = await gear(key, { noHat: true }), hat = await gear(key, { hatOnly: true });
+      body.style.opacity = "0"; hat.style.opacity = "0"; portrait.append(body, hat);
+      await portrait.animate([{ opacity: 0, transform: "scale(.9)" }, { opacity: 1, transform: "none" }], { duration: 500, easing: "ease-out" }).finished;
+      say(had ? "Ton nouvel uniforme arrive…" : "Voici ton uniforme…");
+      if (oldGear) { await oldGear.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).finished; oldGear.remove(); }
+      await body.animate([{ opacity: 0, transform: "translateY(35px)" }, { opacity: 1, transform: "none" }], { duration: 750, fill: "forwards", easing: "ease-out" }).finished; body.style.opacity = "1";
+      await sleep(180);
+      await hat.animate([{ opacity: 1, transform: "translateY(-120%) rotate(-12deg)" }, { opacity: 1, transform: "translateY(6%) rotate(3deg)", offset: 0.6 }, { opacity: 1, transform: "translateY(-3%) rotate(-1deg)", offset: 0.8 }, { opacity: 1, transform: "none" }], { duration: 1050, fill: "forwards", easing: "cubic-bezier(.3,.7,.4,1)" }).finished; hat.style.opacity = "1";
+      await wearOutfit(key); confetti(100);
+      say(`Magnifique, ${LEVELS[li].name.toLowerCase()} ${name} ! Cet uniforme te va comme un gant.`);
+      await sleep(2300);
     }
-    await ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, fill: "forwards" }).finished; ov.remove();
-  } finally { ceremonyBusy = false; }
+    await ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).finished;
+  } finally { ov?.remove(); ceremonyBusy = false; }
 }
 // Un nouveau grade à tenue a-t-il été atteint ? (au plus une cérémonie à la fois, jamais pendant une épreuve ou une animation)
 function checkCeremony() {
