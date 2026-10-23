@@ -1939,7 +1939,7 @@ async function flyWorkToBook(w) {
       { transform: "translate(-50%,-50%) translateY(-55px) rotate(8deg) scale(1.12)", opacity: 1, offset: .32 },
       { transform: "translate(-50%,-50%) translateY(-100px) rotate(-5deg) scale(1.05)", opacity: 1, offset: .58 },
       { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(12deg) scale(.12)`, opacity: 1 },
-    ], { duration: reduced ? 250 : 1450, easing: "ease-in-out", fill: "forwards" }).finished.catch(() => {});
+    ], { duration: reduced ? 250 : 2400, easing: "ease-in-out", fill: "forwards" }).finished.catch(() => {});
   } finally { art.remove(); }
   book.animate([{ transform: "scale(1)" }, { transform: "scale(1.22)", offset: .45 }, { transform: "scale(1)" }], { duration: 430 });
 }
