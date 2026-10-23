@@ -189,26 +189,30 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
   // Introduction : 7 écrans plein page, fondu enchaîné, navigation par toucher ou par les petits boutons précédent / suivant. Images + texte, sans bulle.
   return new Promise(async (resolve) => {
     let LAYOUT = {}; try { const r = await fetch("data/intro-layout.json?" + Date.now()); if (r.ok) LAYOUT = await r.json(); } catch {} // réglages de position/taille enregistrés depuis l'éditeur
-    const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q", form: ".in2-form" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt" } };
-    const edKey = (to) => `s${to + 1}`;
-    const elsOf = (d, sc) => { const map = EDITABLE[sc.layout === "hello" || sc.layout === "welcome" ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
+    const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt" } };
+    const edKey = (to) => SCREENS[to].key; // clé stable de chaque écran (s1…s6, who) : les réglages enregistrés ne bougent pas si on insère un écran
+    const elsOf = (d, sc) => { const map = EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     const applyOne = (e, v) => { if (!v) { e.style.translate = ""; e.style.scale = ""; return; } e.style.translate = `${v.x || 0}vw calc(${v.y || 0} * var(--lh) / 100)`; e.style.scale = v.s && v.s !== 1 ? String(v.s) : ""; };
     // Textes modifiables : réglages dans LAYOUT._t[sN][clé] ; « {nom} » est remplacé par le prénom
-    const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", mid: ".wl-mid p" }, other: { txt: ".in2-txt p", btn: ".in2-btn" } };
-    const textsOf = (d, sc) => { const map = TEXTSEL[sc.layout === "hello" || sc.layout === "welcome" ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
+    const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", mid: ".wl-mid p" }, who: { lab: ".wh-lab", ok: ".wh-ok" }, other: { txt: ".in2-txt p", btn: ".in2-btn" } };
+    const textsOf = (d, sc) => { const map = TEXTSEL[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"]; const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
     const htmlOf = (t) => esc(String(t).replace(/\{nom\}/g, name)).replace(/\n/g, "<br>");
     const applyTexts = (d, sc, to) => { const T = (LAYOUT._t || {})[edKey(to)] || {}, els = textsOf(d, sc); for (const k in els) if (typeof T[k] === "string") els[k].innerHTML = htmlOf(T[k]); };
     const applyLayout = (d, sc, to) => { applyTexts(d, sc, to); const L = LAYOUT[edKey(to)] || {}, els = elsOf(d, sc); for (const k in els) applyOne(els[k], L[k]); };
     let name = opts.replay ? opts.name || "" : "";
     const IMG = (n) => `img/intro/e${n}.webp`;
-    const SCREENS = [
-      { img: 1, layout: "hello", hello: "Eh oh, bien le bonjour !", text: () => "Comment t'appelles-tu ?", input: true },
-      { img: 2, layout: "welcome", head: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour.`, name2: "Je m'appelle Corto Maltese.", text: () => "J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires." },
-      { img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
-      { img: 4, layout: "bottom", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.\n\nEs-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
-      { img: 5, layout: "center-top", text: () => "Parfait, alors c'est décidé ! Mon bateau sera bientôt amarré à l'embarcadère de Santo Spirito. Retrouvons-nous là-bas quand tu seras prêt." },
-      { img: 5, layout: "center-bottom", text: () => "Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller." },
+    const CAM_SVG = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 16h8l3-5h10l3 5h8a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V18a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><circle cx="24" cy="26" r="7" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>';
+    const ALL = [
+      { key: "s1", img: 1, layout: "hello", hello: "Eh oh, bien le bonjour !", text: () => "Comment t'appelles-tu ?" },
+      { key: "who", img: 1, layout: "who", lab: "Je m'appelle…", ok: "Valider" }, // écran d'identité (premier lancement seulement) : prénom + photo de tête
+      { key: "s2", img: 2, layout: "welcome", head: () => `Enchanté, ${name} ! Laisse-moi me présenter à mon tour.`, name2: "Je m'appelle Corto Maltese.", text: () => "J'ai navigué sur toutes les mers du monde, exploré des terres lointaines et inconnues, croisé des empereurs, des pirates et des explorateurs, et vécu mille aventures extraordinaires." },
+      { key: "s3", img: 3, layout: "top", text: () => "Aujourd'hui, après de longs mois passés à sillonner la Méditerranée, me voilà de retour à Venise. Bientôt, mon voilier glissera dans sa lagune scintillante, au cœur d'une ville où chaque palais cache un secret et chaque canal un mystère à découvrir." },
+      { key: "s4", img: 4, layout: "bottom", text: () => "Depuis plus de mille ans, cette ville émerveille voyageurs, artistes et explorateurs du monde entier. Si tu le souhaites, je te guiderai à travers ses merveilles… et je te confierai une mission de la plus haute importance, une aventure qui te mènera au cœur de ses secrets et de son histoire.\n\nEs-tu prêt à relever ce défi ?", button: "Oui, je suis prêt !" },
+      { key: "s5", img: 5, layout: "center-top", text: () => "Parfait, alors c'est décidé ! Mon bateau sera bientôt amarré à l'embarcadère de Santo Spirito. Retrouvons-nous là-bas quand tu seras prêt." },
+      { key: "s6", img: 5, layout: "center-bottom", text: () => "Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller." },
     ];
+    const SCREENS = opts.replay ? ALL.filter((sc) => sc.layout !== "who") : ALL;
+    let photoRes = null; // { photo, cut, frame } si l'enfant a pris sa tête
     SCREENS.forEach((sc) => { const i = new Image(); i.src = IMG(sc.img); }); // préchargées
     // Verrou d'écran : la hauteur est figée à celle du départ (le clavier ne change plus la mise en page) ; le clavier ne rétrécit que la vue visible.
     const meta = document.querySelector('meta[name="viewport"]'), metaOld = meta && meta.content;
@@ -222,9 +226,16 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     let cur = null, idx = -1, busy = false, opening = null;
     const build = (sc) => {
       const d = document.createElement("div"); d.className = `in2-s ${sc.layout}`;
-      const txt = esc(sc.text()).replace(/\n\n/g, "<br><br>");
+      const txt = esc(sc.text ? sc.text() : "").replace(/\n\n/g, "<br><br>");
       if (sc.layout === "hello") { // écran 1 : Corto à gauche ; à droite le salut (sur une ligne, à hauteur de son visage), la question et le champ prénom
-        d.innerHTML = `<div class="hl-wrap"><div class="hl-top"><img class="hl-img" style="opacity:0" src="${IMG(sc.img)}" alt=""><div class="hl-col" style="opacity:0"><p class="hl-hi">${esc(sc.hello)}</p><p class="hl-q">${esc(sc.text())}</p><form class="in2-form"><input id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button aria-label="Valider">›</button></form></div></div></div>`;
+        d.innerHTML = `<div class="hl-wrap"><div class="hl-top"><img class="hl-img" style="opacity:0" src="${IMG(sc.img)}" alt=""><div class="hl-col" style="opacity:0"><p class="hl-hi">${esc(sc.hello)}</p><p class="hl-q">${esc(sc.text())}</p></div></div></div>`;
+        return d;
+      }
+      if (sc.layout === "who") { // écran d'identité : « Je m'appelle… », le champ prénom, le rond caméra (la tête), la validation en bas
+        d.innerHTML = `<div class="wh"><p class="wh-lab">${esc(sc.lab)}</p><input class="wh-in" id="in2-name" maxlength="30" autocomplete="off" placeholder="Ton prénom" value="${esc(name)}"><button type="button" class="wh-cam" aria-label="Prendre ma tête en photo">${CAM_SVG}</button><button type="button" class="wh-ok">${esc(sc.ok)}</button></div>`;
+        const cam = d.querySelector(".wh-cam"), inp = d.querySelector(".wh-in"), paint = () => { cam.classList.toggle("has", !!photoRes); cam.innerHTML = photoRes ? `<img src="${photoRes.photo}" alt="">` : CAM_SVG; };
+        paint(); inp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } };
+        cam.onclick = async () => { if (editing) return; inp.blur(); const r = await selfie(); if (r) { photoRes = r; paint(); } };
         return d;
       }
       if (sc.layout === "welcome") { // écran 2 : Corto joyeux (fondu en bas) et sa salutation en haut, « Je m'appelle Corto Maltese. » en grand dessous ; Corto de l'aquarelle (sans le bateau) en bas à droite, la suite du texte à gauche
@@ -237,7 +248,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       return d;
     };
     const finish = () => {
-      const profile = opts.replay ? null : { name, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
+      const profile = opts.replay ? null : photoRes ? { name, photo: photoRes.photo, cut: true, frame: true } : { name, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
       if (profile) saveProfile(profile);
       resolve(profile); restore(); document.body.classList.remove("intro-open");
       const msg = document.createElement("div"); msg.className = "in2-end"; // écran 7 : la carte est révélée pour la première fois, Corto parle en bas
@@ -249,7 +260,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     };
     const vv = window.visualViewport;
     const lift = () => { // remonte le contenu juste assez pour que le champ reste visible au-dessus du clavier
-      const wrap = root.querySelector(".hl-wrap"), inp = root.querySelector("#in2-name"); if (!wrap || !inp || !vv) return;
+      const wrap = root.querySelector(".in2-s:last-of-type .wh"), inp = root.querySelector("#in2-name"); if (!wrap || !inp || !vv) return;
       const kb = Math.max(0, lockedH - vv.height - vv.offsetTop); wrap.style.transition = "transform .25s ease-out";
       if (!kb) { wrap.style.transform = ""; return; }
       const prev = wrap.style.transform; wrap.style.transform = ""; const bottom = inp.getBoundingClientRect().bottom + 18, free = lockedH - kb; wrap.style.transform = prev;
@@ -259,19 +270,19 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     root.addEventListener("focusin", () => setTimeout(lift, 120)); root.addEventListener("focusout", () => setTimeout(lift, 120));
     const go = async (to) => {
       if (busy || to < 0) return;
-      if (idx === 0 && to > 0) { // le prénom est obligatoire pour quitter l'écran 1
+      if (SCREENS[idx]?.layout === "who" && to > idx) { // le prénom est obligatoire pour quitter l'écran d'identité
         const i = root.querySelector("#in2-name"); const v = i ? i.value.trim() : name; if (!v) { if (i) i.focus(); return; } name = v;
       }
       if (to >= SCREENS.length) { if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); } if (opening) opening.skip(); finish(); return; }
       busy = true; setTimeout(() => (busy = false), 450);
       const sc = SCREENS[to], first = idx === -1, d = build(sc); root.insertBefore(d, root.querySelector(".in2-nav")); idx = to; applyLayout(d, sc, to); if (editing) setTimeout(() => select(null), 0);
       prevBtn.style.visibility = to === 0 ? "hidden" : "visible";
-      if (sc.layout === "hello") root.querySelector("#in2-name")?.blur?.();
-      d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
+            d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: sc.layout === "hello" && first ? 1 : 600, fill: "forwards", easing: "ease-in-out" });
       if (cur) { const old = cur; old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards", easing: "ease-in-out" }).onfinish = () => old.remove(); }
       cur = d;
       const vl = root.querySelector(".in2-veil"); if (sc.layout !== "hello") vl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }); // le tableau reste en permanence ; le voile de lecture n'est que sur l'écran 1
-      if (sc.layout === "hello") { opening = openingShot(d, !first); const f = d.querySelector("form"), i = d.querySelector("input"); f.onsubmit = (e) => { e.preventDefault(); go(1); }; }
+      if (sc.layout === "hello") { opening = openingShot(d, !first); let ready = !!(!first); opening.done.then(() => (ready = true)); if (!first) ready = true; d.addEventListener("click", (e) => { if (ready && !editing) go(to + 1); }); }
+      else if (sc.layout === "who") { d.querySelector(".wh-ok").onclick = () => { if (!editing) go(to + 1); }; }
       else if (sc.button) d.querySelector(".in2-btn").onclick = () => go(to + 1);
       else setTimeout(() => d.addEventListener("click", (e) => { if (!editing && !e.target.closest("input,form,button")) go(to + 1); }), 350);
     };

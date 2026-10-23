@@ -1116,3 +1116,15 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .in2-handle[hidden]{display:none}
 
 .in2-editing .in2-txted{pointer-events:auto!important;user-select:text;-webkit-user-select:text;touch-action:auto;cursor:text;outline:2px solid #3b82f6;outline-offset:3px;white-space:pre-wrap}
+
+/* Écran d'identité : « Je m'appelle… », prénom, rond caméra, validation en bas */
+.in2-s.who{display:block}
+.wh{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;gap:clamp(14px,3.2%,30px);padding:calc(var(--safe-t) + var(--lh) * .17) 24px calc(var(--safe-b) + 76px);height:var(--lh);box-sizing:border-box}
+.wh-lab{margin:0;font-size:clamp(26px,8vw,40px);font-weight:400;color:#1d2230;text-align:center;text-shadow:0 0 12px rgba(243,234,215,.95),0 0 3px rgba(243,234,215,.95)}
+.wh-in{width:min(78vw,380px);font:inherit;font-size:clamp(24px,7vw,34px);text-align:center;padding:10px 4px;border:0;border-bottom:2px solid #1d2230;border-radius:0;background:rgba(243,234,215,.35);color:#1d2230;outline:none}
+.wh-cam{margin-top:clamp(6px,2%,22px);width:clamp(120px,calc(var(--lh) * .24),190px);aspect-ratio:1;border-radius:50%;border:2px solid rgba(29,34,48,.55);background:rgba(255,255,255,.18);color:rgba(29,34,48,.8);display:grid;place-items:center;overflow:hidden;padding:0}
+.wh-cam svg{width:46%;height:auto}
+.wh-cam img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+.wh-ok{margin-top:auto;min-width:min(60vw,260px);padding:13px 26px;border-radius:999px;background:#1d2230;color:#f3ead7;font-size:clamp(18px,5vw,22px)}
+.in2-editing .wh{pointer-events:none}
+.in2-editing .wh-lab,.in2-editing .wh-in,.in2-editing .wh-cam,.in2-editing .wh-ok{pointer-events:auto}
