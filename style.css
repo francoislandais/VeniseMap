@@ -1450,3 +1450,13 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 #sheet.chap .b-talk .m-bubble{font-family:Arial,Helvetica,sans-serif;font-size:var(--cqfont,18px)}
 #sheet.chap .b-talk .m-bubble b{background:none}
 #sheet.chap .tw-cur::after{border-right-color:#fff}
+
+/* Choix de réponse assortis au lavis bleu nuit ; l'état juste reste vert. */
+#sheet.chap .b-actions.stack .b-btn.choice{
+  background:linear-gradient(135deg,rgba(17,63,87,.97),rgba(7,30,49,.97));
+  color:#fff;
+  border-color:rgba(166,213,229,.78);
+  box-shadow:0 3px 12px rgba(0,8,18,.42),inset 0 1px rgba(255,255,255,.12);
+  text-shadow:0 1px 2px rgba(0,12,26,.7);
+}
+#sheet.chap .b-actions.stack .b-btn.choice.right{box-shadow:0 0 0 4px rgba(76,175,106,.35)}
