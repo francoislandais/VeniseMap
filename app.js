@@ -1471,7 +1471,7 @@ async function runChapters(p, replay = false) {
   try {
     const say = async (el, text, pad) => { cortoType(el); await bsleep(900); cortoFill(el, text.replace(/\{g\}/g, gradeLc())); bFill(el, pad); await bsleep(350); };
     // Liste plate de questions-réponses (les chapitres ne servent plus qu'à ranger les données).
-    // Plus d'enchaînement direct image → question : les questions liées (next) deviennent des étapes à part entière, chacune suivie de sa révélation (photo + explication de Corto) et du bouton « Suite ».
+    // Les questions liées (next) sont des étapes à part entière ; un toucher après chaque révélation lance la suivante.
     const all = p.chapters.flatMap((cc) => cc.steps).filter((s) => !s.pending).flatMap(chainOf).map((x) => ({ ...x, next: undefined }));
     // Reprise : si l'enfant a déjà répondu à des questions, il retrouve exactement la première question restante.
     const answered = all.flatMap(chainOf).filter((s) => taskDone(p.id, s.idx)).length;
@@ -1519,11 +1519,17 @@ async function runChapters(p, replay = false) {
         if (!rv) { await clearTalk(); await newRev(text, chainBar(qs, j + 1)); } // première réponse : tout est effacé
         else { cortoType(rv); await bsleep(80); cortoFill(rv, text); await bsleep(100); } // les suivantes : même bulle, même image
       }
-      const hasMore = k < todo.length - 1;
       $$(".rev-img").forEach((e) => e.dataset.keep = "1");
-      const nb = await nextBar(true, hasMore ? "Suite ›" : "Voir mon bilan ›");
+      const nb = await new Promise((res) => {
+        const finish = (value) => { sh.removeEventListener("click", onTap); res(value); };
+        const onTap = (e) => {
+          if (e.target.closest("button,a,input,textarea,select,[role='button'],.loc-map,.plan-panel,.aud")) return;
+          finish("next");
+        };
+        skipEnd = () => finish("skip");
+        sh.addEventListener("click", onTap);
+      });
       sh.classList.remove("chap-reveal"); // la question suivante retrouve un fond net
-      if (nb === "map") { closeSheet(); return; }
       if (nb === "skip") break;
     }
     if ((await chapEnd(p, replay)) === "map") { closeSheet(); return; }

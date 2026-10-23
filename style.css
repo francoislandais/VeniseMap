@@ -1406,7 +1406,7 @@ body.menu-open #corto-btn{display:none!important}
 .in2-editing .in2-bye{pointer-events:auto}
 .in2 .in2-bye{font-family:"Special Elite","Courier New",Courier,monospace}
 
-/* ───────── Épreuve : Corto parle en bas (bande, texte à gauche, tête à droite) ; propositions au centre de l'espace libre ; image de révélation en haut, bouton « Suite » dessous ───────── */
+/* ───────── Épreuve : Corto parle en bas (bande, texte à gauche, tête à droite) ; propositions au centre de l'espace libre ; image de révélation en haut ───────── */
 body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 #sheet.chap .chap-g-bot{display:none}
 #sheet.chap .dock{bottom:auto;top:calc(12px + var(--safe-t));left:12px}
@@ -1426,7 +1426,7 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 #sheet.chap > .aud{position:absolute;left:18px;right:18px;top:calc(var(--safe-t) + 66px);z-index:3}
 #sheet.chap .dock:not(.up-dock) .dk-exit{display:grid}
 
-/* photo de révélation : grande, juste au-dessus de la bande de Corto, bords fondus ; bouton « Suite » à côté des pastilles carte et menu */
+/* photo de révélation : grande, juste au-dessus de la bande de Corto, bords fondus */
 #sheet.chap .rev-img{position:absolute;left:0;right:0;margin:0 auto;top:auto!important;bottom:calc(var(--cqh,150px) - 6px)!important;max-width:100%!important;max-height:none!important;border-radius:0;box-shadow:none;background:none;z-index:3;object-fit:contain;
   -webkit-mask-image:linear-gradient(to right,transparent 0,#000 10%,#000 90%,transparent 100%),linear-gradient(to bottom,transparent 0,#000 10%,#000 86%,transparent 100%);-webkit-mask-composite:source-in;
   mask-image:linear-gradient(to right,transparent 0,#000 10%,#000 90%,transparent 100%),linear-gradient(to bottom,transparent 0,#000 10%,#000 86%,transparent 100%);mask-composite:intersect}
