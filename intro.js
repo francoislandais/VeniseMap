@@ -335,8 +335,17 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       if (curTyping) curTyping.cancel(); curTyping = null; if (editing) { onDone && onDone(); return; } if (sc.layout === "welcome" || sc.ask) { const im = d.querySelector(".wl-img, .in2-img"); if (im) { im.style.transition = "none"; im.style.opacity = "0"; } }
       const els = typeTargets(d, sc).flatMap((q) => [...d.querySelectorAll(q)]); curTyping = typeSeq(els, { delay, onDone, manual, onFade: sc.layout === "welcome" || sc.ask ? () => showImg(d) : undefined }); if (curTyping.done && (sc.layout === "welcome" || sc.ask)) showImg(d);
     };
+    // Traveling de l'écran final : dès que Corto parle du tour de la lagune, le tableau de fond file vers la gauche, un peu plus vite que sur l'écran précédent, et accélère doucement jusqu'à la transition vers la carte
+    const panRun = () => {
+      const bgE = root.querySelector(".in2-bg"); if (!bgE || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const x0 = parseFloat(getComputedStyle(bgE).backgroundPositionX) || 20; if (boatPan) boatPan.cancel();
+      const T = 40, kf = []; let x = x0; // vitesse : 0,7 %/s au départ (le double du défilement précédent), jusqu'à 4,2 %/s au bout de 18 s
+      for (let t = 0; t <= T; t++) { kf.push({ backgroundPosition: Math.min(x, 96) + "% 50%", offset: t / T }); x += 0.7 + Math.pow(Math.min(t / 18, 1), 1.6) * 3.5; }
+      boatPan = bgE.animate(kf, { duration: T * 1000, easing: "linear", fill: "forwards" }); boatPan.fast = true;
+    };
     const morph = (sc, to) => {
       seaTo(to);
+      if (sc.key === "s6" && !editing) { if (!(boatPan && boatPan.fast)) panRun(); } else if (boatPan && boatPan.fast) { const bgE = root.querySelector(".in2-bg"), x = parseFloat(getComputedStyle(bgE).backgroundPositionX) || 20; boatPan.cancel(); boatPan = bgE.animate([{ backgroundPosition: x + "% 50%" }, { backgroundPosition: Math.min(x + 10, 96) + "% 50%" }], { duration: 60000, easing: "linear", fill: "forwards" }); }
       const t = cur.querySelector(".in2-txt"), old = [...t.querySelectorAll(".in2-part")];
       old.forEach((p) => { p.removeAttribute("data-k"); p.classList.remove("in2-part"); p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).onfinish = () => p.remove(); });
       sc.parts.forEach((txt, n) => { const p = document.createElement("p"); p.className = "in2-part" + (txt.length > 90 ? " in2-long" : ""); p.dataset.k = "p" + (n + 1); p.innerHTML = rich(esc(txt)); p.style.opacity = 0; t.appendChild(p); p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 400, fill: "forwards" }).onfinish = () => (p.style.opacity = ""); });
@@ -349,9 +358,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         const place = () => { const im = cur.querySelector(".in2-img"); if (!im || !b.isConnected) return; const tr = b.style.translate, sc1 = b.style.scale; b.style.translate = "none"; b.style.scale = "none"; b.style.top = "0px"; const k0 = b.getBoundingClientRect().top, r = im.getBoundingClientRect(); b.style.top = Math.round(r.top + r.height * 0.95 - k0) + "px"; b.style.translate = tr; b.style.scale = sc1; };
         applyTexts(cur, sc, to); applyOne(b, (LAYOUT[sc.key] || {}).bye); place(); setTimeout(place, 700); setTimeout(place, 1500); b._place = place;
       }
-      startTyping(cur, sc, 900, sc.key === "s6" && !editing ? () => { const b = cur.querySelector(".in2-bye"); if (b) { b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1400, fill: "forwards" }).onfinish = () => (b.style.opacity = ""); } // « À bientôt » : le traveling s'accélère (le tableau de fond file vers la gauche de plus en plus vite), puis la transition vers la carte s'enclenche
-        const bgE = root.querySelector(".in2-bg"); if (bgE && !matchMedia("(prefers-reduced-motion: reduce)").matches) { const from = getComputedStyle(bgE).backgroundPosition; if (boatPan) boatPan.cancel(); const x0 = parseFloat(from) || 30; boatPan = bgE.animate([{ backgroundPosition: from }, { backgroundPosition: `${Math.min(x0 + 13, 95)}% 50%` }], { duration: 4600, easing: "cubic-bezier(.5,0,.95,.8)", fill: "forwards" }); } // accélération subtile : une douzaine de points de plus en 4,6 s, au lieu de 20 en une minute
-        readT = setTimeout(() => finale(), 4000); } : undefined); // 5 s après la fin de la frappe de l'écran 6, la transition vers la carte démarre
+      startTyping(cur, sc, 900, sc.key === "s6" && !editing ? () => { const b = cur.querySelector(".in2-bye"); if (b) { b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1400, fill: "forwards" }).onfinish = () => (b.style.opacity = ""); } readT = setTimeout(() => finale(), 4000); } : undefined); // 5 s après la fin de la frappe de l'écran 6, la transition vers la carte démarre
     };
     // Finale : le bateau rapetisse, le tableau se dissout, la carte de Venise se matérialise ; la caméra reste sur le bateau, posé sur l'eau de la lagune
     const finale = async () => {
