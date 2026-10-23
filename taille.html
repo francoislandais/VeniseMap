@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Taille de l'écran</title>
+<style>body{margin:0;padding:18px;font:18px/1.5 system-ui,sans-serif;background:#f3ead7;color:#1d2230}h1{font-size:20px;margin:0 0 10px}b{font-size:26px}p{margin:8px 0}small{color:#555}</style></head>
+<body><h1>Taille visible ici</h1>
+<p><b id="a"></b><br><small>zone visible du navigateur (innerWidth × innerHeight) : c'est la taille à simuler</small></p>
+<p><span id="b"></span><br><small>vue visuelle (visualViewport)</small></p>
+<p><span id="c"></span><br><small>écran entier (screen) · rapport de pixels</small></p>
+<p><small>Recharge la page après avoir affiché ou masqué la barre d'adresse (fais défiler un peu) pour voir les deux hauteurs.</small></p>
+<script>const f=()=>{const v=window.visualViewport;a.textContent=innerWidth+" × "+innerHeight;b.textContent=v?Math.round(v.width)+" × "+Math.round(v.height):"—";c.textContent=screen.width+" × "+screen.height+" · ×"+devicePixelRatio};f();addEventListener("resize",f);window.visualViewport&&visualViewport.addEventListener("resize",f)</script></body></html>
