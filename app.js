@@ -1606,7 +1606,7 @@ function openPlanPanel(plan, pl, onMusicFound = () => {}, preview = false) {
     addTreasures(photo, im, pt, pl, {
       preview,
       onClaim: hide,
-      onMusic: (entry) => { hide(); onMusicFound(); openMusicChallenge(entry, pl, onMusicFound); },
+      onMusic: (entry) => { hide(); onMusicFound(); openMusicScrollReveal(entry, pl, () => openMusicChallenge(entry, pl, onMusicFound)); },
     });
     photo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280 });
   };
@@ -1621,6 +1621,7 @@ function openPlanPanel(plan, pl, onMusicFound = () => {}, preview = false) {
   };
   ui.planOpen = true; ui.closePlan = hide; sh.classList.add("plan-open");
   panel = document.createElement("div"); panel.className = "plan-panel plan-panel-full";
+  panel.style.setProperty("--plan-place-bg", `url("${pic(pl.id)}")`);
   panel.innerHTML = `<div class="plan-stage"><div class="plan-box"><img class="plan-img" src="${esc(plan.img)}" alt="Plan de ${esc(plan.title || pl?.name || "l'église")}">${plan.points.map((pt) => `<button type="button" class="plan-pt" data-id="${esc(pt.id)}" style="left:${pt.x}%;top:${pt.y}%" aria-label="Voir ${esc(pt.title)}">${esc(pt.id)}</button>`).join("")}</div></div>`;
   sh.appendChild(panel); ui.els.push(panel); stage = $(".plan-stage", panel); box = $(".plan-box", panel);
   stage.onclick = (e) => { if (e.target === stage || e.target.classList.contains("plan-img")) hide(); };
@@ -1957,20 +1958,24 @@ function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {}
     if (!photo.isConnected) return;
     const at = place(); if (!at) return;
     const fx = (n) => 0.15 + 0.7 * (((hash(p.id + pt.id) * (n + 3) * 37) % 100) / 100), fy = (n) => 0.12 + 0.7 * (((hash(pt.id + p.id) * (n + 5) * 53) % 100) / 100);
-    const put = (cls, text, x, y, onTap) => { const e = document.createElement("button"); e.type = "button"; e.className = cls; e.textContent = text; const [l, t] = at(x, y); e.style.left = l + "px"; e.style.top = t + "px"; e.onclick = (ev) => { ev.stopPropagation(); onTap(e); }; photo.appendChild(e); e.animate([{ opacity: 0, transform: "translate(-50%,-50%) scale(.3)" }, { opacity: 1, transform: "translate(-50%,-50%) scale(1)" }], { duration: 600, delay: 400 }); };
-    [0, 1].forEach((k) => { const key = `st:${p.id}:${pt.id}:${k}`; if (!has(key)) put("hid-star", "⭐", fx(k), fy(k), (e) => { award(key, 2, meIdx()); save(); refreshAll(); starBurst(e, 2, true); toast("+2 ⭐"); e.remove(); }); });
+    const put = (cls, text, x, y, onTap) => { const e = document.createElement("button"); e.type = "button"; e.className = cls; e.textContent = text; const [l, t] = at(x, y); e.style.left = l + "px"; e.style.top = t + "px"; e.onclick = (ev) => { ev.stopPropagation(); onTap(e); }; photo.appendChild(e); e.animate([{ opacity: 0, transform: "translate(-50%,-50%) scale(.3)" }, { opacity: 1, transform: "translate(-50%,-50%) scale(1)" }], { duration: 600, delay: 400 }); return e; };
+    const M = p.musicChallenge, musicHere = M && M.point === pt.id;
+    if (!musicHere) [0, 1].forEach((k) => { const key = `st:${p.id}:${pt.id}:${k}`; if (!has(key)) put("hid-star", "⭐", fx(k), fy(k), (e) => { award(key, 2, meIdx()); save(); refreshAll(); starBurst(e, 2, true); toast("+2 ⭐"); e.remove(); }); });
     const R = p.reward;
-    if (R && R.point === pt.id && !has("tr:" + p.id)) put("hid-trophy", R.emoji, R.at[0], R.at[1], (e) => {
+    if (!musicHere && R && R.point === pt.id && !has("tr:" + p.id)) put("hid-trophy", R.emoji, R.at[0], R.at[1], (e) => {
       e.disabled = true;
       award("tr:" + p.id, 0, meIdx()); save(); refreshAll(); confetti(120); toast(`${R.emoji} Tu as trouvé : ${R.name} !`);
       e.animate([{ transform: "translate(-50%,-50%) scale(1.4)" }, { transform: "translate(-50%,-50%) scale(.2)", opacity: 0 }], { duration: 700, fill: "forwards" }).finished.then(() => { e.remove(); onClaim(); });
     });
-    const M = p.musicChallenge;
-    if (M && M.point === pt.id && !has(`music:${M.entry}:won`)) put("hid-music", "🎼", M.at[0], M.at[1], (e) => {
-      e.disabled = true;
-      if (!has(`music:${M.entry}:found`)) { award(`music:${M.entry}:found`, 0, meIdx()); save(); }
-      onMusic(M.entry);
-    });
+    if (musicHere && !has(`music:${M.entry}:won`)) {
+      const scroll = put("hid-music-scroll", "", M.at[0], M.at[1], (e) => {
+        e.disabled = true;
+        if (!has(`music:${M.entry}:found`)) { award(`music:${M.entry}:found`, 0, meIdx()); save(); }
+        onMusic(M.entry);
+      });
+      scroll.innerHTML = '<span class="music-scroll-roll"><span class="music-scroll-string"></span><span class="music-scroll-knot"></span></span>';
+      scroll.setAttribute("aria-label", "Découvrir le parchemin musical");
+    }
   };
   if (im.complete) setTimeout(go, 60); else im.addEventListener("load", () => setTimeout(go, 60));
 }
@@ -1982,6 +1987,23 @@ const musicCatalog = () => (musicCatalogPromise ||= fetch("data/music-challenges
   items.forEach((item) => { if (ids.has(item.id) || place(item.place)?.musicChallenge?.entry !== item.id) throw new Error("Correspondance musicale invalide"); ids.add(item.id); });
   return items;
 }).catch((e) => { musicCatalogPromise = null; throw e; }));
+// La partition apparaît en se déroulant avant que l'enfant n'entre dans le défi musical.
+async function openMusicScrollReveal(id, p, continueToChallenge) {
+  let entry;
+  try { entry = (await musicCatalog()).find((item) => item.id === id && item.place === p.id); } catch {}
+  if (!entry) { continueToChallenge(); return; }
+  const overlay = document.createElement("section"); overlay.className = "music-unroll"; overlay.setAttribute("aria-label", "Parchemin musical découvert");
+  overlay.style.setProperty("--music-place-bg", `url("${pic(p.id)}")`);
+  overlay.innerHTML = `<div class="mu-stage"><div class="mu-roll" aria-hidden="true"><span class="mu-roll-body"></span><span class="mu-string"></span><span class="mu-knot"></span></div><img class="mu-score" src="${esc(entry.fragment)}" alt="Fragment de la partition de ${esc(entry.title)}"></div><p class="mu-caption">Tu as trouvé un parchemin musical !</p><div class="mu-actions" hidden><button type="button" class="mu-continue">Découvrir le défi musical</button><button type="button" class="mu-later">Plus tard</button></div>`;
+  document.body.appendChild(overlay);
+  const actions = $(".mu-actions", overlay);
+  $(".mu-continue", overlay).onclick = () => { overlay.remove(); continueToChallenge(); };
+  $(".mu-later", overlay).onclick = () => overlay.remove();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { overlay.classList.add("unrolling", "opened"); actions.hidden = false; return; }
+  setTimeout(() => { if (overlay.isConnected) overlay.classList.add("unrolling"); }, 350);
+  setTimeout(() => { if (overlay.isConnected) overlay.classList.add("opened"); }, 1150);
+  setTimeout(() => { if (overlay.isConnected) actions.hidden = false; }, 2850);
+}
 function startMusicWalk(entry) {
   const old = $("#music-walk"); if (old) { $("audio", old)?.pause(); old.remove(); }
   const player = document.createElement("div"); player.id = "music-walk";

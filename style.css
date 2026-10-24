@@ -1679,3 +1679,44 @@ body.menu-open #dev-chap-help{display:none!important}
 /* Commande de test unique, bien visible sur la carte locale. */
 #dev-chap-help{top:calc(78px + var(--safe-t));left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(360px,calc(100vw - 24px));min-height:62px;padding:11px 16px;border:2px solid #efcf83;border-radius:15px;background:rgba(8,37,56,.96);color:#fff;font:700 15px/1.25 Arial,sans-serif;text-align:center;text-wrap:balance;box-shadow:0 5px 20px rgba(0,8,18,.5),0 0 14px rgba(239,207,131,.3);pointer-events:auto}
 #dev-chap-help:disabled{opacity:.6}
+
+/* Le décor de l'épreuve reste visible en fondu derrière le plan et ses photos. */
+#sheet .plan-panel-full{isolation:isolate;background:#071823}
+#sheet .plan-panel-full::before{content:"";position:absolute;inset:-24px;z-index:0;background:var(--plan-place-bg) center/cover no-repeat;filter:blur(15px) brightness(.72);opacity:.82;pointer-events:none}
+#sheet .plan-panel-full::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(3,17,28,.38),rgba(3,17,28,.16) 45%,rgba(3,17,28,.5));pointer-events:none}
+#sheet .plan-panel-full .plan-stage{z-index:1}
+#sheet .plan-panel-full .plan-img{-webkit-mask-image:radial-gradient(ellipse 82% 78% at center,#000 67%,transparent 100%)!important;mask-image:radial-gradient(ellipse 82% 78% at center,#000 67%,transparent 100%)!important}
+#sheet .plan-panel-full .plan-photo{background:linear-gradient(rgba(3,17,28,.27),rgba(3,17,28,.43))!important}
+#sheet .plan-panel-full .plan-photo img,#sheet .plan-panel-full .plan-photo img.tall{-webkit-mask-image:radial-gradient(ellipse 86% 80% at center,#000 72%,transparent 100%)!important;mask-image:radial-gradient(ellipse 86% 80% at center,#000 72%,transparent 100%)!important}
+
+/* Un seul objet sur la photo musicale : parchemin roulé bien visible. */
+.hid-music-scroll{position:absolute;z-index:5;width:86px;height:104px;padding:0;border:0;background:none;transform:translate(-50%,-50%);filter:drop-shadow(0 5px 8px rgba(0,0,0,.7));animation:hidp 1.8s ease-in-out infinite;cursor:pointer}
+.hid-music-scroll::before{content:"";position:absolute;inset:-8px;border-radius:50%;background:radial-gradient(circle,rgba(255,236,170,.72),rgba(255,209,103,.18) 56%,transparent 72%);animation:chapHaloBright 2.2s ease-in-out infinite alternate}
+.music-scroll-roll{position:absolute;top:9px;left:21px;width:45px;height:85px;border:2px solid #78502b;border-radius:19px;box-shadow:inset 4px 0 9px rgba(115,65,26,.45),inset -5px 0 8px rgba(255,244,207,.75),0 1px 4px rgba(0,0,0,.4);background:repeating-linear-gradient(0deg,transparent 0 14px,rgba(110,77,45,.14) 15px 16px),linear-gradient(90deg,#b17b42,#eed2a0 25%,#fff1cf 57%,#d6ac6b);transform:rotate(-9deg)}
+.music-scroll-roll::before,.music-scroll-roll::after{content:"";position:absolute;left:-4px;right:-4px;height:9px;border:1px solid #8f622f;border-radius:50%;background:linear-gradient(#f9e4b9,#b88142)}
+.music-scroll-roll::before{top:-3px}.music-scroll-roll::after{bottom:-3px}
+.music-scroll-string{position:absolute;left:19px;top:-3px;width:5px;height:91px;border-radius:4px;background:#794527;box-shadow:1px 0 2px rgba(255,243,198,.7)}
+.music-scroll-knot{position:absolute;left:12px;top:39px;width:21px;height:14px;border:3px solid #794527;border-radius:50%;background:#d5ad6b}
+
+/* La ficelle se défait, le rouleau s'ouvre, puis le fragment atteint la taille de la partition. */
+.music-unroll{position:fixed;inset:0;z-index:1950;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;padding:calc(26px + var(--safe-t)) 12px calc(26px + var(--safe-b));overflow:hidden;background:#081925;color:#fff;text-align:center;isolation:isolate}
+.music-unroll::before{content:"";position:absolute;inset:-25px;z-index:0;background:var(--music-place-bg) center/cover;filter:blur(16px) brightness(.42)}
+.mu-stage{position:relative;z-index:1;width:100%;max-width:780px;height:min(42vh,300px)}
+.mu-roll{position:absolute;z-index:2;top:50%;left:50%;width:72px;height:106px;transform:translate(-50%,-50%);transition:transform 1.55s cubic-bezier(.22,.72,.25,1),opacity .7s ease 1s;filter:drop-shadow(0 6px 12px rgba(0,0,0,.6))}
+.mu-roll-body{position:absolute;inset:3px 11px;border:2px solid #7e552d;border-radius:21px;background:linear-gradient(90deg,#ab7541,#ead0a1 28%,#fff0cb 58%,#bd864b);box-shadow:inset 4px 0 7px rgba(87,45,17,.4),inset -4px 0 7px rgba(255,252,224,.7)}
+.mu-roll-body::before,.mu-roll-body::after{content:"";position:absolute;left:-3px;right:-3px;height:11px;border:1px solid #885a2c;border-radius:50%;background:linear-gradient(#fff0c8,#b77f43)}
+.mu-roll-body::before{top:-4px}.mu-roll-body::after{bottom:-4px}
+.mu-string{position:absolute;z-index:3;top:1px;left:34px;width:5px;height:104px;border-radius:4px;background:#774729;transition:transform .8s ease,opacity .65s ease}
+.mu-knot{position:absolute;z-index:4;top:43px;left:24px;width:23px;height:15px;border:3px solid #774729;border-radius:50%;background:#d7ad6d;transition:transform .85s ease,opacity .7s ease}
+.music-unroll.unrolling .mu-string{transform:translate(36px,35px) rotate(43deg);opacity:0}
+.music-unroll.unrolling .mu-knot{transform:translate(-35px,38px) rotate(-55deg);opacity:0}
+.music-unroll.opened .mu-roll{transform:translate(-50%,-50%) scaleX(5.4) scaleY(.76);opacity:0}
+.mu-score{position:absolute;top:50%;left:50%;width:min(92vw,740px);max-height:36vh;object-fit:contain;opacity:0;transform:translate(-50%,-50%) scaleX(.05) scaleY(.68);filter:drop-shadow(0 8px 16px rgba(0,0,0,.55));transition:transform 1.65s cubic-bezier(.19,.76,.22,1),opacity .8s ease}
+.music-unroll.opened .mu-score{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.mu-caption{position:relative;z-index:1;max-width:340px;margin:0;font:21px/1.25 Georgia,serif;text-shadow:0 2px 8px #06131e;opacity:0;transition:opacity .7s ease}
+.music-unroll.opened .mu-caption{opacity:1}
+.mu-actions{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px}
+.mu-actions[hidden]{display:none}
+.mu-continue{min-height:44px;padding:10px 18px;border:1px solid #ead6a3;border-radius:999px;background:#123e54;color:#fff;font:700 15px Arial,sans-serif}
+.mu-later{padding:7px 12px;border:0;background:none;color:#e0e7e8;font:13px Arial,sans-serif}
+@media (prefers-reduced-motion:reduce){.hid-music-scroll,.hid-music-scroll::before{animation:none}.mu-roll,.mu-string,.mu-knot,.mu-score,.mu-caption{transition:none}}
