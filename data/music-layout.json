@@ -1,1 +1,20 @@
-{}
+{
+ "miracoli": {
+  "lead": {
+   "x": -1.13,
+   "y": -15.58,
+   "s": 0.75,
+   "text": "Ces quelques notes portent une mélodie unique et mystérieuse, qui a traversé les siècles jusqu’à toi…"
+  },
+  "invitation": {
+   "x": 1.76,
+   "y": 16.32,
+   "s": 1.25
+  },
+  "player": {
+   "x": 1.44,
+   "y": -19.83,
+   "s": 1
+  }
+ }
+}
