@@ -196,8 +196,24 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", sea: ".wl-sea", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt", ask: ".in2-ask", btn: ".in2-btn" } };
     const edKey = (to) => SCREENS[to].key; // clé stable de chaque écran (s1…s6, who) : les réglages enregistrés ne bougent pas si on insère un écran
     const elsOf = (d, sc) => { const map = { ...EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.face) map.face = ".in2-face"; if (sc.ask) map.txt = ".in2-txt p:not(.in2-ask)"; if (sc.bye) map.bye = ".in2-bye"; if (sc.parts) sc.parts.forEach((_, n) => (map["p" + (n + 1)] = `.in2-part[data-k=p${n + 1}]`)); /* écran avec question + bouton : le texte, la question et le bouton sont trois éléments indépendants */ const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
-    // Position / taille d'un élément = réglage de l'éditeur (x en vw, y en % de la hauteur d'écran, échelle) + petite correction automatique (_fx, _fy en px, _fs) qui le ramène dans l'écran
-    const applyOne = (e, v) => { const fx = e._fx || 0, fy = e._fy || 0, fs = e._fs || 1, sc0 = ((v && v.s) || 1) * fs; e.style.translate = v || fx || fy ? `calc(${(v && v.x) || 0} * 1vw + ${fx}px) calc(${(v && v.y) || 0} * var(--lh) / 100 + ${fy}px)` : ""; e.style.scale = sc0 !== 1 ? String(Math.round(sc0 * 1000) / 1000) : ""; };
+    // Les réglages de l'éditeur restent la composition de référence. Sur un écran plus haut
+    // à largeur comparable, seules les illustrations grandissent et se recentrent doucement.
+    // 375 × 812 (et les formats de même proportion) gardent exactement le rendu enregistré.
+    const artAdjustment = (e) => {
+      if (!e.matches(".hl-img,.wl-face,.wl-img,.in2-img,.in2-face")) return { scale: 1, y: 0 };
+      const referenceHeight = innerWidth * 812 / 375;
+      const extraHeight = Math.max(0, lockedH - referenceHeight);
+      const scale = 1 + Math.min(.16, extraHeight / referenceHeight * .65);
+      const screen = e.closest(".in2-s");
+      const y = e.matches(".hl-img") || (e.matches(".in2-img") && screen?.classList.contains("bottom"))
+        ? extraHeight * .28
+        : e.matches(".wl-img") || (e.matches(".in2-img") && screen?.classList.contains("top"))
+          ? -extraHeight * .28 : 0;
+      return { scale, y };
+    };
+    // Position / taille = réglage manuel (x en vw, y en % de la hauteur, échelle),
+    // adaptation verticale des images, puis éventuelle correction de visibilité du texte.
+    const applyOne = (e, v) => { const fx = e._fx || 0, fy = e._fy || 0, fs = e._fs || 1, art = artAdjustment(e), sc0 = ((v && v.s) || 1) * art.scale * fs; e.style.translate = v || fx || fy || art.y ? `calc(${(v && v.x) || 0} * 1vw + ${fx}px) calc(${(v && v.y) || 0} * var(--lh) / 100 + ${fy + art.y}px)` : ""; e.style.scale = sc0 !== 1 ? String(Math.round(sc0 * 1000) / 1000) : ""; };
     // Textes modifiables : réglages dans LAYOUT._t[sN][clé] ; « {nom} » est remplacé par le prénom
     const TEXTSEL = { hello: { hi: ".hl-hi", q: ".hl-q" }, welcome: { head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", sea: ".wl-sea", mid: ".wl-mid p" }, who: { lab: ".wh-lab", ok: ".wh-ok" }, other: { txt: ".in2-txt p:not(.in2-ask)", ask: ".in2-ask", btn: ".in2-btn" } };
     const textsOf = (d, sc) => { const map = { ...TEXTSEL[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.bye) map.bye = ".in2-bye"; if (sc.parts) { delete map.txt; sc.parts.forEach((_, n) => (map["p" + (n + 1)] = `.in2-part[data-k=p${n + 1}]`)); } const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
