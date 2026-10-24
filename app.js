@@ -1449,9 +1449,10 @@ async function chapEnd(p, replay) {
   await clearTalk();
   const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.classList.add("chap-conclusion"); sh.dataset.k = "one";
   const devSkip = $(".dev-skip", sh); if (devSkip) devSkip.remove();
+  const exitDock = $(".dock", sh); if (exitDock) exitDock.remove();
   const msg = chatAdd(typingHtml, "fc chap-final-msg"); cortoFill(msg, endMessage(p, replay));
   if (p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
-  if (p.plan) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-plan"; b.textContent = "🗺️ Voir le plan"; b.onclick = () => openPlanPanel(p.plan, p); sh.appendChild(b); }
+  if (p.plan) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-plan"; b.textContent = "🗺️ Voir le plan"; b.onclick = () => openPlanPanel(p.plan, p); $("#b-talk", sh).appendChild(b); fitChapTalk(); }
   if (MONTAGES[p.id]) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-photo"; b.textContent = "📸 Photo souvenir"; b.onclick = () => openMontage(p.id); sh.appendChild(b); }
   if (!replay) confetti(45);
 }

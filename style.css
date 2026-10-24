@@ -1563,3 +1563,8 @@ body.intro-open > .cam.cam{visibility:visible!important}
 /* Raccourci local de test : accessible pendant les questions et sur la conclusion. */
 #sheet.chap .dev-music{position:absolute;top:calc(44px + var(--safe-t));right:10px;z-index:15;padding:6px 10px;border:1px solid rgba(255,255,255,.55);border-radius:999px;background:rgba(4,20,32,.78);color:#fff;font-size:11px;font-weight:700;pointer-events:auto}
 #sheet.chap.chap-conclusion .dev-music{top:auto;bottom:calc(var(--cqh,150px) + 12px)}
+
+/* Conclusion : annonce solennelle centrée, puis accès au plan dans le même bloc. */
+#sheet.chap.chap-conclusion .chap-final-msg .m-bubble{text-align:center;text-wrap:balance}
+#sheet.chap.chap-conclusion .chap-final-msg .m-bubble::before{content:"✦  ÉPREUVE ACCOMPLIE";text-align:center}
+#sheet.chap.chap-conclusion .b-talk .chap-end-plan{position:relative;left:auto;bottom:auto;align-self:center;margin:18px auto 0;pointer-events:auto}
