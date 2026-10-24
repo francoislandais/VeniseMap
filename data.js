@@ -1051,6 +1051,7 @@ export const PLACES = [
             ],
             "a": 0,
             "reveal": "Le musée décrit une bougie éteinte qui fume encore dans ce tableau de Mantegna, peint en 1506. C’est un rappel de la fragilité de la vie. Giorgio Franchetti tenait particulièrement à cette œuvre et l’a installée dans une petite chapelle de sa galerie.",
+            "work": "CAD01",
             "img": "img/q/cadoro-7.webp",
             "src": [
               "https://museiveneto.cultura.gov.it/musei/galleria-giorgio-franchetti-alla-ca-doro/sede",
@@ -1569,6 +1570,7 @@ export const PLACES = [
             ],
             "a": 2,
             "reveal": "La colombe représente ici l’Esprit saint. Ce tableau est une œuvre du Titien. Il se trouvait autrefois dans l’église de Santo Spirito in Isola et fut transféré à la Salute en 1656.",
+            "work": "SAL03",
             "img": "img/q/salute-5.webp",
             "src": [
               "https://basilicasalutevenezia.it/altare-della-discesa-dello-spirito-santo/"
@@ -1834,6 +1836,7 @@ export const PLACES = [
             ],
             "a": 0,
             "reveal": "Il s’agit du doge Agostino Barbarigo, représenté en prière. Giovanni Bellini a peint cette œuvre en 1488. Elle se trouve aujourd’hui à San Pietro Martire, après avoir été conservée dans une autre église de Murano, Santa Maria degli Angeli.",
+            "work": "MUR01",
             "img": "img/q/murano-1.webp",
             "src": [],
             "cap": "Le doge est agenouillé à gauche du trône de la Vierge."
@@ -3211,6 +3214,7 @@ export const PLACES = [
             ],
             "a": 0,
             "reveal": "Jacopo Tintoretto a peint cette Cène pour San Giorgio Maggiore à la fin du XVIe siècle. Au milieu du récit religieux, il a représenté des objets et un animal du quotidien. Après restauration, la toile est de nouveau exposée dans la basilique depuis avril 2026.",
+            "work": "GIO01",
             "img": "img/q/sangiorgio-5.webp",
             "src": [
               "https://www.abbaziasangiorgio.it/2026/04/24/tintoretto-rediscover/",

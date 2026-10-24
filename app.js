@@ -42,12 +42,14 @@ const slug = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").t
 const apiHeaders = () => ({ "content-type": "application/json", "X-Team": (TEAM && TEAM.team) || "famille", "X-League": (TEAM && TEAM.league) || "" });
 async function sync() {
   if (!JEU) return;
+  backfillQuestionWorks();
   try {
     const r = await fetch("api/sync", { method: "POST", headers: apiHeaders(), body: JSON.stringify(S) });
     if (r.status === 403) { syncStatus = "🔒 code de la partie incorrect"; if (tab === "settings") renderSettings(); return; }
     if (!r.ok) throw new Error(r.status);
     const before = JSON.stringify(S);
     S = mergeState(S, await r.json());
+    backfillQuestionWorks();
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
     syncStatus = "✅ synchronisé " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     if (before !== JSON.stringify(S)) refreshAll();
@@ -80,6 +82,17 @@ const level = (pts = points()) => { if (devLevel !== null) return devLevel; let 
 // Une étape peut enchaîner plusieurs questions (champ next) : même bulle, même image, nouvelle question à chaque réponse.
 const chainOf = (s) => [s, ...(s.next || [])];
 PLACES.forEach((p) => { if (!p.chapters) return; const used = new Set(p.chapters.flatMap((c) => c.steps.flatMap(chainOf)).map((x) => x.idx)); let n = 0; p.chapters.forEach((c) => c.steps.forEach((s) => { if (!s.pending) chainOf(s).forEach((x) => { if (x.idx == null) { while (used.has(n)) n++; x.idx = n++; } }); })); p.tasks = p.chapters.flatMap((c) => c.steps.filter((s) => !s.pending)).flatMap(chainOf).map((s) => ({ t: "qcm", q: s.q, pts: s.pts ?? 10, idx: s.idx })); });
+// Une question déjà réussie avant l'ajout de sa toile donne aussi la récompense, une seule fois.
+// Une clé supprimée volontairement (tombstone) reste supprimée.
+function backfillQuestionWorks() {
+  let changed = false;
+  PLACES.forEach((p) => p.chapters?.forEach((c) => c.steps.filter((s) => !s.pending).flatMap(chainOf).forEach((s) => {
+    if (s.work && has(`t:${p.id}:${s.idx}`) && !S.done[`w:${s.work}`]) {
+      award(`w:${s.work}`, POINTS.work, meIdx()); changed = true;
+    }
+  })));
+  if (changed) { save(); renderHud(); }
+}
 const pic = (id) => `img/places/${id}.webp`;
 const place = (id) => PLACES.find((p) => p.id === id);
 const arrived = (id) => has("a:" + id);
