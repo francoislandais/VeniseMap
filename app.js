@@ -1608,7 +1608,7 @@ function openPlanPanel(plan, pl, onMusicFound = () => {}, preview = false) {
     addTreasures(photo, im, pt, pl, {
       preview,
       onClaim: hide,
-      onMusic: (entry, rect) => { hide(); onMusicFound(); openMusicFragmentReveal(entry, pl, rect, pt.img); },
+      onMusic: (entry, rect) => { hide(); onMusicFound(); openMusicFragmentReveal(entry, pl, rect); },
     });
     photo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280 });
   };
@@ -2019,10 +2019,10 @@ const musicCatalog = () => (musicCatalogPromise ||= fetch("data/music-challenges
   return items;
 }).catch((e) => { musicCatalogPromise = null; throw e; }));
 // Un toucher après la découverte fait monter le fragment et lance les questions musicales.
-function openMusicFragmentReveal(id, p, rect = null, photoImage = null) {
+function openMusicFragmentReveal(id, p, rect = null) {
   if ($(".music-found")) return;
   const overlay = document.createElement("section"); overlay.className = "music-found"; overlay.setAttribute("aria-label", "Morceau de partition découvert. Touchez pour continuer."); overlay.tabIndex = 0;
-  overlay.style.setProperty("--music-found-bg", `url("${photoImage || pic(p.id)}")`);
+  overlay.style.setProperty("--music-found-bg", `url("${pic(p.id)}")`);
   overlay.innerHTML = `<img class="mu-found-fragment" src="img/music/${esc(id)}-parchemin.png" alt="Morceau de la partition des Vêpres"><div class="mu-found-stars" aria-hidden="true">${Array.from({ length: 12 }, () => "<i>✦</i>").join("")}</div><div class="mu-found-message" aria-live="polite"><strong>Extraordinaire !</strong><span>Tu as trouvé un morceau de la partition des Vêpres.</span></div>`;
   document.body.appendChild(overlay);
   const fragment = $(".mu-found-fragment", overlay);
@@ -2040,7 +2040,7 @@ function openMusicFragmentReveal(id, p, rect = null, photoImage = null) {
     }
     setTimeout(async () => {
       if (!overlay.isConnected) return;
-      await openMusicChallenge(id, p, () => {}, false, photoImage);
+      await openMusicChallenge(id, p);
       if ($(".music-quest")) overlay.remove(); else overlay.classList.remove("flow");
     }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1450);
   };
@@ -2128,14 +2128,14 @@ function musicListeningEditor(overlay, p, elements, defaults) {
   overlay.addEventListener("click", (event) => { if (editing && event.target.closest("[data-music-edit]")) { event.preventDefault(); event.stopImmediatePropagation(); } }, { capture: true, signal: controller.signal });
   return () => { controller.abort(); bar.remove(); overlay.classList.remove("mq-editing"); };
 }
-async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backgroundImage = null) {
+async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
   if ($(".music-quest") || musicOpening) return;
   musicOpening = true;
   let entry;
   try { entry = (await musicCatalog()).find((item) => item.id === id && item.place === p.id); } catch { musicOpening = false; toast("Le défi musical n'est pas disponible pour l'instant."); return; }
   if (!entry) { musicOpening = false; toast("Ce fragment musical est introuvable."); return; }
   const overlay = document.createElement("section"); overlay.className = "music-quest music-flow-quest"; overlay.setAttribute("aria-label", "Défi musical");
-  overlay.style.setProperty("--music-flow-bg", `url("${backgroundImage || pic(p.id)}")`);
+  overlay.style.setProperty("--music-flow-bg", `url("${pic(p.id)}")`);
   overlay.innerHTML = `<button type="button" class="mq-exit" aria-label="Quitter le défi musical">←</button><img class="mq-fragment" src="${esc(entry.fragment)}" alt="Morceau de la partition des Vêpres"><div class="mq-body"></div>`;
   document.body.appendChild(overlay); document.body.classList.add("music-quest-active"); musicOpening = false;
   const body = $(".mq-body", overlay);
