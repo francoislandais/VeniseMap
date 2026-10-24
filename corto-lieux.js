@@ -11,6 +11,7 @@ export const LIEUX = {
   pescheria: { la: "le marché aux poissons" },
   cadoro: { la: "la Ca' d'Oro", in: "entrer dans la Ca' d'Oro" },
   accademia: { la: "le pont de l'Académie" },
+  gallerieaccademia: { la: "les Gallerie dell’Accademia", in: "entrer dans les Gallerie dell’Accademia" },
   pugni: { la: "le pont des Poings" },
   squero: { la: "le chantier des gondoles" },
   salute: { la: "la Salute", in: "entrer dans la Salute" },

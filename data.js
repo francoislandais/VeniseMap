@@ -1186,6 +1186,174 @@ export const PLACES = [
         ]
       }
     ] },
+  {
+    "id": "gallerieaccademia",
+    "emoji": "🖼️",
+    "name": "Les Gallerie dell’Accademia",
+    "lat": 45.43137,
+    "lon": 12.32809,
+    "r": 65,
+    "story": "Entre dans les Gallerie dell’Accademia, sur le Campo della Carità. Huit tableaux t’attendent, du Carpaccio au Longhi. L’accrochage peut changer : prends le plan à l’accueil pour retrouver les salles.",
+    "clue": "Derrière la façade de l’ancienne Carità, les peintres de Venise ont caché huit détails à retrouver.",
+    "chapters": [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "where": "Dans la salle II, regarde la partie basse de la Présentation de Jésus au Temple de Carpaccio.",
+            "q": "Que font les petites figures assises sous la scène principale ?",
+            "opts": [
+              "Elles jouent de la musique",
+              "Elles écrivent une lettre",
+              "Elles tiennent des rames",
+              "Elles dorment"
+            ],
+            "a": 0,
+            "reveal": "Carpaccio a peint ce retable en 1510 pour l’église vénitienne de San Giobbe. Au centre, le prêtre Siméon reçoit l’enfant Jésus ; au-dessous, les anges musiciens donnent à la scène une présence joyeuse.",
+            "work": "ACC02",
+            "img": "img/q/gallerieaccademia-0.webp",
+            "src": [
+              "https://www.gallerieaccademia.it/opera/presentazione-di-gesu-al-tempio-4/"
+            ],
+            "cap": "Les anges et leurs instruments apparaissent au premier plan."
+          },
+          {
+            "idx": 301,
+            "where": "Dans la salle IV, cherche la petite Madonna degli alberetti de Giovanni Bellini. Regarde de chaque côté du rideau vert.",
+            "q": "Combien de peupliers encadrent le rideau ?",
+            "opts": [
+              "Un",
+              "Deux",
+              "Trois",
+              "Quatre"
+            ],
+            "a": 1,
+            "reveal": "Ces deux peupliers donnent son surnom au tableau. Bellini l’a signé et daté de 1487 sur le parapet peint au premier plan : un détail précieux pour les historiens de l’art.",
+            "work": "ACC04",
+            "img": "img/q/gallerieaccademia-1.webp",
+            "src": [
+              "https://www.gallerieaccademia.it/opera/madonna-degli-alberetti/"
+            ],
+            "cap": "Les deux peupliers encadrent le rideau vert."
+          },
+          {
+            "idx": 302,
+            "where": "Reste dans la salle IV. Dans le Saint Georges de Mantegna, regarde près des bottes et de la lance.",
+            "q": "Quel animal fabuleux vois-tu au sol ?",
+            "opts": [
+              "Un griffon",
+              "Une licorne",
+              "Un dragon",
+              "Un serpent de mer"
+            ],
+            "a": 2,
+            "reveal": "Saint Georges est représenté après sa victoire sur le dragon de la légende. Le chevalier immobile, en armure, occupe presque toute la petite peinture sur bois.",
+            "work": "ACC05",
+            "img": "img/q/gallerieaccademia-2.webp",
+            "src": [
+              "https://www.gallerieaccademia.it/opera/san-giorgio/"
+            ],
+            "cap": "Le dragon gît près des bottes du chevalier."
+          },
+          {
+            "idx": 303,
+            "where": "Dans la salle VIII, prends le temps de parcourir le ciel de La Tempête de Giorgione, au-dessus des bâtiments.",
+            "q": "Qu’est-ce qui fend le ciel ?",
+            "opts": [
+              "Une comète",
+              "Un éclair",
+              "Un feu d’artifice",
+              "Un arc-en-ciel"
+            ],
+            "a": 1,
+            "reveal": "L’éclair a donné son nom au tableau. Le musée souligne que le sens exact de la scène reste discuté : on peut identifier ce que l’on voit sans prétendre résoudre toute son énigme.",
+            "work": "ACC11",
+            "img": "img/q/gallerieaccademia-3.webp",
+            "src": [
+              "https://www.gallerieaccademia.it/opera/la-tempesta/"
+            ],
+            "cap": "Un éclair déchire le ciel au-dessus de la ville."
+          },
+          {
+            "idx": 304,
+            "where": "Dans la salle X, repère le très grand Repas chez Lévi de Véronèse. Sous l’arc de gauche, près de l’escalier, cherche un petit personnage en orange.",
+            "q": "Quel animal tient-il ?",
+            "opts": [
+              "Un chien",
+              "Un faucon",
+              "Un chat",
+              "Un perroquet"
+            ],
+            "a": 3,
+            "reveal": "Ce détail fait partie des personnages insolites du banquet. En 1573, le peintre dut s’expliquer devant l’Inquisition à propos de sa composition ; il changea finalement le titre de la toile en Repas chez Lévi.",
+            "work": "ACC14",
+            "img": "img/q/gallerieaccademia-4.webp",
+            "src": [
+              "https://www.gallerieaccademia.it/opera/convito-in-casa-di-levi/"
+            ],
+            "cap": "Le petit personnage tient un perroquet."
+          },
+          {
+            "idx": 305,
+            "where": "Dans la salle XI, regarde le grand tableau où un homme est étendu au sol, entouré d’une foule. Suis les regards qui montent.",
+            "q": "D’où arrive saint Marc pour le secourir ?",
+            "opts": [
+              "De la porte du palais",
+              "D’un bateau",
+              "Du ciel",
+              "De derrière la foule"
+            ],
+            "a": 2,
+            "reveal": "Tintoret montre saint Marc apparaissant pour sauver un serviteur promis à la torture. Le tableau, peint en 1547–1548 pour la Scuola Grande di San Marco, fit connaître le jeune peintre à Venise.",
+            "work": "ACC19",
+            "img": "img/q/gallerieaccademia-5.webp",
+            "src": [
+              "https://www.gallerieaccademia.it/opera/san-marco-libera-uno-schiavo/"
+            ],
+            "cap": "Saint Marc descend du ciel vers le serviteur."
+          },
+          {
+            "idx": 306,
+            "where": "Dans la salle XXIV, cherche la très large Présentation de la Vierge au Temple de Titien. Dans la partie droite, trouve la petite Marie.",
+            "q": "Par où monte-t-elle vers le temple ?",
+            "opts": [
+              "Une échelle de corde",
+              "Un grand escalier",
+              "Un sentier de montagne",
+              "Une passerelle de bois"
+            ],
+            "a": 1,
+            "reveal": "Titien a peint la toile entre 1534 et 1538 pour cette salle de la Scuola Grande della Carità. Elle y est encore présentée, dans le lieu pour lequel elle fut conçue. La tradition raconte que Marie monta seule les marches du Temple.",
+            "work": "ACC27",
+            "img": "img/q/gallerieaccademia-6.webp",
+            "src": [
+              "https://www.gallerieaccademia.it/opera/la-presentazione-della-vergine-al-tempio-con-i-confratelli-della-scuola-grande-della-carita/"
+            ],
+            "cap": "Marie monte les marches du grand escalier."
+          },
+          {
+            "idx": 307,
+            "where": "Au rez-de-chaussée, salle 6, observe Le Pharmacien de Pietro Longhi. Regarde les meubles derrière les personnages.",
+            "q": "Que vois-tu rangé sur les étagères ?",
+            "opts": [
+              "Des armures",
+              "Des coquillages",
+              "Des instruments de musique",
+              "Des pots de pharmacie"
+            ],
+            "a": 3,
+            "reveal": "Longhi peint ici une scène de la vie quotidienne vénitienne du XVIIIe siècle. Le Pharmacien date de 1752 : ses personnages ressemblent à ceux d’une petite pièce de théâtre.",
+            "work": "ACC28",
+            "img": "img/q/gallerieaccademia-7.webp",
+            "src": [
+              "https://www.gallerieaccademia.it/opera/il-farmacista/"
+            ],
+            "cap": "Les pots de pharmacie sont rangés sur les étagères."
+          }
+        ]
+      }
+    ]
+  },
   { id: "pugni", emoji: "🥊", name: "Le pont des Poings", lat: 45.43313, lon: 12.32433, r: 60,
     story: "Autrefois, deux bandes de Vénitiens se battaient à coups de poing sur ce pont, sans rambarde ! Cherche les empreintes de pieds gravées dans la pierre.",
     clue: "Ici les rivaux se faisaient face, pied contre pied. Marche dans leurs pas, mais sans te battre !",
