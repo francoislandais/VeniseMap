@@ -533,6 +533,151 @@ export const PLACES = [
         ]
       }
     ] },
+  {
+    "id": "ducale",
+    "emoji": "🏛️",
+    "name": "Le Palais des Doges",
+    "lat": 45.43367,
+    "lon": 12.34042,
+    "r": 65,
+    "story": "Entre par la Porta del Frumento, côté Piazzetta. La visite ordinaire traverse la cour, les loggias, la salle du Grand Conseil et la Quadreria. Les salles ouvertes peuvent varier : consulte le musée avant de partir.",
+    "clue": "Dans ce palais, même les puits et les murs ont des histoires à raconter. Trois tableaux t’attendent aussi à l’étage.",
+    "chapters": [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "where": "Arrête-toi au milieu de la cour. Regarde les deux grands rebords métalliques posés sur des socles de pierre.",
+            "q": "Combien de margelles en bronze vois-tu ?",
+            "opts": [
+              "Une",
+              "Deux",
+              "Trois",
+              "Quatre"
+            ],
+            "a": 1,
+            "reveal": "Ces deux margelles de puits datent du XVIe siècle. Elles rappellent que l’eau douce était précieuse dans une ville bâtie au milieu de la lagune.",
+            "img": "img/q/ducale-0.webp",
+            "src": [
+              "https://palazzoducale.visitmuve.it/percorsi-e-collezioni/il-cortile-e-le-logge/"
+            ],
+            "cap": "les deux rebords en bronze se font face dans la cour."
+          },
+          {
+            "idx": 301,
+            "where": "En marchant vers l’Escalier d’Or, cherche dans le mur une plaque sculptée avec un visage et une inscription.",
+            "q": "Par où faisait-on passer le billet ?",
+            "opts": [
+              "Par l’oreille",
+              "Par la bouche",
+              "Par le nez",
+              "Par l’œil"
+            ],
+            "a": 1,
+            "reveal": "À partir de la fin du XVIe siècle, ces ouvertures recevaient des signalements écrits destinés aux magistrats. Le billet tombait dans une boîte de l’autre côté du mur. Le nom vénitien signifie « bouche de lion », même si ce relief précis montre un visage humain.",
+            "img": "img/q/ducale-1.webp",
+            "src": [
+              "https://palazzoducale.visitmuve.it/percorsi-e-collezioni/il-cortile-e-le-logge/"
+            ],
+            "cap": "la fente est cachée dans la bouche sculptée."
+          },
+          {
+            "idx": 302,
+            "where": "À gauche de l’entrée de l’Escalier d’Or, lève les yeux vers le grand groupe en marbre. Regarde sous les pieds du héros.",
+            "q": "Quel monstre Hercule combat-il ?",
+            "opts": [
+              "Un serpent à plusieurs têtes",
+              "Un géant à un œil",
+              "Un lion ailé",
+              "Un poisson géant"
+            ],
+            "a": 0,
+            "reveal": "Le sculpteur Tiziano Aspetti a réalisé ce groupe au XVIe siècle. De l’autre côté, Atlas porte la voûte céleste : deux héros de l’Antiquité gardent symboliquement l’accès à l’escalier.",
+            "img": "img/q/ducale-2.webp",
+            "src": [
+              "https://palazzoducale.visitmuve.it/percorsi-e-collezioni/il-cortile-e-le-logge/"
+            ],
+            "cap": "les têtes de l’Hydre apparaissent sous Hercule."
+          },
+          {
+            "idx": 303,
+            "where": "Dans la très grande salle, longe du regard la frise de portraits sous le plafond. Cherche une place où aucun visage n’apparaît.",
+            "q": "Qu’est-ce qui remplace le portrait manquant ?",
+            "opts": [
+              "Un miroir",
+              "Un rideau noir peint",
+              "Une carte de Venise",
+              "Un lion de marbre"
+            ],
+            "a": 1,
+            "reveal": "À la place du doge Marin Falier figure une tenture noire peinte. Il fut exécuté en 1355 après une conjuration contre la République. Cette absence, entourée d’autres portraits, montre la condamnation de sa mémoire par les dirigeants vénitiens.",
+            "img": "img/q/ducale-3.webp",
+            "src": [
+              "https://palazzoducale.visitmuve.it/percorsi-e-collezioni/le-sale-istituzionali/1-piano/"
+            ],
+            "cap": "le rideau noir et son inscription occupent la place de Falier."
+          },
+          {
+            "idx": 304,
+            "where": "Regarde l’immense tableau derrière le trône. Au centre, tout en haut, repère les deux figures entourées de lumière.",
+            "q": "Qui occupe ce centre lumineux ?",
+            "opts": [
+              "Neptune et Venise",
+              "Le Christ et la Vierge Marie",
+              "Deux doges",
+              "Mars et Vénus"
+            ],
+            "a": 1,
+            "reveal": "Cette toile monumentale, peinte par Tintoret, son fils Domenico et leur atelier entre 1588 et 1592, représente le Paradis. Elle fut commandée après l’incendie de 1577, qui avait détruit le décor précédent de cette paroi.",
+            "img": "img/q/ducale-4.webp",
+            "src": [
+              "https://palazzoducale.visitmuve.it/percorsi-e-collezioni/le-sale-istituzionali/1-piano/"
+            ],
+            "cap": "Marie et le Christ se détachent devant une lumière dorée.",
+            "work": "DUC01"
+          },
+          {
+            "idx": 305,
+            "where": "Cherche la grande peinture horizontale du lion ailé. Observe ses pattes et ce qui se trouve sous chacune.",
+            "q": "Où pose-t-il ses pattes ?",
+            "opts": [
+              "Toutes dans la mer",
+              "Toutes sur la terre",
+              "À la fois sur la terre et sur l’eau",
+              "Sur quatre nuages"
+            ],
+            "a": 2,
+            "reveal": "Carpaccio place les pattes avant sur la terre et les pattes arrière dans la lagune. Selon la notice du palais, cette position évoque les possessions terrestres et maritimes de la République de Venise.",
+            "img": "img/q/ducale-5.webp",
+            "src": [
+              "https://palazzoducale.visitmuve.it/percorsi-e-collezioni/la-quadreria/sala-del-magistrato-alle-leggi/"
+            ],
+            "cap": "les pattes avant touchent la terre ; les pattes arrière sont dans l’eau.",
+            "work": "DUC03"
+          },
+          {
+            "idx": 306,
+            "where": "Dans la même salle, trouve la femme couronnée assise près d’un lion. À gauche, regarde ce que l’homme au trident renverse à ses pieds.",
+            "q": "Que sort-il de sa corne d’abondance ?",
+            "opts": [
+              "Des livres et des plumes",
+              "Des coraux, des perles et des pièces",
+              "Des fruits et du blé",
+              "Des épées et des casques"
+            ],
+            "a": 1,
+            "reveal": "Tiepolo personnifie Venise en reine et Neptune en dieu de la mer. Le palais explique que les coraux et les perles évoquent les domaines de la République, tandis que les monnaies et les bijoux rappellent les richesses du commerce.",
+            "img": "img/q/ducale-6.webp",
+            "src": [
+              "https://palazzoducale.visitmuve.it/percorsi-e-collezioni/la-quadreria/sala-del-magistrato-alle-leggi/"
+            ],
+            "cap": "les dons s’échappent de la corne près des pieds de Neptune.",
+            "work": "DUC02"
+          }
+        ]
+      }
+    ]
+  },
   { id: "soupirs", emoji: "🌉", name: "Le pont des Soupirs", lat: 45.43406, lon: 12.34086, r: 60,
     story: "Ce pont couvert relie le palais du Doge à l'ancienne prison. On raconte que les prisonniers soupiraient en voyant Venise une dernière fois par la petite fenêtre.",
     clue: "Ceux qui soupirent en savent long. Écoute le silence sous le pont, il murmure.",

@@ -6,6 +6,7 @@ export const LIEUX = {
   basilique: { la: "la basilique d'or", in: "entrer dans la basilique d'or" },
   campanile: { la: "le campanile", in: "monter dans le campanile" },
   colonnes: { la: "les deux colonnes" },
+  ducale: { la: "le Palais des Doges", in: "entrer dans le Palais des Doges" },
   soupirs: { la: "le pont des Soupirs" },
   rialto: { la: "le pont du Rialto" },
   pescheria: { la: "le marché aux poissons" },
