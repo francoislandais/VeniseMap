@@ -271,8 +271,7 @@ try {
   if (QS.has("dev")) { if (QS.get("dev") === "0") localStorage.removeItem("vq_dev"); else localStorage.setItem("vq_dev", "1"); }
   DEV = localStorage.getItem("vq_dev") !== "0" || QS.has("fake"); // phase de test : actif par défaut, ?dev=0 le coupe
 } catch { DEV = QS.has("fake"); }
-const LOCAL_PREVIEW = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-const LOCAL_DEV = DEV && LOCAL_PREVIEW;
+const LOCAL_DEV = DEV && (location.hostname === "localhost" || location.hostname === "127.0.0.1");
 let devPinned = false; // le bateau a été posé à la main : le GPS réel est ignoré
 function startGeo() {
   const fake = QS.get("fake");
@@ -2497,6 +2496,13 @@ async function renderDev() {
   const off = $("#dv-off", v); if (off) off.onclick = async () => { await wearOutfit(null); toast("Tenue retirée"); renderDev(); };
   v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🖼️ Œuvres de maîtres (test)</h2><p class="muted">Simule la découverte des toiles (le vrai déclenchement viendra avec les épreuves).</p><div class="dv-src"><button class="btn ghost" data-wk="one">Trouver une toile</button><button class="btn ghost" data-wk="all">Tout débloquer</button><button class="btn ghost" data-wk="reset">Tout verrouiller</button></div></div>`);
   v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🐚 Objets trouvés (test)</h2><div class="dv-src"><button class="btn ghost" data-ob="one">Trouver un objet</button><button class="btn ghost" data-ob="all">Tout trouver</button><button class="btn ghost" data-ob="reset">Tout retirer</button></div></div>`);
+  v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🧩 Épreuves (test)</h2><p class="muted">Remet les questions à zéro, y compris le défi musical. Lieux, objets, œuvres, photos et fragments restent en place.</p><button class="btn ghost" id="reset-trials">↺ Réinitialiser toutes les épreuves</button></div>`);
+  $("#reset-trials", v).onclick = () => {
+    const keys = Object.keys(S.done).filter((key) => has(key) && (key.startsWith("t:") || key.startsWith("fin:") || /^music:[^:]+:q:\d+$/.test(key)));
+    if (!keys.length) { toast("Aucune épreuve à réinitialiser."); return; }
+    keys.forEach(unaward); save(); refreshAll();
+    toast("Épreuves réinitialisées. Les autres découvertes sont conservées.");
+  };
   $$("[data-ob]", v).forEach((b) => (b.onclick = () => { const L = objectList(); if (b.dataset.ob === "one") { const n = L.find((o) => !o.found); if (n) window.__objects.find(n.id); else toast("Tous les objets sont trouvés"); } else if (b.dataset.ob === "all") L.forEach((o) => window.__objects.find(o.id)); else window.__objects.reset(); }));
   $$("[data-wk]", v).forEach((b) => (b.onclick = async () => { const ids = await window.__works.all(); if (b.dataset.wk === "one") { const left = ids.filter((id) => !workFound(id)); if (!left.length) { toast("Toutes les toiles sont déjà trouvées"); return; } await findWork(left[Math.floor(Math.random() * left.length)]); } else if (b.dataset.wk === "all") { for (const id of ids) await findWork(id, { silent: true }); toast("Toutes les toiles sont débloquées"); } else { await window.__works.reset(); toast("Toiles verrouillées"); } }));
   paint();
@@ -2505,7 +2511,6 @@ function renderSettings() {
   const v = $("#v-settings");
   menuSay("Ici, c'est la salle des machines : demande à tes parents avant de toucher à quelque chose !");
   v.innerHTML = `<h2>⚙️ Réglages</h2>
-    ${LOCAL_PREVIEW ? '<div class="card"><h3 style="margin-top:0">🛠️ Développement local</h3><button class="btn blue wide" id="reset-trials">↺ Réinitialiser toutes les épreuves</button><p class="muted" style="margin:8px 0 0">Remet les questions à zéro, y compris le défi musical. Lieux, objets, œuvres, photos et fragments restent en place.</p></div>' : ""}
     <h3>👫 Les joueurs</h3>${S.kids.map((k, i) => `<div class="card"><input class="t" data-name="${i}" placeholder="Prénom du joueur ${i + 1}" value="${esc(k.name)}"><div class="avs" data-av="${i}">${AVATARS.map((a) => `<button class="${a === k.avatar ? "on" : ""}" data-a="${a}">${a}</button>`).join("")}</div></div>`).join("")}${S.kids.length < 6 ? '<button class="btn ghost" id="addp">➕ Ajouter un joueur</button>' : ""}
     <h3>🗺️ Carte hors-ligne</h3><div class="card"><p class="muted">Télécharge la carte de Venise avant de partir pour qu'elle marche sans réseau (environ 12 Mo : mieux vaut être en Wi-Fi).</p><button class="btn blue wide" id="dl" style="margin-top:8px">⬇️ Télécharger la carte</button><div class="bar" style="margin-top:8px"><i id="dlbar" style="width:0"></i></div><p class="muted" id="dltxt"></p></div>
     <h3>☁️ Équipe et synchronisation</h3><div class="card"><p><b>${esc(S.teamName || (TEAM && TEAM.team) || "")}</b></p><p>${esc(syncStatus)}</p><button class="btn ghost" id="chteam" style="margin:0 6px 6px 0">Changer d'équipe ou de code</button><button class="btn ghost" id="syncnow" style="margin-top:6px">Synchroniser maintenant</button></div>
@@ -2533,14 +2538,6 @@ function renderSettings() {
   $("#chteam", v).onclick = async () => { try { localStorage.removeItem(TEAMKEY); } catch {} TEAM = null; await joinGame(); await sync(); if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); } refreshAll(); renderSettings(); };
   $("#intro", v).onclick = async () => { setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE, ...BOAT_OPTS }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
   $("#devtog", v).onchange = (e) => { try { if (e.target.checked) localStorage.setItem("vq_dev", "1"); else localStorage.removeItem("vq_dev"); } catch {} location.reload(); };
-  const resetTrials = $("#reset-trials", v);
-  if (resetTrials) resetTrials.onclick = () => {
-    const keys = Object.keys(S.done).filter((key) => has(key) && (key.startsWith("t:") || key.startsWith("fin:") || /^music:[^:]+:q:\d+$/.test(key)));
-    if (!keys.length) { toast("Aucune épreuve à réinitialiser."); return; }
-    const scroll = v.scrollTop;
-    keys.forEach(unaward); save(); refreshAll(); renderSettings(); v.scrollTop = scroll;
-    toast("Épreuves réinitialisées. Les autres découvertes sont conservées.");
-  };
   $("#reset", v).onclick = async () => {
     if (!confirm("Effacer TOUTE la progression et le profil, puis reprendre l'introduction ?")) return;
     if (!confirm("Vraiment tout ? Cette action est définitive.")) return;
