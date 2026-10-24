@@ -75,26 +75,28 @@
     "questions": [
       {
         "type": "écoute longue",
-        "question": "Les deux voix aiguës chantent-elles toujours ensemble ou se répondent-elles ?",
+        "question": "Écoute bien la voix qui chante… Sais-tu comment on appelle une chanteuse qui possède cette voix aiguë ?",
         "options": [
-          "Elles chantent toujours exactement ensemble",
-          "Elles se répondent et se rejoignent",
-          "Une seule voix chante pendant tout le morceau"
+          "Une soprano",
+          "Une contralto",
+          "Une mezzo-soprano",
+          "Un ténor"
         ],
-        "answer": 1,
-        "explanation": "Les deux voix se répondent, puis unissent leurs lignes dans ce duo.",
+        "answer": 0,
+        "explanation": "Une soprano est une chanteuse à la voix aiguë.",
         "audio": "long"
       },
       {
         "type": "texte",
-        "question": "Que signifie « Pulchra es, amica mea » ?",
+        "question": "Au tout début, la chanteuse prononce deux mots mystérieux en latin : « Pulchra es ». À ton avis, que signifient-ils ?",
         "options": [
-          "Tu es belle, mon amie",
-          "La mer est calme ce soir",
-          "Chante avec moi, mon frère"
+          "Tu es belle",
+          "Tu es loin",
+          "Tu es seule",
+          "Tu es prête"
         ],
         "answer": 0,
-        "explanation": "Ces mots latins signifient « Tu es belle, mon amie ».",
+        "explanation": "« Pulchra es » signifie « Tu es belle ».",
         "audio": "short"
       },
       {
