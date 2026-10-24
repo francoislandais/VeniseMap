@@ -1632,3 +1632,6 @@ body.menu-open #dev-chap-help,body:not(.jeu) #dev-chap-help{display:none!importa
 #sheet.chap.chap-conclusion .chap-edit-status{flex:1 0 100%;color:#d6e8ef}
 #sheet.chap.chap-conclusion.chap-editing .chap-victory [data-chap-edit],#sheet.chap.chap-conclusion.chap-editing .b-talk [data-chap-edit]{pointer-events:auto!important;touch-action:none;cursor:grab;outline:1px dashed rgba(228,237,242,.5)}
 #sheet.chap.chap-conclusion.chap-editing [data-chap-edit].chap-edit-selected{outline:2px solid #ffe18b!important;outline-offset:3px}
+#sheet.chap.chap-conclusion .chap-edit-size{display:flex;align-items:center;gap:5px;flex:1 0 100%;white-space:nowrap}
+#sheet.chap.chap-conclusion .chap-edit-size input{flex:1;min-width:90px;accent-color:#f1d58b}
+#sheet.chap.chap-conclusion .chap-edit-size output{min-width:42px;text-align:right}

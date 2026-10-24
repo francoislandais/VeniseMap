@@ -1452,21 +1452,25 @@ function conclusionEditor(sh, p, elements, defaults) {
   const apply = (key) => {
     const el = elements[key], c = layout[key] || {};
     el.style.translate = `${Number(c.x) || 0}vw ${Number(c.y) || 0}vh`;
-    el.style.scale = String(Number(c.s) || 1);
+    if (key === "emblem") {
+      // Une vraie largeur modifie aussi la place occupée par la vignette et son halo.
+      el.style.width = `${Math.round(Math.min(innerWidth * .4, 160, innerHeight * .21) * (Number(c.s) || 1))}px`;
+    } else el.style.scale = String(Number(c.s) || 1);
     if (key !== "emblem") el.textContent = typeof c.text === "string" ? c.text.replace(/\{grade\}/g, gradeLc()) : defaults[key];
   };
   Object.keys(elements).forEach(apply);
   fitChapTalk();
-  if (!LOCAL_DEV) return;
   const controller = new AbortController(); conclusionEditorAbort = controller;
+  window.addEventListener("resize", () => apply("emblem"), { signal: controller.signal });
+  if (!LOCAL_DEV) return;
   const emblem = $(".chap-victory", sh), bt = $("#b-talk", sh), lead = elements.lead, clue = elements.secret, planButton = elements.plan;
   const names = { bravo: "Bravo", completion: "Fin des épreuves", emblem: "Vignette", lead: "Annonce", secret: "Secret", plan: "Bouton du plan" };
   const bar = document.createElement("div"); bar.className = "chap-edit-bar";
-  bar.innerHTML = '<button type="button" data-ce="toggle">✎ Conclusion</button><div class="chap-edit-tools" hidden><span class="chap-edit-name">Touche un élément</span><button type="button" data-ce="minus">A−</button><button type="button" data-ce="plus">A+</button><button type="button" data-ce="text">✎ Texte</button><button type="button" data-ce="reset">Réinit.</button><button type="button" data-ce="flip">⇅</button><button type="button" data-ce="save">💾 Enregistrer</button><textarea class="chap-edit-text" rows="2" hidden aria-label="Texte de l’élément sélectionné"></textarea><small class="chap-edit-status">Glisse un élément pour le déplacer.</small></div>';
+  bar.innerHTML = '<button type="button" data-ce="toggle">✎ Conclusion</button><div class="chap-edit-tools" hidden><span class="chap-edit-name">Touche un élément</span><button type="button" data-ce="minus">Taille −</button><button type="button" data-ce="plus">Taille +</button><label class="chap-edit-size">Taille <input type="range" min="50" max="250" step="5" value="100" aria-label="Taille de l’élément sélectionné"><output>100 %</output></label><button type="button" data-ce="text">✎ Texte</button><button type="button" data-ce="reset">Réinit.</button><button type="button" data-ce="flip">⇅</button><button type="button" data-ce="save">💾 Enregistrer</button><textarea class="chap-edit-text" rows="2" hidden aria-label="Texte de l’élément sélectionné"></textarea><small class="chap-edit-status">Glisse un élément pour le déplacer.</small></div>';
   sh.appendChild(bar);
-  const tools = $(".chap-edit-tools", bar), field = $(".chap-edit-text", bar), status = $(".chap-edit-status", bar);
+  const tools = $(".chap-edit-tools", bar), field = $(".chap-edit-text", bar), status = $(".chap-edit-status", bar), size = $(".chap-edit-size input", bar), sizeValue = $(".chap-edit-size output", bar);
   let editing = false, selected = null, drag = null;
-  const select = (key) => { selected = key; Object.entries(elements).forEach(([k, el]) => el.classList.toggle("chap-edit-selected", k === key)); $(".chap-edit-name", bar).textContent = key ? names[key] : "Touche un élément"; field.hidden = true; if (key && key !== "emblem") field.value = elements[key].textContent; };
+  const select = (key) => { selected = key; Object.entries(elements).forEach(([k, el]) => el.classList.toggle("chap-edit-selected", k === key)); $(".chap-edit-name", bar).textContent = key ? names[key] : "Touche un élément"; field.hidden = true; size.disabled = !key; size.value = String(Math.round((Number(layout[key]?.s) || 1) * 100)); sizeValue.textContent = `${size.value} %`; if (key && key !== "emblem") field.value = elements[key].textContent; };
   const cfg = (key) => (layout[key] ||= { x: 0, y: 0, s: 1 });
   const showAll = () => { emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue.classList.add("shown"); planButton?.classList.add("shown"); };
   bar.addEventListener("click", async (e) => {
@@ -1476,9 +1480,10 @@ function conclusionEditor(sh, p, elements, defaults) {
     if (action === "save") { try { const r = await fetch("api/conclusion-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CONCLUSION_LAYOUT) }); status.textContent = r.ok ? "Enregistré ✔" : "Échec : serveur sans --dev ?"; } catch { status.textContent = "Échec de l’enregistrement"; } return; }
     if (!selected) { status.textContent = "Touche d'abord un élément."; return; }
     if (action === "text") { if (selected === "emblem") { status.textContent = "La vignette n'a pas de texte."; return; } field.hidden = !field.hidden; if (!field.hidden) field.focus(); return; }
-    if (action === "reset") { delete layout[selected]; apply(selected); field.value = elements[selected].textContent; fitChapTalk(); status.textContent = "Élément réinitialisé"; return; }
-    const c = cfg(selected); c.s = Math.max(.5, Math.min(2.5, Math.round(((Number(c.s) || 1) + (action === "plus" ? .05 : -.05)) * 100) / 100)); apply(selected); status.textContent = `${names[selected]} · ${Math.round(c.s * 100)} %`;
+    if (action === "reset") { delete layout[selected]; apply(selected); select(selected); fitChapTalk(); status.textContent = "Élément réinitialisé"; return; }
+    const c = cfg(selected); c.s = Math.max(.5, Math.min(2.5, Math.round(((Number(c.s) || 1) + (action === "plus" ? .05 : -.05)) * 100) / 100)); apply(selected); size.value = String(Math.round(c.s * 100)); sizeValue.textContent = `${size.value} %`; status.textContent = `${names[selected]} · ${size.value} %`;
   });
+  size.oninput = () => { if (!selected) return; cfg(selected).s = Number(size.value) / 100; apply(selected); sizeValue.textContent = `${size.value} %`; status.textContent = `${names[selected]} · ${size.value} %`; };
   field.oninput = () => { if (!selected || selected === "emblem") return; cfg(selected).text = field.value; apply(selected); fitChapTalk(); status.textContent = "Texte modifié · pense à enregistrer"; };
   for (const [key, el] of Object.entries(elements)) el.dataset.chapEdit = key;
   sh.addEventListener("pointerdown", (e) => { if (!editing || e.target.closest(".chap-edit-bar")) return; const el = e.target.closest("[data-chap-edit]"); if (!el || !sh.contains(el)) { select(null); return; } e.preventDefault(); e.stopPropagation(); const key = el.dataset.chapEdit; select(key); const c = cfg(key); drag = { id: e.pointerId, key, x: e.clientX, y: e.clientY, ox: Number(c.x) || 0, oy: Number(c.y) || 0 }; try { sh.setPointerCapture(e.pointerId); } catch {} }, { capture: true, signal: controller.signal });

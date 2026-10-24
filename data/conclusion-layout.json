@@ -1,1 +1,15 @@
-{}
+{
+ "miracoli": {
+  "emblem": {
+   "x": -4.9,
+   "y": 3.81,
+   "s": 0.9
+  },
+  "completion": {
+   "x": 0.06,
+   "y": 0.02,
+   "s": 0.75,
+   "text": "Tu as mené cette épreuve jusqu'au bout."
+  }
+ }
+}
