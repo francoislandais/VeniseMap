@@ -2016,16 +2016,34 @@ const musicCatalog = () => (musicCatalogPromise ||= fetch("data/music-challenges
   items.forEach((item) => { if (ids.has(item.id) || place(item.place)?.musicChallenge?.entry !== item.id) throw new Error("Correspondance musicale invalide"); ids.add(item.id); });
   return items;
 }).catch((e) => { musicCatalogPromise = null; throw e; }));
-// La découverte s'arrête ici pour l'instant : fragment en grand et message de félicitations.
+// Un toucher après la découverte fait monter le fragment et lance les questions musicales.
 function openMusicFragmentReveal(id, p, rect = null, photoImage = null) {
   if ($(".music-found")) return;
-  const overlay = document.createElement("section"); overlay.className = "music-found"; overlay.setAttribute("aria-label", "Morceau de partition découvert");
+  const overlay = document.createElement("section"); overlay.className = "music-found"; overlay.setAttribute("aria-label", "Morceau de partition découvert. Touchez pour continuer."); overlay.tabIndex = 0;
   overlay.style.setProperty("--music-found-bg", `url("${photoImage || pic(p.id)}")`);
-  overlay.innerHTML = `<button type="button" class="mu-close" aria-label="Fermer">×</button><img class="mu-found-fragment" src="img/music/${esc(id)}-parchemin.png" alt="Morceau de la partition des Vêpres"><div class="mu-found-stars" aria-hidden="true">${Array.from({ length: 12 }, () => "<i>✦</i>").join("")}</div><div class="mu-found-message" aria-live="polite"><strong>Extraordinaire !</strong><span>Tu as trouvé un morceau de la partition des Vêpres.</span></div>`;
+  overlay.innerHTML = `<img class="mu-found-fragment" src="img/music/${esc(id)}-parchemin.png" alt="Morceau de la partition des Vêpres"><div class="mu-found-stars" aria-hidden="true">${Array.from({ length: 12 }, () => "<i>✦</i>").join("")}</div><div class="mu-found-message" aria-live="polite"><strong>Extraordinaire !</strong><span>Tu as trouvé un morceau de la partition des Vêpres.</span></div>`;
   document.body.appendChild(overlay);
-  $(".mu-close", overlay).onclick = () => overlay.remove();
   const fragment = $(".mu-found-fragment", overlay);
   musicCatalog().then((items) => { const entry = items.find((item) => item.id === id && item.place === p.id); if (entry?.fragment && overlay.isConnected) fragment.src = entry.fragment; }).catch(() => {});
+  const continueToQuestions = () => {
+    if (!overlay.classList.contains("message") || overlay.classList.contains("flow")) return;
+    const r = fragment.getBoundingClientRect(), fromX = r.left + r.width / 2, fromY = r.top + r.height / 2;
+    overlay.classList.add("flow");
+    const key = `music:${id}:discovery`, first = !has(key);
+    if (first) { award(key, 10, meIdx()); save(); refreshAll(); }
+    if (first && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.body.classList.add("music-star-flight");
+      setTimeout(() => { if (overlay.isConnected) starsToCounter(fromX, fromY, 10, true); }, 300);
+      setTimeout(() => document.body.classList.remove("music-star-flight"), 2600);
+    }
+    setTimeout(async () => {
+      if (!overlay.isConnected) return;
+      await openMusicChallenge(id, p, () => {}, false, photoImage);
+      if ($(".music-quest")) overlay.remove(); else overlay.classList.remove("flow");
+    }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1450);
+  };
+  overlay.onclick = continueToQuestions;
+  overlay.onkeydown = (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); continueToQuestions(); } };
   const enlarge = () => { fragment.style.left = "50%"; fragment.style.top = "41%"; fragment.style.width = "min(94vw,760px)"; fragment.style.transform = "translate(-50%,-50%)"; overlay.classList.add("revealed"); };
   if (!rect || matchMedia("(prefers-reduced-motion: reduce)").matches) { enlarge(); overlay.classList.add("message"); return; }
   fragment.style.left = rect.left + "px"; fragment.style.top = rect.top + "px"; fragment.style.width = rect.width + "px"; fragment.style.transform = "none";
@@ -2040,44 +2058,50 @@ function startMusicWalk(entry) {
   $("button", player).onclick = () => { $("audio", player).pause(); player.remove(); };
   const play = $("audio", player).play(); if (play?.catch) play.catch(() => toast("Appuie sur lecture pour lancer la musique."));
 }
-async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
+async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backgroundImage = null) {
   if ($(".music-quest") || musicOpening) return;
   musicOpening = true;
   let entry;
   try { entry = (await musicCatalog()).find((item) => item.id === id && item.place === p.id); } catch { musicOpening = false; toast("Le défi musical n'est pas disponible pour l'instant."); return; }
   if (!entry) { musicOpening = false; toast("Ce fragment musical est introuvable."); return; }
-  const overlay = document.createElement("section"); overlay.className = "music-quest"; overlay.setAttribute("aria-label", "Défi musical");
-  document.body.appendChild(overlay); musicOpening = false;
+  const overlay = document.createElement("section"); overlay.className = "music-quest music-flow-quest"; overlay.setAttribute("aria-label", "Défi musical");
+  overlay.style.setProperty("--music-flow-bg", `url("${backgroundImage || pic(p.id)}")`);
+  overlay.innerHTML = `<button type="button" class="mq-exit" aria-label="Quitter le défi musical">←</button><img class="mq-fragment" src="${esc(entry.fragment)}" alt="Morceau de la partition des Vêpres"><div class="mq-body"></div>`;
+  document.body.appendChild(overlay); document.body.classList.add("music-quest-active"); musicOpening = false;
+  const body = $(".mq-body", overlay);
   let clip = null;
   const stopClip = () => { if (clip) { clip.pause(); clip = null; } };
-  const close = () => { stopClip(); overlay.remove(); };
+  const close = () => { stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); };
+  $(".mq-exit", overlay).onclick = close;
   const credit = `<p class="mq-credit">${esc(entry.credit.text)} <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a> · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">CC BY-SA 3.0</a></p>`;
   const victory = () => {
     stopClip();
     if (!has(`music:${id}:won`)) { award(`music:${id}:won`, 20, meIdx()); save(); refreshAll(); confetti(100); onWon(); }
-    overlay.innerHTML = `<button type="button" class="mq-close" aria-label="Fermer">✕</button><div class="mq-card mq-victory"><span class="mq-kicker">Fragment gagné · ${esc(id)}</span><h2>Bravo, ${esc(gradeLc())} !</h2><p>Ce morceau de partition rejoint ton livre. Écoute maintenant le mouvement entier en te promenant autour de l'église.</p><img src="${esc(entry.fragment)}" alt="Fragment de la partition de ${esc(entry.title)}"><button type="button" class="mq-main" data-walk>▶ Écouter en déambulant</button><button type="button" class="mq-later" data-later>Je l'écouterai plus tard</button>${credit}</div>`;
-    $(".mq-close", overlay).onclick = close; $("[data-later]", overlay).onclick = close;
-    $("[data-walk]", overlay).onclick = () => { startMusicWalk(entry); close(); if (tab !== "map") setTab("map"); if (openId) closeSheet(); };
+    body.className = "mq-body mq-victory";
+    body.innerHTML = `<span class="mq-kicker">Fragment gagné · ${esc(id)}</span><h2>Bravo, ${esc(gradeLc())} !</h2><p>Ce morceau de partition rejoint ton livre. Écoute maintenant le mouvement entier en te promenant autour de l'église.</p><button type="button" class="mq-main" data-walk>▶ Écouter en déambulant</button><button type="button" class="mq-later" data-later>Je l'écouterai plus tard</button>${credit}`;
+    $("[data-later]", body).onclick = close;
+    $("[data-walk]", body).onclick = () => { startMusicWalk(entry); close(); if (tab !== "map") setTab("map"); if (openId) closeSheet(); };
   };
   const showQuestion = (index) => {
     stopClip();
     if (index >= entry.questions.length) { victory(); return; }
     const q = entry.questions[index];
-    overlay.innerHTML = `<button type="button" class="mq-close" aria-label="Fermer">✕</button><div class="mq-card"><span class="mq-kicker">Défi musical · ${index + 1} / ${entry.questions.length}</span><h2>${esc(entry.subtitle)}</h2><img class="mq-score" src="${esc(entry.score)}" alt="Ligne de la partition à observer"><button type="button" class="mq-listen">▶ Écouter ${q.audio === "long" ? "le passage long" : "l'extrait court"}</button><p class="mq-question">${esc(q.question)}</p><div class="mq-options">${q.options.map((answer, j) => `<button type="button" data-answer="${j}">${esc(answer)}</button>`).join("")}</div><p class="mq-feedback" aria-live="polite"></p>${credit}</div>`;
-    $(".mq-close", overlay).onclick = close;
-    const listen = $(".mq-listen", overlay);
+    body.className = "mq-body";
+    body.innerHTML = `<span class="mq-kicker">Défi musical · ${index + 1} / ${entry.questions.length}</span><p class="mq-question">${esc(q.question)}</p><button type="button" class="mq-listen">▶ Écouter ${q.audio === "long" ? "le passage long" : "l'extrait court"}</button><div class="mq-options">${q.options.map((answer, j) => `<button type="button" data-answer="${j}">${esc(answer)}</button>`).join("")}</div><div class="mq-feedback" aria-live="polite"></div>${credit}`;
+    const listen = $(".mq-listen", body);
     listen.onclick = () => {
       if (clip && !clip.paused) { clip.pause(); listen.textContent = "▶ Reprendre l'écoute"; return; }
       if (!clip) { clip = new Audio(entry[q.audio]); clip.onended = () => { listen.textContent = "▶ Réécouter"; }; }
       clip.play().then(() => { listen.textContent = "❚❚ Pause"; }).catch(() => { listen.textContent = "Lecture impossible"; });
     };
-    $$("[data-answer]", overlay).forEach((button) => button.onclick = () => {
-      if (+button.dataset.answer !== q.answer) { button.disabled = true; button.classList.add("wrong"); $(".mq-feedback", overlay).textContent = "Essaie encore, écoute bien !"; return; }
-      stopClip(); button.classList.add("right"); $$("[data-answer]", overlay).forEach((other) => other.disabled = true);
+    $$("[data-answer]", body).forEach((button) => button.onclick = () => {
+      if (+button.dataset.answer !== q.answer) { button.disabled = true; button.classList.add("wrong"); $(".mq-feedback", body).textContent = "Essaie encore, écoute bien !"; return; }
+      stopClip(); button.classList.add("right"); $$("[data-answer]", body).forEach((other) => other.disabled = true);
       if (!has(`music:${id}:q:${index}`)) { award(`music:${id}:q:${index}`, 10, meIdx()); save(); refreshAll(); }
-      const feedback = $(".mq-feedback", overlay); feedback.textContent = q.explanation;
+      body.classList.add("mq-answered");
+      const feedback = $(".mq-feedback", body); feedback.textContent = q.explanation;
       const next = document.createElement("button"); next.type = "button"; next.className = "mq-main"; next.textContent = index + 1 === entry.questions.length ? "Recevoir le fragment" : "Question suivante";
-      next.onclick = () => showQuestion(index + 1); feedback.after(next);
+      next.onclick = () => showQuestion(index + 1); feedback.appendChild(next);
     });
   };
   const first = replay ? 0 : entry.questions.findIndex((_, index) => !has(`music:${id}:q:${index}`));

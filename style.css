@@ -1714,3 +1714,42 @@ body.menu-open #dev-chap-help{display:none!important}
 .mu-found-message strong{margin-bottom:14px;color:#ffe7a4;font:700 clamp(31px,9vw,52px)/1.1 Georgia,serif}
 .mu-found-message span{font:clamp(23px,6.4vw,34px)/1.22 Georgia,serif}
 @media (prefers-reduced-motion:reduce){.mu-found-fragment,.mu-found-stars,.mu-found-message{transition:none}.mu-found-stars i{animation:none}}
+
+/* Un toucher lance le défi : la partition monte, les étoiles rejoignent le compteur. */
+.music-found{cursor:pointer}
+.music-found.flow{cursor:default}
+.music-found.flow .mu-found-fragment{top:calc(111px + var(--safe-t))!important;width:min(86vw,420px)!important;max-height:22vh}
+.music-found.flow .mu-found-message{opacity:0;transform:translate(-50%,20px);pointer-events:none}
+.music-found.flow .mu-found-stars{opacity:0;animation:muStarsSpin 1.15s ease-in forwards}
+@keyframes muStarsSpin{to{transform:translate(-50%,-50%) rotate(540deg) scale(.2)}}
+body.music-quest-active #hud{z-index:2100}
+body.music-star-flight #hud{z-index:2600}
+body.music-star-flight .fly-star{z-index:2601}
+
+/* Toutes les questions gardent le même fond et la vraie partition en haut. */
+.music-quest.music-flow-quest{display:block;overflow:hidden;padding:0;background:#081925;isolation:isolate}
+.music-flow-quest::before{content:"";position:absolute;inset:0;z-index:0;background:var(--music-flow-bg) center/cover no-repeat;filter:brightness(.72)}
+.music-flow-quest::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(3,16,28,.16),rgba(3,16,28,.4) 55%,rgba(3,16,28,.78));pointer-events:none}
+.mq-exit{position:absolute;z-index:4;top:calc(12px + var(--safe-t));left:12px;width:40px;height:40px;border:1px solid rgba(255,255,255,.55);border-radius:50%;background:rgba(8,35,53,.75);color:#fff;font:23px/1 Arial,sans-serif}
+.mq-fragment{position:absolute;z-index:2;top:calc(111px + var(--safe-t));left:50%;width:min(86vw,420px);max-height:22vh;height:auto;object-fit:contain;transform:translate(-50%,-50%);filter:drop-shadow(0 9px 18px rgba(0,0,0,.65))}
+.mq-body{position:absolute;z-index:2;top:calc(178px + var(--safe-t));bottom:calc(10px + var(--safe-b));left:50%;width:min(calc(100% - 24px),510px);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:7px;overflow-y:auto;padding:7px 4px 4px;transform:translateX(-50%);text-align:center;animation:mqBodyIn .65s ease both}
+@keyframes mqBodyIn{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
+.mq-body .mq-kicker{flex:none;font-size:12px;color:#ffe2a2}
+.mq-body .mq-question{flex:none;max-width:470px;margin:8px auto 4px;color:#fff;font:clamp(23px,6vw,30px)/1.2 Georgia,serif;text-shadow:0 2px 8px #06131d;text-wrap:balance}
+.mq-body .mq-listen{flex:none;width:min(92%,340px);min-height:48px;margin:7px auto 8px;border-radius:999px;background:rgba(13,57,79,.94);font-size:16px}
+.mq-body .mq-options{flex:1;min-height:0;width:100%;max-width:450px;display:flex;flex-direction:column;justify-content:flex-end;gap:clamp(8px,1.3vh,13px);margin:0 auto}
+.mq-body .mq-options button{flex:1;min-height:54px;max-height:110px;display:flex;align-items:center;justify-content:center;padding:10px 17px;border-radius:999px;background:rgba(10,43,64,.92);color:#fff;font:clamp(16px,4.5vw,20px)/1.25 Arial,sans-serif;text-align:center;text-wrap:balance}
+.mq-body .mq-options button.right{background:#1a634d}
+.mq-body .mq-feedback{flex:none;width:min(100%,430px);min-height:22px;margin:2px auto;color:#f6e7bb;font:15px/1.3 Georgia,serif}
+.mq-body .mq-credit{flex:none;margin:2px auto 0;max-width:450px;color:#d2dde0;font-size:9px}
+.mq-body.mq-answered .mq-options{flex:none;justify-content:center}
+.mq-body.mq-answered .mq-options button:not(.right){display:none}
+.mq-body.mq-answered .mq-options button.right{min-height:55px;max-height:68px}
+.mq-body.mq-answered .mq-feedback{flex:1;min-height:115px;display:flex;flex-direction:column;justify-content:center;gap:14px;font-size:clamp(18px,5vw,23px)}
+.mq-body.mq-answered .mq-feedback .mq-main{flex:none;margin:auto auto 0}
+.mq-body.mq-victory{justify-content:center;gap:14px}
+.mq-body.mq-victory h2{margin:5px 0;font:clamp(30px,8vw,44px)/1.1 Georgia,serif}
+.mq-body.mq-victory p:not(.mq-credit){max-width:440px;margin:4px auto;font:clamp(19px,5.3vw,25px)/1.32 Georgia,serif}
+.mq-body.mq-victory .mq-main{flex:none}
+@media (max-height:650px){.music-found.flow .mu-found-fragment,.mq-fragment{top:calc(92px + var(--safe-t))!important;width:min(76vw,350px)!important}.mq-body{top:calc(150px + var(--safe-t))}}
+@media (prefers-reduced-motion:reduce){.music-found.flow .mu-found-stars,.mq-body{animation:none}}
