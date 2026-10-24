@@ -2513,6 +2513,7 @@ function renderSettings() {
     <h3>📷 Crédits photos</h3><details class="card"><summary>Photos de Wikimedia Commons</summary><div id="credits" class="muted" style="margin-top:8px"></div></details>
     <h3>🎼 Crédits musicaux</h3><details class="card"><summary>Défi musical : Domine ad adiuvandum</summary><p class="muted">Cantica Symphonia, direction Giuseppe Maletto ; enregistrement Guido Magnano, Turin, 2000. Extraits, fondus et transcodages MP3. <a href="https://commons.wikimedia.org/wiki/File:Deus_in_adiutorium.ogg" target="_blank" rel="noopener">Enregistrement source</a> · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">Licence CC BY-SA 3.0</a>.</p></details>
     <h3>🔧 Parents</h3><div class="card"><button class="btn ghost" id="intro">📖 Revoir l'histoire</button> <button class="btn ghost" id="reset" style="margin-top:6px">🗑️ Tout recommencer</button><label class="chk" style="margin-top:8px"><input type="checkbox" id="devtog" ${DEV && !QS.has("fake") ? "checked" : ""}> <span>Mode développeur : déplacer le bateau</span></label></div>
+    ${LOCAL_DEV ? '<h3>🛠️ Développement</h3><div class="card"><button class="btn ghost wide" id="reset-trials">↺ Réinitialiser toutes les épreuves</button><p class="muted" style="margin:8px 0 0">Remet les questions à zéro, y compris le défi musical. Les lieux découverts, objets, œuvres, photos et fragments gagnés restent en place.</p></div>' : ""}
     <p class="muted" style="text-align:center;margin-top:16px">Le Livre du Lion · V1 · Carte : aquarelle Stamen Design (CC BY 4.0), Stadia Maps, OpenFreeMap, OpenMapTiles · données © contributeurs OpenStreetMap</p>`;
   { const eb = $("#eco", v); if (eb) { const lab = () => (eb.textContent = ecoOn() ? "Mode éco : activé (toucher pour désactiver)" : "Mode éco : désactivé (toucher pour activer)"); lab(); eb.onclick = () => { try { localStorage.setItem("vq_eco", ecoOn() ? "0" : "1"); } catch {} lab(); toast(ecoOn() ? "Mode éco activé" : "Mode éco désactivé"); }; } }
   { const fb = $("#fs", v); if (fb) { const de = document.documentElement;
@@ -2531,6 +2532,14 @@ function renderSettings() {
   $("#chteam", v).onclick = async () => { try { localStorage.removeItem(TEAMKEY); } catch {} TEAM = null; await joinGame(); await sync(); if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); } refreshAll(); renderSettings(); };
   $("#intro", v).onclick = async () => { setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE, ...BOAT_OPTS }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
   $("#devtog", v).onchange = (e) => { try { if (e.target.checked) localStorage.setItem("vq_dev", "1"); else localStorage.removeItem("vq_dev"); } catch {} location.reload(); };
+  const resetTrials = $("#reset-trials", v);
+  if (resetTrials) resetTrials.onclick = () => {
+    const keys = Object.keys(S.done).filter((key) => has(key) && (key.startsWith("t:") || key.startsWith("fin:") || /^music:[^:]+:q:\d+$/.test(key)));
+    if (!keys.length) { toast("Aucune épreuve à réinitialiser."); return; }
+    const scroll = v.scrollTop;
+    keys.forEach(unaward); save(); refreshAll(); renderSettings(); v.scrollTop = scroll;
+    toast("Épreuves réinitialisées. Les autres découvertes sont conservées.");
+  };
   $("#reset", v).onclick = async () => {
     if (!confirm("Effacer TOUTE la progression et le profil, puis reprendre l'introduction ?")) return;
     if (!confirm("Vraiment tout ? Cette action est définitive.")) return;
