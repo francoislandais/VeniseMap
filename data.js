@@ -301,10 +301,124 @@ export const PLACES = [
   { id: "colonnes", emoji: "🦁", name: "Les deux colonnes", lat: 45.43338, lon: 12.34003, r: 60,
     story: "Sur une colonne, le lion ailé, symbole de Venise. Sur l'autre, saint Théodore et son crocodile-dragon. Légende : ne passe jamais ENTRE les deux colonnes, ça porte malheur !",
     clue: "Entre les deux colonnes, jamais je ne passe. Les malins contournent, les imprudents glissent.",
-    tasks: [
-      { t: "choice", q: "Quel animal ailé est le symbole de Venise ?", opts: ["🦁 Le lion", "🦅 L'aigle", "🐴 Le cheval"], a: 0, fact: "Le lion ailé est le symbole de saint Marc, protecteur de la ville." },
-      { t: "do", q: "Passe AUTOUR des colonnes, pas entre ! Puis ajoute les lions ailés que tu vois dans la collection 🦁 (onglet Trophées)." },
-      { t: "photo", q: "Photographie le lion ailé tout en haut de sa colonne !", pts: 20 },
+    chapters: [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "where": "Marche vers la lagune, au bout de la Piazzetta San Marco. Lève les yeux vers le sommet des deux hautes colonnes et compare leurs silhouettes.",
+            "q": "Quel duo vois-tu tout en haut ?",
+            "opts": [
+              "Deux lions ailés",
+              "Un lion ailé et un guerrier",
+              "Un ange et un doge",
+              "Deux gondoliers"
+            ],
+            "a": 1,
+            "reveal": "Le lion ailé représente saint Marc, patron de Venise. Le personnage debout est saint Théodore, appelé Tòdaro en vénitien : il fut le premier protecteur de la cité. Les deux colonnes marquent l’arrivée à la Piazzetta depuis l’eau.",
+            "img": "img/q/colonnes-0.webp",
+            "src": [
+              "https://live.comune.venezia.it/it/node/115647",
+              "https://live.comune.venezia.it/it/node/132935",
+              "https://provenezia.ch/en/restorations/column-of-st-mark"
+            ],
+            "cap": "Le lion est sur une colonne ; saint Théodore se tient sur l’autre."
+          },
+          {
+            "idx": 301,
+            "where": "Repère le lion sombre sur la colonne du côté du Palais des Doges. Observe son dos et sa silhouette, avec un zoom si nécessaire.",
+            "q": "Quel détail le distingue d’un lion ordinaire ?",
+            "opts": [
+              "Des ailes",
+              "Des nageoires",
+              "Des cornes",
+              "Une carapace"
+            ],
+            "a": 0,
+            "reveal": "Ce lion ailé est le symbole de l’évangéliste saint Marc et de Venise. L’image du lion de Saint Marc existe en plusieurs versions dans la ville ; celui de cette colonne n’a pas besoin d’un livre pour être reconnu.",
+            "img": "img/q/colonnes-1.webp",
+            "src": [
+              "https://live.comune.venezia.it/it/node/132935",
+              "https://iris.unive.it/retrieve/e4239ddd-243c-7180-e053-3705fe0a3322/L.%20Sperti%2C%20Reimpiego%2C%20in%20Tondo%20Angaran.pdf"
+            ],
+            "cap": "Deux ailes se dressent sur le dos du lion de bronze."
+          },
+          {
+            "idx": 302,
+            "where": "Cherche le personnage clair au sommet de l’autre colonne, du côté de la Bibliothèque Marciana. Regarde l’objet long et mince qu’il tient.",
+            "q": "Quelle arme porte saint Théodore ?",
+            "opts": [
+              "Un trident",
+              "Une longue lance",
+              "Un arc",
+              "Une rame"
+            ],
+            "a": 1,
+            "reveal": "Saint Théodore est représenté en guerrier. Surprise : la statue que tu vois là-haut est une copie installée en 1948. L’original se trouve dans le Palais des Doges, à l’entrée de la cour des Sénateurs.",
+            "img": "img/q/colonnes-2.webp",
+            "src": [
+              "https://live.comune.venezia.it/it/node/115647"
+            ],
+            "cap": "La lance monte bien au-dessus de la tête de saint Théodore."
+          },
+          {
+            "idx": 303,
+            "where": "Continue d’observer la statue de Tòdaro. Sous ses pieds s’étire une créature au corps de reptile ; cherche surtout sa longue queue.",
+            "q": "Quel animal de légende cette créature représente-t-elle ?",
+            "opts": [
+              "Un dragon",
+              "Un poisson géant",
+              "Un cheval marin",
+              "Un lion"
+            ],
+            "a": 0,
+            "reveal": "La Ville de Venise décrit saint Théodore comme un guerrier terrassant un dragon. L’animal sculpté ressemble beaucoup à un crocodile : c’est la forme que l’artiste a donnée au dragon. La statue originale a été assemblée à partir de morceaux de différentes époques.",
+            "img": "img/q/colonnes-3.webp",
+            "src": [
+              "https://live.comune.venezia.it/it/node/115647",
+              "https://iris.unive.it/retrieve/e4239ddd-243c-7180-e053-3705fe0a3322/L.%20Sperti%2C%20Reimpiego%2C%20in%20Tondo%20Angaran.pdf"
+            ],
+            "cap": "Le dragon au long corps reptilien s’allonge sous les pieds du saint."
+          },
+          {
+            "idx": 304,
+            "where": "Redescends le regard jusqu’aux grands socles de pierre. Fais le tour sans franchir les barrières et examine leurs angles, à hauteur d’enfant.",
+            "q": "Qu’est-ce qui est sculpté aux angles des socles ?",
+            "opts": [
+              "Des personnages",
+              "Des cartes de la lagune",
+              "Des cadrans d’horloge",
+              "Des bateaux miniatures"
+            ],
+            "a": 0,
+            "reveal": "Ces sculptures, aujourd’hui usées, représentent des métiers de la Venise ancienne. Treccani identifie notamment des forgerons et des vendeurs de poisson sur le socle de la colonne de Tòdaro. Tous les métiers ne sont plus reconnaissables avec certitude.",
+            "img": "img/q/colonnes-4.webp",
+            "src": [
+              "https://www.treccani.it/enciclopedia/corporazioni-e-mestieri_%28Enciclopedia-dell%27-Arte-Medievale%29/"
+            ],
+            "cap": "Deux personnages abîmés par le temps occupent cet angle du socle."
+          },
+          {
+            "idx": 305,
+            "where": "Éloigne-toi de quelques pas pour comparer les longues colonnes elles-mêmes. Regarde leur pierre plutôt que les statues ou les chapiteaux.",
+            "q": "Laquelle présente une teinte plus rouge ou rosée ?",
+            "opts": [
+              "Celle du lion",
+              "Celle de Tòdaro",
+              "Les deux ont la même teinte rosée",
+              "Les deux ont la même teinte grise"
+            ],
+            "a": 1,
+            "reveal": "Le fût de la colonne de Tòdaro est en granit rouge d’Assouan, en Égypte. Celui du lion est en granit gris-violet de la Troade, dans l’actuelle Turquie. Ces pierres anciennes ont été réemployées à Venise ; leur trajet exact jusqu’à la ville reste incertain.",
+            "img": "img/q/colonnes-5.webp",
+            "src": [
+              "https://iris.unive.it/retrieve/e4239ddd-243c-7180-e053-3705fe0a3322/L.%20Sperti%2C%20Reimpiego%2C%20in%20Tondo%20Angaran.pdf",
+              "https://provenezia.ch/en/restorations/column-of-st-mark"
+            ],
+            "cap": "Le fût de Tòdaro, à droite sur cette vue, est plus rouge que celui du lion."
+          }
+        ]
+      }
     ] },
   { id: "soupirs", emoji: "🌉", name: "Le pont des Soupirs", lat: 45.43406, lon: 12.34086, r: 60,
     story: "Ce pont couvert relie le palais du Doge à l'ancienne prison. On raconte que les prisonniers soupiraient en voyant Venise une dernière fois par la petite fenêtre.",
