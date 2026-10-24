@@ -1441,6 +1441,7 @@ function openChapters(p, replay = false, conclusionOnly = false) {
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
 const endMessage = (p, again = false) => {
   const bravo = again ? "**Tu as déjà mené toutes ces épreuves jusqu'au bout.**" : `**Bravo, ${gradeLc()} ! Tu as mené toutes ces épreuves jusqu'au bout.**`;
+  if (p.musicChallenge) return `${bravo} ${again ? "Rappelle-toi mon indice :" : "Je vais te confier un secret :"} **${p.musicChallenge.hint}** Ouvre le plan et regarde bien. ${p.reward ? `Un autre secret t'attend : **${p.reward.hint}**` : ""}`;
   return p.reward ? `${bravo} ${again ? "Rappelle-toi mon indice :" : "Je vais te confier un secret :"} **${p.reward.hint}** Ouvre le plan et regarde cet endroit de près.` : `${bravo} Garde en mémoire ce que tu as découvert ici. Quand tu seras prêt, reprends la carte de Venise.`;
 };
 async function chapEnd(p, replay) {
@@ -1662,10 +1663,10 @@ function setTab(t) {
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   const onTab = $("#up-bar .up-tabs button.on"); if (onTab && onTab.scrollIntoView) setTimeout(() => onTab.scrollIntoView({ inline: "center", block: "nearest" }), 30);
   $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; document.body.classList.toggle("menu-open", t !== "map"); { const ms = $("#menu-say"); if (ms) ms.hidden = t === "map"; } if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
-  ["days", "objects", "bridges", "photos", "works", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
+  ["days", "objects", "bridges", "photos", "works", "music", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
   $("#tab-dev").hidden = !DEV;
   $("#bridge-btn").hidden = t !== "map";
-  if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
+  if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "music") renderMusicCollection(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
   if (t === "map") { setTimeout(() => map.resize(), 50); renderNext(); } else $("#next").hidden = true;
   if (t !== "map") closeSheetKeep();
 }
@@ -1872,8 +1873,82 @@ function addTreasures(photo, im, pt, p) {
       award("tr:" + p.id, 0, meIdx()); save(); refreshAll(); confetti(120); toast(`${R.emoji} Tu as trouvé : ${R.name} !`);
       e.animate([{ transform: "translate(-50%,-50%) scale(1.4)" }, { transform: "translate(-50%,-50%) scale(.2)", opacity: 0 }], { duration: 700, fill: "forwards" }).finished.then(() => e.remove());
     });
+    const M = p.musicChallenge;
+    if (M && M.point === pt.id && !has(`music:${M.entry}:won`)) put("hid-music", "🎼", M.at[0], M.at[1], (e) => {
+      if (!has(`music:${M.entry}:found`)) { award(`music:${M.entry}:found`, 0, meIdx()); save(); }
+      openMusicChallenge(M.entry, p, () => e.remove());
+    });
   };
   if (im.complete) setTimeout(go, 60); else im.addEventListener("load", () => setTimeout(go, 60));
+}
+/* Un défi musical correspond à une seule entrée de la bibliothèque et à un seul lieu. */
+let musicCatalogPromise = null;
+const musicCatalog = () => (musicCatalogPromise ||= fetch("data/music-challenges.json").then((r) => { if (!r.ok) throw new Error("Bibliothèque musicale indisponible"); return r.json(); }).then((items) => {
+  const ids = new Set();
+  items.forEach((item) => { if (ids.has(item.id) || place(item.place)?.musicChallenge?.entry !== item.id) throw new Error("Correspondance musicale invalide"); ids.add(item.id); });
+  return items;
+}).catch((e) => { musicCatalogPromise = null; throw e; }));
+function startMusicWalk(entry) {
+  const old = $("#music-walk"); if (old) { $("audio", old)?.pause(); old.remove(); }
+  const player = document.createElement("div"); player.id = "music-walk";
+  player.innerHTML = `<span><b>${esc(entry.title)}</b><small>Écoute en marchant</small></span><audio controls preload="auto" src="${esc(entry.complete)}"></audio><button type="button" aria-label="Arrêter la musique">✕</button>`;
+  document.body.appendChild(player);
+  $("button", player).onclick = () => { $("audio", player).pause(); player.remove(); };
+  const play = $("audio", player).play(); if (play?.catch) play.catch(() => toast("Appuie sur lecture pour lancer la musique."));
+}
+async function openMusicChallenge(id, p, onWon = () => {}) {
+  if ($(".music-quest")) return;
+  let entry;
+  try { entry = (await musicCatalog()).find((item) => item.id === id && item.place === p.id); } catch { toast("Le défi musical n'est pas disponible pour l'instant."); return; }
+  if (!entry) { toast("Ce fragment musical est introuvable."); return; }
+  const overlay = document.createElement("section"); overlay.className = "music-quest"; overlay.setAttribute("aria-label", "Défi musical");
+  document.body.appendChild(overlay);
+  let clip = null;
+  const stopClip = () => { if (clip) { clip.pause(); clip = null; } };
+  const close = () => { stopClip(); overlay.remove(); };
+  const credit = `<p class="mq-credit">${esc(entry.credit.text)} <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a> · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">CC BY-SA 3.0</a></p>`;
+  const victory = () => {
+    stopClip();
+    if (!has(`music:${id}:won`)) { award(`music:${id}:won`, 20, meIdx()); save(); refreshAll(); confetti(100); onWon(); }
+    overlay.innerHTML = `<button type="button" class="mq-close" aria-label="Fermer">✕</button><div class="mq-card mq-victory"><span class="mq-kicker">Fragment gagné · ${esc(id)}</span><h2>Bravo, ${esc(gradeLc())} !</h2><p>Ce morceau de partition rejoint ton livre. Écoute maintenant le mouvement entier en te promenant autour de l'église.</p><img src="${esc(entry.fragment)}" alt="Fragment de la partition de ${esc(entry.title)}"><button type="button" class="mq-main" data-walk>▶ Écouter en déambulant</button><button type="button" class="mq-later" data-later>Je l'écouterai plus tard</button>${credit}</div>`;
+    $(".mq-close", overlay).onclick = close; $("[data-later]", overlay).onclick = close;
+    $("[data-walk]", overlay).onclick = () => { startMusicWalk(entry); close(); if (tab !== "map") setTab("map"); if (openId) closeSheet(); };
+  };
+  const showQuestion = (index) => {
+    stopClip();
+    if (index >= entry.questions.length) { victory(); return; }
+    const q = entry.questions[index];
+    overlay.innerHTML = `<button type="button" class="mq-close" aria-label="Fermer">✕</button><div class="mq-card"><span class="mq-kicker">Défi musical · ${index + 1} / ${entry.questions.length}</span><h2>${esc(entry.subtitle)}</h2><img class="mq-score" src="${esc(entry.score)}" alt="Ligne de la partition à observer"><button type="button" class="mq-listen">▶ Écouter ${q.audio === "long" ? "le passage long" : "l'extrait court"}</button><p class="mq-question">${esc(q.question)}</p><div class="mq-options">${q.options.map((answer, j) => `<button type="button" data-answer="${j}">${esc(answer)}</button>`).join("")}</div><p class="mq-feedback" aria-live="polite"></p>${credit}</div>`;
+    $(".mq-close", overlay).onclick = close;
+    const listen = $(".mq-listen", overlay);
+    listen.onclick = () => {
+      if (clip && !clip.paused) { clip.pause(); listen.textContent = "▶ Reprendre l'écoute"; return; }
+      if (!clip) { clip = new Audio(entry[q.audio]); clip.onended = () => { listen.textContent = "▶ Réécouter"; }; }
+      clip.play().then(() => { listen.textContent = "❚❚ Pause"; }).catch(() => { listen.textContent = "Lecture impossible"; });
+    };
+    $$("[data-answer]", overlay).forEach((button) => button.onclick = () => {
+      if (+button.dataset.answer !== q.answer) { button.disabled = true; button.classList.add("wrong"); $(".mq-feedback", overlay).textContent = "Essaie encore, écoute bien !"; return; }
+      stopClip(); button.classList.add("right"); $$("[data-answer]", overlay).forEach((other) => other.disabled = true);
+      if (!has(`music:${id}:q:${index}`)) { award(`music:${id}:q:${index}`, 10, meIdx()); save(); refreshAll(); }
+      const feedback = $(".mq-feedback", overlay); feedback.textContent = q.explanation;
+      const next = document.createElement("button"); next.type = "button"; next.className = "mq-main"; next.textContent = index + 1 === entry.questions.length ? "Recevoir le fragment" : "Question suivante";
+      next.onclick = () => showQuestion(index + 1); feedback.after(next);
+    });
+  };
+  const first = entry.questions.findIndex((_, index) => !has(`music:${id}:q:${index}`));
+  if (first < 0) victory(); else showQuestion(first);
+}
+async function renderMusicCollection() {
+  const v = $("#v-music"); menuSay("Chaque fragment de partition a sa musique. Retrouve-les ici, matelot.");
+  let items;
+  try { items = await musicCatalog(); } catch { v.textContent = "La bibliothèque musicale est momentanément indisponible."; return; }
+  if (tab !== "music") return;
+  const discovered = items.filter((item) => has(`music:${item.id}:found`) || has(`music:${item.id}:won`));
+  v.innerHTML = discovered.length ? discovered.map((item) => `<article class="music-fragment"><img src="${esc(item.fragment)}" alt="Fragment de ${esc(item.title)}"><h2>${esc(item.title)}</h2><p>${has(`music:${item.id}:won`) ? "Fragment gagné" : "Défi musical à terminer"}</p><button type="button" data-music="${esc(item.id)}">${has(`music:${item.id}:won`) ? "Écouter le mouvement" : "Reprendre le défi"}</button></article>`).join("") : `<p class="music-empty">Les fragments de partition que tu découvriras apparaîtront ici.</p>`;
+  $$("[data-music]", v).forEach((button) => button.onclick = () => {
+    const item = items.find((x) => x.id === button.dataset.music); if (!item) return;
+    if (has(`music:${item.id}:won`)) startMusicWalk(item); else openMusicChallenge(item.id, place(item.place), () => renderMusicCollection());
+  });
 }
 // Grille des ponts : un disque gris par pont de Venise ; les ponts trouvés se révèlent dans l'ordre où l'enfant les a découverts.
 function renderBridges() {
@@ -2433,6 +2508,7 @@ function renderSettings() {
     <h3>🖥️ Plein écran</h3><div class="card"><p class="muted">Cache les barres du téléphone (dont la barre blanche du bas). Glisse depuis le bord de l'écran pour les revoir un instant.</p><button class="btn ghost" id="fs"></button></div>
     <h3>📲 Installer l'appli</h3><div class="card">${installHtml()}</div>
     <h3>📷 Crédits photos</h3><details class="card"><summary>Photos de Wikimedia Commons</summary><div id="credits" class="muted" style="margin-top:8px"></div></details>
+    <h3>🎼 Crédits musicaux</h3><details class="card"><summary>Défi musical : Domine ad adiuvandum</summary><p class="muted">Cantica Symphonia, direction Giuseppe Maletto ; enregistrement Guido Magnano, Turin, 2000. Extraits, fondus et transcodages MP3. <a href="https://commons.wikimedia.org/wiki/File:Deus_in_adiutorium.ogg" target="_blank" rel="noopener">Enregistrement source</a> · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">Licence CC BY-SA 3.0</a>.</p></details>
     <h3>🔧 Parents</h3><div class="card"><button class="btn ghost" id="intro">📖 Revoir l'histoire</button> <button class="btn ghost" id="reset" style="margin-top:6px">🗑️ Tout recommencer</button><label class="chk" style="margin-top:8px"><input type="checkbox" id="devtog" ${DEV && !QS.has("fake") ? "checked" : ""}> <span>Mode développeur : déplacer le bateau</span></label></div>
     <p class="muted" style="text-align:center;margin-top:16px">Le Livre du Lion · V1 · Carte : aquarelle Stamen Design (CC BY 4.0), Stadia Maps, OpenFreeMap, OpenMapTiles · données © contributeurs OpenStreetMap</p>`;
   { const eb = $("#eco", v); if (eb) { const lab = () => (eb.textContent = ecoOn() ? "Mode éco : activé (toucher pour désactiver)" : "Mode éco : désactivé (toucher pour activer)"); lab(); eb.onclick = () => { try { localStorage.setItem("vq_eco", ecoOn() ? "0" : "1"); } catch {} lab(); toast(ecoOn() ? "Mode éco activé" : "Mode éco désactivé"); }; } }
@@ -2573,7 +2649,7 @@ function onboarding() {
 }
 
 /* ───────── Boot ───────── */
-function refreshAll() { renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "trophies") renderTrophies(); if (openId) renderSheet(); }
+function refreshAll() { renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "trophies") renderTrophies(); if (openId) renderSheet(); }
 refreshAll();
 setTab("map");
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

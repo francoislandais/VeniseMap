@@ -1538,3 +1538,24 @@ body.intro-open > .cam.cam{visibility:visible!important}
 /* Livre ouvert : même cadre photo et mêmes calques de tenue que sur la carte, agrandis ensemble. */
 #up-me .mb-av.up-avatar-frame{border:0;background:none;box-shadow:none;overflow:visible}
 #up-me .up-avatar.me.ph{width:50px;height:50px;margin:0;animation:none;transform:scale(1.28);transform-origin:center;overflow:visible;flex:none}
+
+/* Premier défi musical : lecture de la partition, écoute et fragment gagné. */
+.hid-music{position:absolute;z-index:5;transform:translate(-50%,-50%);border:0;background:none;font-size:36px;filter:drop-shadow(0 0 7px #ffe7a5);animation:hidp 1.4s ease-in-out infinite}
+.music-quest{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;overflow:auto;padding:calc(24px + var(--safe-t)) 16px calc(24px + var(--safe-b));box-sizing:border-box;background:linear-gradient(rgba(5,25,41,.88),rgba(4,18,31,.94)),url(img/places/miracoli.webp) center/cover;color:#fff}
+.mq-close{position:fixed;top:calc(12px + var(--safe-t));right:14px;z-index:2;border:1px solid #a6bdca;border-radius:50%;width:34px;height:34px;background:rgba(8,31,48,.8);color:#fff;font-size:20px}
+.mq-card{width:min(100%,420px);max-height:100%;overflow:auto;text-align:center;padding:12px 8px;box-sizing:border-box}
+.mq-kicker{font:700 11px/1.4 Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#d8c99d}
+.mq-card h2{margin:8px 0 10px;font:26px/1.15 Georgia,serif;color:#fff}
+.mq-score{display:block;max-width:100%;width:min(100%,310px);max-height:23vh;object-fit:contain;margin:8px auto 12px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))}
+.mq-listen,.mq-main,.music-fragment button{display:block;width:100%;max-width:340px;margin:10px auto;padding:12px 16px;border:1px solid #b6d6df;border-radius:999px;background:#123d54;color:#fff;font-size:15px;font-weight:700}
+.mq-question{font:21px/1.3 Georgia,serif;margin:16px auto 12px;max-width:340px}
+.mq-options{display:grid;gap:9px;max-width:340px;margin:auto}
+.mq-options button{padding:11px 13px;min-height:44px;border:1px solid rgba(184,218,226,.75);border-radius:12px;background:rgba(12,49,70,.92);color:#fff;font-size:15px;line-height:1.25;text-align:left}
+.mq-options button.wrong{opacity:.35}.mq-options button.right{border-color:#9de0b0;background:#1a634d}
+.mq-feedback{min-height:20px;margin:10px auto;color:#e9dbb5;font-size:14px;line-height:1.3}
+.mq-credit{margin:15px auto 0;max-width:350px;color:#aebfca;font-size:10px;line-height:1.35}.mq-credit a{color:#d8dfe3}
+.mq-victory img{display:block;width:min(100%,250px);max-height:38vh;object-fit:contain;margin:12px auto}.mq-victory p{font:18px/1.35 Georgia,serif}
+.mq-later{padding:7px 12px;border:0;background:none;color:#d4e3ea;font-size:13px}
+#music-walk{position:fixed;z-index:1800;left:12px;right:12px;bottom:calc(86px + var(--safe-b));display:flex;align-items:center;gap:8px;max-width:520px;margin:auto;padding:8px 10px;border:1px solid rgba(204,228,232,.8);border-radius:14px;background:rgba(7,34,52,.96);color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+#music-walk span{min-width:72px;display:grid;gap:2px;font-size:11px}#music-walk span small{color:#c1d1d9}#music-walk audio{min-width:0;flex:1;height:34px}#music-walk>button{border:0;background:none;color:#fff;font-size:21px}
+#v-music .music-fragment{max-width:340px;margin:16px auto;text-align:center;color:#1d3040}#v-music .music-fragment img{display:block;width:min(76vw,240px);max-height:46vh;object-fit:contain;margin:auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.3))}#v-music .music-fragment h2{font:22px Georgia,serif;margin:8px 0 2px}#v-music .music-fragment p,#v-music .music-empty{text-align:center;color:#334b5c;font:15px/1.4 Georgia,serif}

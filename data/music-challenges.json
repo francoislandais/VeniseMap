@@ -1,0 +1,44 @@
+[
+  {
+    "id": "02",
+    "place": "miracoli",
+    "title": "Domine ad adiuvandum",
+    "subtitle": "La fanfare des Vêpres de Monteverdi",
+    "fragment": "img/music/02-parchemin.png",
+    "score": "img/music/02-facsimile.png",
+    "short": "audio/music/02-court.mp3",
+    "long": "audio/music/02-long.mp3",
+    "complete": "audio/music/02-complet.mp3",
+    "credit": {
+      "text": "Cantica Symphonia, direction Giuseppe Maletto ; enregistrement Guido Magnano, Turin, 2000. Extraits et transcodages.",
+      "source": "https://commons.wikimedia.org/wiki/File:Deus_in_adiutorium.ogg",
+      "license": "https://creativecommons.org/licenses/by-sa/3.0/"
+    },
+    "questions": [
+      {
+        "type": "écoute courte",
+        "question": "Après le chantre, entends-tu seulement des voix ?",
+        "options": ["Oui, seulement des voix", "Non, les instruments jouent aussi une fanfare", "Non, on entend seulement des cloches"],
+        "answer": 1,
+        "explanation": "Tu as entendu la fanfare des instruments répondre à l'appel du chantre.",
+        "audio": "short"
+      },
+      {
+        "type": "lecture et écoute",
+        "question": "Sur la partition, la ligne rapide appartient-elle à une voix ou à un instrument ?",
+        "options": ["À une voix du chœur", "À un instrument, comme le cornetto ou le violon", "À une cloche"],
+        "answer": 1,
+        "explanation": "Cette ligne est instrumentale : le cornetto ou le violon y joue un motif rapide.",
+        "audio": "short"
+      },
+      {
+        "type": "écoute longue",
+        "question": "Le chœur et les instruments jouent-ils de la même façon ?",
+        "options": ["Oui, ils suivent exactement le même rythme", "Non, le chœur tient de longues notes et les instruments bougent davantage", "Non, les instruments s'arrêtent dès que le chœur commence"],
+        "answer": 1,
+        "explanation": "Le chœur chante de longues notes pendant que les instruments dessinent des figures plus mobiles.",
+        "audio": "long"
+      }
+    ]
+  }
+]
