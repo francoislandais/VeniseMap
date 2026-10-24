@@ -3299,12 +3299,125 @@ export const PLACES = [
         ]
       }
     ] },
-  { id: "giardini", emoji: "🌳", name: "Les jardins", lat: 45.42902, lon: 12.35793, r: 150,
-    story: "Un grand parc avec des arbres, de l'herbe et de l'espace : parfait pour courir après tant de ruelles !",
-    clue: "Même les Gardiens ont besoin de respirer. Courez, roulez dans l'herbe, rechargez vos forces.",
-    tasks: [
-      { t: "do", q: "Grande course : 2 minutes de jeu libre dans les jardins." },
-      { t: "count", q: "Combien de feuilles différentes as-tu ramassées ?", a: null },
+  { id: "giardini", emoji: "🌳", name: "Les jardins de la Biennale", lat: 45.42902, lon: 12.35793, r: 150,
+    story: "Dans les Giardini, six pavillons racontent l’histoire de la Biennale à travers leur architecture. Leur accès dépend des expositions : vérifie l’ouverture avant ta visite.",
+    clue: "Observe les pavillons et les arbres autour d’eux : chaque bâtiment cache un détail à découvrir.",
+    chapters: [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "where": "Cherche le petit pavillon FINLANDIA. Regarde ses parois et les motifs clairs qui les traversent.",
+            "q": "Quel duo de couleurs et de formes compose sa façade ?",
+            "opts": [
+              "Des bandes bleues et des triangles blancs",
+              "Des rayures rouges et des cercles jaunes",
+              "Des carrés noirs et des étoiles dorées",
+              "Des briques vertes et des arches blanches"
+            ],
+            "a": 0,
+            "reveal": "L’architecte finlandais Alvar Aalto l’a conçu en 1956. Ses éléments de bois devaient pouvoir être démontés, comme une tente ; le pavillon est finalement resté dans les jardins.",
+            "img": "img/q/giardini-0.webp",
+            "src": [
+              "https://visit.alvaraalto.fi/en/destinations/the-finnish-pavilion-at-the-venice-biennale/",
+              "https://www.labiennale.org/en/venues/giardini-della-biennale"
+            ],
+            "cap": "le bleu est barré de triangles blancs."
+          },
+          {
+            "idx": 301,
+            "where": "Trouve le pavillon des PAYS NORDIQUES. Observe la rencontre entre le toit et la végétation.",
+            "q": "Quel élément vivant traverse ou s’insère dans le bâtiment ?",
+            "opts": [
+              "Des ceps de vigne",
+              "Des haies taillées en labyrinthe",
+              "Des troncs d’arbres",
+              "Des roseaux dans un bassin"
+            ],
+            "a": 2,
+            "reveal": "L’architecte norvégien Sverre Fehn a prévu la nature dans son projet. Trois arbres poussent dans ce pavillon commun à la Finlande, à la Norvège et à la Suède, achevé en 1962.",
+            "img": "img/q/giardini-1.webp",
+            "src": [
+              "https://frame-finland.fi/en/venice-biennale/pavilions/"
+            ],
+            "cap": "un tronc passe au milieu de la structure."
+          },
+          {
+            "idx": 302,
+            "where": "Cherche l’inscription GIAPPONE. Regarde l’espace juste sous le volume principal du pavillon.",
+            "q": "Comment la grande salle est-elle placée par rapport au sol ?",
+            "opts": [
+              "Elle est entièrement enterrée",
+              "Elle est surélevée sur des supports",
+              "Elle flotte sur le canal",
+              "Elle est suspendue aux branches"
+            ],
+            "a": 1,
+            "reveal": "Le pavillon japonais a été bâti en 1956 d’après Takamasa Yoshizaka. Son niveau d’exposition repose sur des supports de béton : ce vide sous le bâtiment laisse voir la pente du terrain et les arbres voisins.",
+            "img": "img/q/giardini-2.webp",
+            "src": [
+              "https://venezia-biennale-japan.jpf.go.jp/e/about",
+              "https://censimentoarchitetturecontemporanee.cultura.gov.it/scheda-opera?id=1396"
+            ],
+            "cap": "la salle est au-dessus d’un espace ouvert."
+          },
+          {
+            "idx": 303,
+            "where": "Au pavillon CANADA, observe le mur qui porte le nom du pays.",
+            "q": "De quoi ce mur est-il fait ?",
+            "opts": [
+              "De plaques de marbre blanc",
+              "De bois peint en bleu",
+              "De métal miroir",
+              "De briques rouges"
+            ],
+            "a": 3,
+            "reveal": "Construit en 1957–1958 par l’agence italienne BBPR, le pavillon associe brique, verre, bois et acier. Sa forme s’enroule autour de son site boisé, où deux grands arbres ont été intégrés au bâtiment.",
+            "img": "img/q/giardini-3.webp",
+            "src": [
+              "https://www.canada.ca/en/national-film-board/news/2018/07/newly-restored-canada-pavilion-unveiled-in-venice-at-the-biennale-architettura-2018-on-the-60th-anniversary-of-its-inauguration.html"
+            ],
+            "cap": "le nom CANADA se détache sur la brique."
+          },
+          {
+            "idx": 304,
+            "where": "Place-toi face au pavillon GRAN BRETAGNA. Observe la montée vers son entrée.",
+            "q": "Quel élément mène à la porte principale ?",
+            "opts": [
+              "Un pont en bois au-dessus de l’eau",
+              "Un grand escalier de marbre",
+              "Une rampe en spirale",
+              "Une passerelle de verre suspendue"
+            ],
+            "a": 1,
+            "reveal": "Le pavillon a ouvert en 1909 dans un ancien café-restaurant transformé par Edwin Alfred Rickards. Son escalier mène à une façade de style classique, avec des colonnes.",
+            "img": "img/q/giardini-4.webp",
+            "src": [
+              "https://venicebiennale.britishcouncil.org/sites/default/files/appendix_c_british_pavilion_user_guide-merged.pdf"
+            ],
+            "cap": "l’escalier monte vers l’entrée classique."
+          },
+          {
+            "idx": 305,
+            "where": "Cherche le pavillon AUSTRALIA au bord du canal. Regarde surtout son enveloppe.",
+            "q": "À quel objet sa silhouette sombre fait-elle penser ?",
+            "opts": [
+              "Un clocher à coupole",
+              "Une maison à colombages",
+              "Une grande boîte noire",
+              "Une tente rayée"
+            ],
+            "a": 2,
+            "reveal": "Ouvert en 2015, ce pavillon des architectes Denton Corker Marshall est revêtu de granit noir. Certains panneaux peuvent s’ouvrir selon l’exposition : son aspect peut donc changer.",
+            "img": "img/q/giardini-5.webp",
+            "src": [
+              "https://creative.gov.au/wp-content/uploads/2022/09/Media-Release-Venice-Biennale-2024-%E2%80%93-expressions-of-interest-open-for-the-next-artistic-team-to-exhibit-at-the-Australia-Pavilion.pdf",
+              "https://www.labiennale.org/en/venues/giardini-della-biennale"
+            ],
+            "cap": "le pavillon forme une boîte sombre près de l’eau."
+          }
+        ]
+      }
     ] },
   { id: "lido", emoji: "🏖️", name: "La plage du Lido", lat: 45.4105, lon: 12.3725, r: 200,
     story: "À côté de Venise, une longue île avec une vraie plage de sable ! (Si le temps ne s'y prête pas, tu peux sauter cette étape avec un parent.)",
