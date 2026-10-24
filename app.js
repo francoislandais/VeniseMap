@@ -1498,7 +1498,7 @@ async function chapEnd(p, replay, preview = false) {
   const exitDock = $(".dock", sh); if (exitDock) exitDock.remove();
   const icon = PLACE_ICONS[p.id], emblem = document.createElement("div");
   emblem.className = "chap-victory";
-  emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span></div>`;
+  emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
   const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: "À présent, je vais te confier un secret.", secret: endSecret(p), plan: "Ouvre le plan de l'église." };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;

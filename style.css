@@ -1635,3 +1635,29 @@ body.menu-open #dev-chap-help,body:not(.jeu) #dev-chap-help{display:none!importa
 #sheet.chap.chap-conclusion .chap-edit-size{display:flex;align-items:center;gap:5px;flex:1 0 100%;white-space:nowrap}
 #sheet.chap.chap-conclusion .chap-edit-size input{flex:1;min-width:90px;accent-color:#f1d58b}
 #sheet.chap.chap-conclusion .chap-edit-size output{min-width:42px;text-align:right}
+
+/* Couronne d'étoiles plus présente autour du pictogramme acquis. */
+#sheet.chap.chap-conclusion .chap-victory-halo{inset:-34%;background:radial-gradient(circle,rgba(255,225,139,.75) 0%,rgba(255,210,93,.43) 29%,rgba(240,171,54,.19) 49%,transparent 72%);filter:blur(7px)}
+#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-halo{opacity:1;transform:scale(1.25);animation:chapHaloBright 3.8s ease-in-out 1.2s infinite alternate}
+@keyframes chapHaloBright{to{opacity:.82;transform:scale(1.43)}}
+#sheet.chap.chap-conclusion .chap-victory-stars{inset:-14%;pointer-events:none}
+#sheet.chap.chap-conclusion .chap-victory-stars i{font-size:clamp(17px,5vw,25px);color:#fff1ba;text-shadow:0 0 6px #fff7dc,0 0 14px #ffd46a,0 0 25px #e7a53b;animation:chapStarTwinkle 1.9s ease-in-out infinite alternate}
+#sheet.chap.chap-conclusion .chap-victory-stars i:nth-child(even){animation-delay:-.9s}
+#sheet.chap.chap-conclusion .chap-victory-stars i:nth-child(3n){animation-duration:2.6s}
+#sheet.chap.chap-conclusion .chap-victory-stars-outer i:nth-child(1){top:-2%;left:49%}
+#sheet.chap.chap-conclusion .chap-victory-stars-outer i:nth-child(2){top:24%;right:-1%}
+#sheet.chap.chap-conclusion .chap-victory-stars-outer i:nth-child(3){right:6%;bottom:7%;left:auto}
+#sheet.chap.chap-conclusion .chap-victory-stars-outer i:nth-child(4){bottom:-2%;left:35%;top:auto}
+#sheet.chap.chap-conclusion .chap-victory-stars-outer i:nth-child(5){bottom:28%;left:-2%}
+#sheet.chap.chap-conclusion .chap-victory-stars-outer i:nth-child(6){top:13%;left:5%}
+#sheet.chap.chap-conclusion .chap-victory-stars-inner{inset:4%}
+#sheet.chap.chap-conclusion .chap-victory-stars-inner i{font-size:clamp(12px,3.5vw,18px);color:#fff8dc}
+#sheet.chap.chap-conclusion .chap-victory-stars-inner i:nth-child(1){top:-4%;left:25%}
+#sheet.chap.chap-conclusion .chap-victory-stars-inner i:nth-child(2){top:13%;right:4%;left:auto}
+#sheet.chap.chap-conclusion .chap-victory-stars-inner i:nth-child(3){right:18%;bottom:1%;left:auto}
+#sheet.chap.chap-conclusion .chap-victory-stars-inner i:nth-child(4){bottom:18%;left:0;top:auto}
+#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-stars-outer{animation:chapOrbit 9s linear .6s infinite}
+#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-stars-inner{animation:chapOrbitReverse 13s linear .6s infinite}
+@keyframes chapOrbitReverse{to{transform:rotate(-360deg)}}
+@keyframes chapStarTwinkle{to{opacity:.48;scale:.7}}
+@media (prefers-reduced-motion:reduce){#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-halo,#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-stars-outer,#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-stars-inner,#sheet.chap.chap-conclusion .chap-victory-stars i{animation:none}}
