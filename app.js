@@ -345,7 +345,7 @@ async function arrivalReveal(p) {
   const cl = $(".m-close", sh); if (cl) cl.remove(); // pas de croix sur cet écran
   const arr = document.createElement("div"); arr.className = "arr";
   arr.innerHTML = `<div class="arr-top"><div class="msg fc"><span class="arr-face"></span><div class="m-bubble typing"><i></i><i></i><i></i></div></div></div>
-    <div class="arr-bot"><div class="arr-name">${esc(p.name)}</div><button class="arr-go" id="arr-go">${done === 0 ? "Commencer l'épreuve" : done < p.tasks.length ? "Continuer l'épreuve" : "Revoir le lieu"}</button>${LOCAL_DEV && p.chapters ? '<button type="button" class="arr-dev-finish" style="opacity:0">🔧 Dev · Aller à la conclusion</button>' : ""}</div>`;
+    <div class="arr-bot"><div class="arr-name">${esc(p.name)}</div><button class="arr-go" id="arr-go">${done === 0 ? "Commencer l'épreuve" : done < p.tasks.length ? "Continuer l'épreuve" : "Revoir le lieu"}</button>${LOCAL_DEV && p.chapters ? '<button type="button" class="arr-dev-finish">🔧 Dev · Aller à la conclusion</button>' : ""}</div>`;
   sh.appendChild(arr);
   $(".arr-top", arr).animate([{ opacity: 0, transform: "translateY(-18px)" }, { opacity: 1, transform: "none" }], { duration: 700, easing: "ease-out" });
   $(".arr-face", arr).animate([{ opacity: 0, transform: "translateY(-30px) scale(.4)" }, { opacity: 0, offset: .35 }, { opacity: 1, transform: "scale(1.12)", offset: .8 }, { opacity: 1, transform: "none" }], { duration: 1300, easing: "ease-out" });
@@ -359,10 +359,7 @@ async function arrivalReveal(p) {
   go.animate([{ opacity: 0, transform: "translateY(22px)" }, { opacity: 1, transform: "none" }], { duration: 700, fill: "forwards", easing: "cubic-bezier(.2,.9,.25,1.1)" });
   go.onclick = () => { stopMusic(1200); openQuest(p.id); };
   const devFinish = $(".arr-dev-finish", arr);
-  if (devFinish) {
-    devFinish.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 700, fill: "forwards", easing: "ease-out" });
-    devFinish.onclick = () => devCompleteChapter(p);
-  }
+  if (devFinish) devFinish.onclick = () => devCompleteChapter(p);
 }
 // Raccourci réservé à l'aperçu local : termine les questions et les toiles, puis révèle l'indice sans ramasser le trésor.
 function devCompleteChapter(p) {
@@ -847,9 +844,9 @@ function openPlaceBump(id, originRect) { bumpPin(id); setTimeout(() => openPlace
 function openPlace(id, originRect) {
   const p = place(id);
   // Trop loin du lieu : plus de pastille agrandie ni de reprise d'épreuve, simplement un message de Corto (phrases near / mid / far avec distance et temps de marche).
-  // Le mode dev ne court-circuite plus ce test dès qu'une position est connue (réelle ou épinglée) ; sans aucune position il laisse passer. Un lieu terminé reste consultable.
+  // Sur l'aperçu local, l'entrée de l'épreuve reste accessible pour ses contrôles de test, même si le GPS est loin.
   { const inReal = !!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX);
-    if (!(p.chapters && complete(p)) && (DEV ? !!pos && !inReal : !inZone(p))) { const d = distTo(p); if (suspended) closeSheet(); cortoSays(d == null ? say("nogps", p) : placeFarLine(p, d)); return; } }
+    if (!(p.chapters && complete(p)) && !(LOCAL_DEV && p.chapters) && (DEV ? !!pos && !inReal : !inZone(p))) { const d = distTo(p); if (suspended) closeSheet(); cortoSays(d == null ? say("nogps", p) : placeFarLine(p, d)); return; } }
   // Épreuve mise en pause : même lieu et enfant toujours dans la zone → on retombe exactement sur l'écran quitté.
   if (suspended) { if (suspended.id === id && inZone(p)) { resumeSuspended(); return; } closeSheet(); }
   // Enquête commencée et enfant toujours dans la zone : on reprend instantanément là où il en était, sans repasser par l'accueil.
@@ -2614,7 +2611,12 @@ async function renderDev() {
   v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🐚 Objets trouvés (test)</h2><div class="dv-src"><button class="btn ghost" data-ob="one">Trouver un objet</button><button class="btn ghost" data-ob="all">Tout trouver</button><button class="btn ghost" data-ob="reset">Tout retirer</button></div></div>`);
   v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🧩 Épreuves (test)</h2><p class="muted">Remet les lieux dans l'état « jamais visités » : arrivée, questions, plan, trésors, œuvres gagnées, photos du lieu et défi musical. Le profil et les ponts restent.</p><div class="dv-src"><button class="btn ghost" id="reset-miracoli">↺ Réinitialiser l'église-bijou</button><button class="btn ghost" id="reset-trials">↺ Réinitialiser toutes les épreuves</button></div></div>`);
   const resetDevPlaces = async (places) => {
-    try { await resetPlaceProgress(places); toast(places.length === 1 ? "L'église-bijou est remise à zéro." : "Tous les lieux sont remis à zéro."); setTab("map"); }
+    try {
+      await resetPlaceProgress(places);
+      toast(places.length === 1 ? "L'église-bijou est remise à zéro." : "Tous les lieux sont remis à zéro.");
+      setTab("map");
+      if (places.length === 1) setTimeout(() => openPlace(places[0].id), 200);
+    }
     catch { toast("Réinitialisation incomplète : les photos locales n'ont pas pu être effacées."); }
   };
   $("#reset-miracoli", v).onclick = () => resetDevPlaces([place("miracoli")]);
@@ -2780,6 +2782,7 @@ refreshAll();
 setTab("map");
 if (LOCAL_DEV) {
   const help = $("#dev-chap-help"); help.hidden = false;
+  help.textContent = "🔧 Conclusion église-bijou";
   help.onclick = () => { if (tab === "map" && $("#sheet").hidden) openChapters(place("miracoli"), false, true, true); };
 }
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
