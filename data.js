@@ -2083,11 +2083,100 @@ export const PLACES = [
   // ─── JOUR 6 : livres et secrets ───
   { id: "acquaalta", emoji: "📚", name: "La librairie Acqua Alta", lat: 45.43806, lon: 12.34227, r: 60,
     story: "Une librairie où les livres sont rangés dans des baignoires, des barques et même une vraie gondole, pour les protéger de l'eau haute. Au fond : un escalier fait de livres !",
-    clue: "Les histoires flottent mieux que les bateaux. Monte l'escalier, l'horizon change.",
-    tasks: [
-      { t: "choice", q: "Où les livres sont-ils rangés ?", opts: ["🛶 Dans une vraie gondole", "🚀 Dans une fusée", "🚜 Dans un tracteur"], a: 0, fact: "Il y a aussi des baignoires et des barques : tout ce qui flotte !" },
-      { t: "do", q: "Grimpe en haut de l'escalier de livres et regarde le canal derrière." },
-      { t: "photo", q: "Photographie l'escalier fait de livres.", pts: 20 },
+    clue: "Les histoires flottent mieux que les bateaux. Au fond, les livres dessinent un chemin vers l’horizon.",
+    chapters: [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "where": "Lis l’enseigne « Acqua Alta » et remarque les récipients où reposent les livres.",
+            "q": "Que signifie « acqua alta » à Venise ?",
+            "opts": [
+              "Une eau devenue trop salée",
+              "Une marée haute qui peut inonder les endroits bas",
+              "La pluie qui tombe seulement en été",
+              "Un ancien nom du Grand Canal"
+            ],
+            "a": 1,
+            "reveal": "L’expression vénitienne désigne l’eau exceptionnellement haute. Quand la marée monte assez, elle peut gagner les parties basses de la ville, et parfois cette librairie. Ses propriétaires ont donc installé une partie des livres dans des contenants inattendus.",
+            "src": [
+              "https://www.comune.venezia.it/en/content/venice-and-high-water",
+              "https://www.libreriacqualta.it/la-libreria/"
+            ]
+          },
+          {
+            "idx": 301,
+            "where": "Dans la salle principale, cherche un long bateau sombre rempli de livres. Il n’est pas nécessaire d’y monter.",
+            "q": "Quel bateau vénitien sert ici de bibliothèque ?",
+            "opts": [
+              "Un vaporetto",
+              "Une gondole",
+              "Un voilier de pêche",
+              "Un kayak de mer"
+            ],
+            "a": 1,
+            "reveal": "La librairie range des livres dans une gondole, mais aussi dans d’autres petites embarcations. Une idée très vénitienne pour les présenter et les tenir à distance de l’eau qui peut entrer dans le magasin.",
+            "src": [
+              "https://www.libreriacqualta.it/la-libreria/"
+            ],
+            "img": "img/q/acquaalta-q02.webp",
+            "cap": "la longue embarcation au milieu de la salle porte des livres."
+          },
+          {
+            "idx": 302,
+            "where": "Explore les rayons sans déplacer les piles ; cherche un grand récipient détourné en bac à livres.",
+            "q": "Quel objet surprenant sert aussi à ranger des livres ?",
+            "opts": [
+              "Une baignoire",
+              "Un coffre de voyage",
+              "Un panier à linge",
+              "Une caisse à outils"
+            ],
+            "a": 0,
+            "reveal": "Des baignoires ou grandes cuves servent de bacs à livres. Leurs parois montrent comment cette librairie s’adapte à la présence possible de l’eau. Le nombre et la place de ces objets peuvent changer : si tu ne les vois pas, demande au personnel ou passe à l’énigme suivante.",
+            "src": [
+              "https://www.libreriacqualta.it/la-libreria/",
+              "https://www.veneziadeigondolieri.it/en/places/eclectic-venice/shopping/"
+            ]
+          },
+          {
+            "idx": 303,
+            "where": "Au fond de la boutique, repère l’inscription « Follow the books ». Observe les marches sans les emprunter si l’accès est fermé.",
+            "q": "Avec quoi les marches de cet escalier ont-elles été fabriquées ?",
+            "opts": [
+              "Des coquillages collés",
+              "De vieux livres empilés",
+              "Des briques peintes comme des livres",
+              "Des caisses de vin"
+            ],
+            "a": 1,
+            "reveal": "La librairie explique que ces centaines de livres étaient destinés au recyclage. Transformés en marches, ils mènent à un point de vue sur les canaux lorsque l’accès est autorisé.",
+            "src": [
+              "https://www.libreriacqualta.it/la-libreria/"
+            ],
+            "img": "img/q/acquaalta-q04.webp",
+            "cap": "les piles de livres forment les marches."
+          },
+          {
+            "idx": 304,
+            "where": "Repère la porte en bois que la librairie présente comme une sortie de secours ; regarde seulement depuis l’espace autorisé.",
+            "q": "Qu’y a-t-il juste derrière cette porte ?",
+            "opts": [
+              "Une petite place",
+              "Un jardin caché",
+              "Un canal",
+              "Une autre librairie"
+            ],
+            "a": 2,
+            "reveal": "Cette porte s’ouvre directement sur l’eau du canal voisin. C’est une façon spectaculaire de comprendre pourquoi les habitants et les commerçants de Venise surveillent la marée.",
+            "src": [
+              "https://www.libreriacqualta.it/la-libreria/"
+            ],
+            "img": "img/q/acquaalta-q05.webp",
+            "cap": "l’eau du canal apparaît immédiatement au-delà de la porte."
+          }
+        ]
+      }
     ] },
   { id: "miracoli", emoji: "💎", name: "L'église-bijou", lat: 45.43950, lon: 12.33935, r: 60,
     story: "Santa Maria dei Miracoli est toute en marbre de couleurs : on dirait une boîte à bijoux posée au bord du canal.",
