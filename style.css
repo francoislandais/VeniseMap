@@ -1680,14 +1680,14 @@ body.menu-open #dev-chap-help{display:none!important}
 #dev-chap-help{top:calc(78px + var(--safe-t));left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(360px,calc(100vw - 24px));min-height:62px;padding:11px 16px;border:2px solid #efcf83;border-radius:15px;background:rgba(8,37,56,.96);color:#fff;font:700 15px/1.25 Arial,sans-serif;text-align:center;text-wrap:balance;box-shadow:0 5px 20px rgba(0,8,18,.5),0 0 14px rgba(239,207,131,.3);pointer-events:auto}
 #dev-chap-help:disabled{opacity:.6}
 
-/* Le décor de l'épreuve reste visible en fondu derrière le plan et ses photos. */
+/* Le décor de l'épreuve reste net ; seul le bord du plan se fond progressivement. */
 #sheet .plan-panel-full{isolation:isolate;background:#071823}
-#sheet .plan-panel-full::before{content:"";position:absolute;inset:-24px;z-index:0;background:var(--plan-place-bg) center/cover no-repeat;filter:blur(15px) brightness(.72);opacity:.82;pointer-events:none}
-#sheet .plan-panel-full::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(3,17,28,.38),rgba(3,17,28,.16) 45%,rgba(3,17,28,.5));pointer-events:none}
+#sheet .plan-panel-full::before{content:"";position:absolute;inset:0;z-index:0;background:var(--plan-place-bg) center/cover no-repeat;pointer-events:none}
+#sheet .plan-panel-full::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(3,17,28,.12),rgba(3,17,28,.03) 45%,rgba(3,17,28,.16));pointer-events:none}
 #sheet .plan-panel-full .plan-stage{z-index:1}
-#sheet .plan-panel-full .plan-img{-webkit-mask-image:radial-gradient(ellipse 82% 78% at center,#000 67%,transparent 100%)!important;mask-image:radial-gradient(ellipse 82% 78% at center,#000 67%,transparent 100%)!important}
-#sheet .plan-panel-full .plan-photo{background:linear-gradient(rgba(3,17,28,.27),rgba(3,17,28,.43))!important}
-#sheet .plan-panel-full .plan-photo img,#sheet .plan-panel-full .plan-photo img.tall{-webkit-mask-image:radial-gradient(ellipse 86% 80% at center,#000 72%,transparent 100%)!important;mask-image:radial-gradient(ellipse 86% 80% at center,#000 72%,transparent 100%)!important}
+#sheet .plan-panel-full .plan-img{-webkit-mask-image:radial-gradient(ellipse 54% 54% at center,#000 32%,rgba(0,0,0,.82) 55%,transparent 100%)!important;mask-image:radial-gradient(ellipse 54% 54% at center,#000 32%,rgba(0,0,0,.82) 55%,transparent 100%)!important}
+#sheet .plan-panel-full .plan-photo{background:linear-gradient(rgba(3,17,28,.07),rgba(3,17,28,.16))!important}
+#sheet .plan-panel-full .plan-photo img,#sheet .plan-panel-full .plan-photo img.tall{-webkit-mask-image:radial-gradient(ellipse 56% 54% at center,#000 44%,rgba(0,0,0,.85) 62%,transparent 100%)!important;mask-image:radial-gradient(ellipse 56% 54% at center,#000 44%,rgba(0,0,0,.85) 62%,transparent 100%)!important}
 
 /* Un seul objet sur la photo musicale : parchemin roulé bien visible. */
 .hid-music-scroll{position:absolute;z-index:5;width:86px;height:104px;padding:0;border:0;background:none;transform:translate(-50%,-50%);filter:drop-shadow(0 5px 8px rgba(0,0,0,.7));animation:hidp 1.8s ease-in-out infinite;cursor:pointer}
