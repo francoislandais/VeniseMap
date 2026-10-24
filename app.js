@@ -1657,7 +1657,6 @@ function menuDock() {
 }
 function setTab(t) {
   tab = t; if (t !== "map") lastTab = t;
-  if (t !== "objects") document.body.classList.remove("objects-has-items");
   if (t !== "map" && !menuOpen) { menuOpen = true; try { history.pushState({ vqMenu: 1 }, ""); } catch {} } if (t === "map") menuOpen = false;
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
@@ -1666,7 +1665,7 @@ function setTab(t) {
   ["days", "objects", "bridges", "photos", "works", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
   $("#tab-dev").hidden = !DEV;
   $("#bridge-btn").hidden = t !== "map";
-  if (t === "days") renderDays(); if (t === "objects") renderObjects(); if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
+  if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
   if (t === "map") { setTimeout(() => map.resize(), 50); renderNext(); } else $("#next").hidden = true;
   if (t !== "map") closeSheetKeep();
 }
@@ -1686,14 +1685,19 @@ function openMenuFrom(me) {
   const ind = document.createElement("div"); ind.className = "ptr"; document.body.appendChild(ind);
   let y0 = null, dy = 0, busyR = false;
   const hide = () => { ind.style.opacity = 0; ind.style.transform = "translate(-50%,-30px)"; };
-  addEventListener("touchstart", (e) => { const v = e.target.closest && e.target.closest(".view"); y0 = v && !v.hidden && v.scrollTop <= 0 && !busyR ? e.touches[0].clientY : null; dy = 0; }, { passive: true });
+  addEventListener("touchstart", (e) => {
+    if (tab === "objects") { y0 = null; dy = 0; hide(); return; }
+    const v = e.target.closest && e.target.closest(".view"); y0 = v && !v.hidden && v.scrollTop <= 0 && !busyR ? e.touches[0].clientY : null; dy = 0;
+  }, { passive: true });
   addEventListener("touchmove", (e) => {
+    if (tab === "objects") { y0 = null; hide(); return; }
     if (y0 == null) return; dy = e.touches[0].clientY - y0;
     if (dy <= 0) { hide(); return; }
     const top = ($("#up-bar") ? $("#up-bar").offsetHeight : 100) + 10 + Math.min(dy / 2.2, 46);
     ind.textContent = dy > 90 ? "Relâche pour actualiser" : "Tire pour actualiser"; ind.style.opacity = Math.min(1, dy / 50); ind.style.transform = `translate(-50%,${top}px)`;
   }, { passive: true });
   addEventListener("touchend", async () => {
+    if (tab === "objects") { y0 = null; hide(); return; }
     if (y0 == null) return; const go = dy > 90; y0 = null;
     if (!go) { hide(); return; }
     busyR = true; ind.textContent = "Actualisation…";
@@ -1942,29 +1946,45 @@ const OBJECTS = [
   { id: "lanterne", name: "La lanterne secrète", img: "lanterne.svg", key: "o:lanterne" },
 ];
 const objectList = () => OBJECTS.map((o) => ({ ...o, img: "img/objets/" + o.img, found: has(o.key) }));
-// Objet « pris » : il quitte sa case, s'agrandit, vient se poser sur le côté droit de l'écran et oscille doucement. Il y reste (même sur la carte, même après un rechargement) : l'enfant pourra le donner à quelqu'un. Un nouveau toucher dans l'onglet le repose.
+// Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = "vq_held", HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
 const saveHeld = () => { try { heldId ? localStorage.setItem(HELD_KEY, heldId) : localStorage.removeItem(HELD_KEY); } catch {} };
 const HELD_POS = "vq_held_pos";
-const clampHeld = (p) => ({ left: Math.max(4, Math.min(innerWidth - HELD_SIZE - 4, p.left)), top: Math.max(4, Math.min(innerHeight - HELD_SIZE - 4, p.top)) });
-const heldSpot = () => { try { const p = JSON.parse(localStorage.getItem(HELD_POS)); if (p && isFinite(p.left) && isFinite(p.top)) return clampHeld(p); } catch {} return { left: innerWidth - HELD_SIZE - 8, top: Math.round(innerHeight * 0.36) }; }; // là où l'enfant l'a laissé, sinon sur le côté droit
+const clampHeld = (p) => {
+  const size = Math.max(1, Math.min(p.size || HELD_SIZE, innerWidth - 8, innerHeight - 8));
+  return { left: Math.max(4, Math.min(innerWidth - size - 4, p.left)), top: Math.max(4, Math.min(innerHeight - size - 4, p.top)), size, docked: !!p.docked };
+};
+const heldDock = () => {
+  const score = $("#hud-score")?.getBoundingClientRect(), tabs = $("#up-bar .up-tabs")?.getBoundingClientRect();
+  if (!score || !tabs) return clampHeld({ left: innerWidth - 64, top: 54, size: 56, docked: true });
+  const gap = Math.max(1, tabs.top - score.bottom), size = Math.min(56, Math.max(1, gap - 12));
+  return clampHeld({ left: score.right - size, top: score.bottom + (gap - size) / 2, size, docked: true });
+};
+const heldSpot = () => {
+  try {
+    const p = JSON.parse(localStorage.getItem(HELD_POS));
+    if (p && Number.isFinite(p.left) && Number.isFinite(p.top)) return p.docked && tab === "objects" ? heldDock() : clampHeld(p);
+  } catch {}
+  return tab === "objects" ? heldDock() : clampHeld({ left: innerWidth - HELD_SIZE - 8, top: Math.round(innerHeight * 0.36), size: HELD_SIZE });
+};
 function mountHeld(id, fromRect) {
   const o = objectList().find((x) => x.id === id && (x.found || PREVIEW_OBJECTS)); if (!o) { heldId = null; saveHeld(); return; }
   if (heldEl) heldEl.remove();
   const el = document.createElement("div"); el.className = "held-ob"; el.dataset.o = id; el.innerHTML = o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${o.emoji}</span>`;
-  const p = heldSpot(); el.style.cssText = `left:${p.left}px;top:${p.top}px;width:${HELD_SIZE}px;height:${HELD_SIZE}px`;
+  const p = heldSpot(); el.style.cssText = `left:${p.left}px;top:${p.top}px;width:${p.size}px;height:${p.size}px`;
+  if (p.docked) try { localStorage.setItem(HELD_POS, JSON.stringify(p)); } catch {}
   document.body.appendChild(el); heldEl = el;
-  if (fromRect) el.animate([{ transform: `translate(${fromRect.left + fromRect.width / 2 - (p.left + HELD_SIZE / 2)}px, ${fromRect.top + fromRect.height / 2 - (p.top + HELD_SIZE / 2)}px) scale(${fromRect.width / HELD_SIZE})` }, { transform: "scale(1.12)", offset: 0.7 }, { transform: "none" }], { duration: 560, easing: "cubic-bezier(.2,.9,.3,1)" }).onfinish = () => el.classList.add("wob"); else el.classList.add("wob");
+  if (fromRect) el.animate([{ transform: `translate(${fromRect.left + fromRect.width / 2 - (p.left + p.size / 2)}px, ${fromRect.top + fromRect.height / 2 - (p.top + p.size / 2)}px) scale(${fromRect.width / p.size})` }, { transform: "scale(1.12)", offset: 0.7 }, { transform: "none" }], { duration: 560, easing: "cubic-bezier(.2,.9,.3,1)" }).onfinish = () => el.classList.add("wob"); else el.classList.add("wob");
   // L'enfant peut le déplacer où il veut avec le doigt (il restera là où il le lâche) ; un simple toucher, dans l'onglet Objets, le repose.
   el.style.touchAction = "none"; let st = null;
   const zone = () => { let z = $("#ranger"); if (!z) { z = document.createElement("div"); z.id = "ranger"; z.innerHTML = '<b>Ranger</b><span></span>'; document.body.appendChild(z); } return z; };
   const inZone = () => { const z = $("#ranger"); if (!z) return false; const a = z.getBoundingClientRect(), b = el.getBoundingClientRect(); return Math.hypot(a.left + a.width / 2 - (b.left + b.width / 2), a.top + a.height / 2 - (b.top + b.height / 2)) < a.width / 2 + 10; };
   el.onpointerdown = (e) => { e.preventDefault(); const r = el.getBoundingClientRect(); st = { x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false }; try { el.setPointerCapture(e.pointerId); } catch {} };
-  el.onpointermove = (e) => { if (!st) return; if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return; if (!st.moved && tab === "map") { const z = zone(); $("span", z).textContent = o.name; z.classList.add("on"); } st.moved = true; el.classList.add("drag"); const q = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy }); el.style.left = q.left + "px"; el.style.top = q.top + "px"; const zz = $("#ranger"); if (zz) zz.classList.toggle("hot", inZone()); };
+  el.onpointermove = (e) => { if (!st) return; if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return; if (!st.moved && tab === "map") { const z = zone(); $("span", z).textContent = o.name; z.classList.add("on"); } st.moved = true; el.classList.add("drag"); const q = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy, size: parseFloat(el.style.width) }); el.style.left = q.left + "px"; el.style.top = q.top + "px"; const zz = $("#ranger"); if (zz) zz.classList.toggle("hot", inZone()); };
   const hideZone = () => { const z = $("#ranger"); if (z) z.classList.remove("on", "hot"); };
   const end = () => { if (!st) return; const moved = st.moved; st = null; el.classList.remove("drag");
-    if (moved) { if (tab === "map" && inZone()) { storeHeld(el); hideZone(); return; } hideZone(); try { localStorage.setItem(HELD_POS, JSON.stringify({ left: parseFloat(el.style.left), top: parseFloat(el.style.top) })); } catch {} }
+    if (moved) { if (tab === "map" && inZone()) { storeHeld(el); hideZone(); return; } hideZone(); try { localStorage.setItem(HELD_POS, JSON.stringify({ left: parseFloat(el.style.left), top: parseFloat(el.style.top), size: parseFloat(el.style.width), docked: false })); } catch {} }
     else if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
   el.onpointerup = end; el.onpointercancel = () => { st = null; el.classList.remove("drag"); const z = $("#ranger"); if (z) z.classList.remove("on", "hot"); };
 }
@@ -2052,8 +2072,7 @@ function bindObjectDrag(button) {
 function renderObjects() {
   const v = $("#v-objects"), objects = objectList();
   const shown = PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found);
-  document.body.classList.toggle("objects-has-items", shown.length > 0);
-  menuSay(shown.length ? "" : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
+  menuSay(shown.length ? "Collectionne ces objets ici et vois ce que tu peux faire avec." : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
   v.innerHTML = shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}"><img src="${o.img}" alt=""></button>`).join("")}</div><div id="ob-assembly" class="ob-assembly" aria-label="Espace d’assemblage"><span class="ob-workhint">Glisse des objets ici</span></div>` : "";
   $$(".ob", v).forEach(bindObjectDrag);
   renderObjectAssembly();
@@ -2065,7 +2084,13 @@ window.__objects = {
   hold: (id) => { const o = OBJECTS.find((item) => item.id === id); if (!o) return; if (!PREVIEW_OBJECTS && !has(o.key)) window.__objects.find(id); heldId = id; saveHeld(); mountHeld(id); if (tab === "objects") renderObjects(); },
 };
 if (heldId) setTimeout(() => mountHeld(heldId), 0); // objet pris avant un rechargement : il est toujours là
-addEventListener("resize", () => { if (heldEl) { const p = heldSpot(); heldEl.style.left = p.left + "px"; heldEl.style.top = p.top + "px"; } });
+function syncHeldPosition() {
+  if (!heldEl) return;
+  const p = heldSpot(); heldEl.style.left = p.left + "px"; heldEl.style.top = p.top + "px";
+  heldEl.style.width = p.size + "px"; heldEl.style.height = p.size + "px";
+  if (p.docked) try { localStorage.setItem(HELD_POS, JSON.stringify(p)); } catch {}
+}
+addEventListener("resize", syncHeldPosition);
 
 /* ───────── Œuvres de maîtres : la collection de toiles trouvées au fil des épreuves ─────────
    Base : data/oeuvres.json (61 œuvres, 19 artistes, 16 lieux, 5 questions par œuvre pour les épreuves à venir). Une toile trouvée = S.done["w:" + id] (étoiles POINTS.work), donc synchronisée comme le reste. */

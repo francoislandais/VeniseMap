@@ -1521,10 +1521,6 @@ body.intro-open > .cam.cam{visibility:visible!important}
 /* Aperçu des quinze petits objets : icône homogène et nom lisible sous chaque trésor. */
 
 /* Objets compacts, sans noms ; espace libre pour rapprocher plusieurs objets. */
-body.objects-has-items #menu-say .dm-txt{display:none}
-body.objects-has-items #menu-say{height:calc(86px + var(--safe-b))!important;padding:0 14px 0 0}
-body.objects-has-items #menu-say .dm-corto{width:82px;height:82px;margin-bottom:var(--safe-b)}
-body.objects-has-items #v-objects{bottom:calc(86px + var(--safe-b))!important}
 #v-objects .ogrid{grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px 6px;padding:0 0 14px}
 #v-objects .ob{width:54px;max-width:none;height:54px;display:grid;place-items:center;touch-action:none}
 #v-objects .ob img{width:50px;height:50px;object-fit:contain}
