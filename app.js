@@ -373,6 +373,7 @@ function devCompleteChapter(p) {
   new Set(steps.map((s) => s.work).filter(Boolean)).forEach((id) => { if (!workFound(id)) award("w:" + id, POINTS.work, meIdx()); });
   if (has("fin:" + p.id)) unaward("fin:" + p.id);
   if (has("tr:" + p.id)) unaward("tr:" + p.id);
+  Object.keys(S.done).filter((key) => has(key) && (key.startsWith(`st:${p.id}:`) || (p.musicChallenge && key.startsWith(`music:${p.musicChallenge.entry}:`)))).forEach(unaward);
   save(); closeSheet(); refreshAll(); openChapters(p, false, true);
 }
 function doArrive(p, manual) {
@@ -1519,7 +1520,7 @@ async function chapEnd(p, replay, preview = false) {
     if (M && has(`music:${M.entry}:found`)) {
       planButton.textContent = has(`music:${M.entry}:won`) ? "Retrouver mon fragment musical" : "Reprendre le défi musical";
       planButton.onclick = () => openMusicChallenge(M.entry, p, routePlanButton);
-    } else planButton.onclick = () => openPlanPanel(p.plan, p, routePlanButton);
+    } else planButton.onclick = () => openPlanPanel(p.plan, p, routePlanButton, preview);
   };
   routePlanButton();
   const stage = (delay, action) => setTimeout(() => { if (emblem.isConnected) action(); }, delay);
@@ -1571,7 +1572,7 @@ function showLocBtn(bubbleEl, loc) {
   };
 }
 /* ───────── Plan en pleine page → étiquette → photo en pleine page ───────── */
-function openPlanPanel(plan, pl, onMusicFound = () => {}) {
+function openPlanPanel(plan, pl, onMusicFound = () => {}, preview = false) {
   const sh = $("#sheet"); if (!sh || !plan) return;
   if (!locUI) locUI = { els: [], map: null, panel: null, t: null, loc: null };
   const ui = locUI; if (ui.planOpen) return;
@@ -1605,6 +1606,7 @@ function openPlanPanel(plan, pl, onMusicFound = () => {}) {
     $(".plan-photo-back", photo).onclick = closePhoto;
     const im = $("img", photo);
     addTreasures(photo, im, pt, pl, {
+      preview,
       onClaim: hide,
       onMusic: (entry) => { hide(); onMusicFound(); openMusicChallenge(entry, pl, onMusicFound); },
     });
@@ -1944,8 +1946,8 @@ function solemn(p) {
   });
 }
 // Trésors cachés sur les photos (une fois le mot de Corto entendu) : étoiles à tapoter et, sur la photo du saint, l'objet magique.
-function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {} } = {}) {
-  if (!p || !has("fin:" + p.id)) return;
+function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {}, preview = false } = {}) {
+  if (!p || (!preview && !has("fin:" + p.id))) return;
   const place = () => { // position d'un point (fx, fy) de l'image, que l'image soit entière ou recadrée (cover)
     const r = im.getBoundingClientRect(), pr = photo.getBoundingClientRect(), nw = im.naturalWidth, nh = im.naturalHeight; if (!nw) return null;
     const cover = im.style.objectFit === "cover", sc = cover ? Math.max(r.width / nw, r.height / nh) : Math.min(r.width / nw, r.height / nh), ow = nw * sc, oh = nh * sc;
@@ -2568,6 +2570,28 @@ function checkCeremony() {
 setInterval(checkCeremony, 2500);
 window.__ceremony = (key, li) => ceremony(key, li);
 window.__compose = (...a) => composeOutfit(...a); window.__metrics = (i, c) => headMetrics(i, c);
+// Remet les lieux choisis dans l'état « jamais visités », sans toucher au profil ni aux ponts.
+async function resetPlaceProgress(places) {
+  const ids = new Set(places.map((p) => p.id));
+  const musicIds = new Set(places.map((p) => p.musicChallenge?.entry).filter(Boolean));
+  const workIds = new Set(places.flatMap((p) => p.chapters?.flatMap((c) => c.steps.flatMap(chainOf).map((s) => s.work).filter(Boolean)) || []));
+  const keys = Object.keys(S.done).filter((key) => {
+    if (!has(key)) return false;
+    if (key === "finale") return true;
+    const [kind, id] = key.split(":");
+    return (["a", "t", "fin", "tr", "st", "ph"].includes(kind) && ids.has(id)) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id));
+  });
+  keys.forEach(unaward);
+  places.forEach((p) => { delete introSeen[p.id]; });
+  save(); refreshAll();
+  const photos = (await allPhotos()).filter(([, rec]) => rec?.place && ids.has(rec.place));
+  if (photos.length) {
+    const db = await idb();
+    await new Promise((resolve, reject) => { const tx = db.transaction("p", "readwrite"); photos.forEach(([key]) => tx.objectStore("p").delete(key)); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    db.close();
+  }
+  return { keys: keys.length, photos: photos.length };
+}
 async function renderDev() {
   menuSay("Mode test : ici on essaie des choses, matelot.");
   const v = $("#v-dev"), P = typeof PROFILE !== "undefined" ? PROFILE : null;
@@ -2588,13 +2612,13 @@ async function renderDev() {
   const off = $("#dv-off", v); if (off) off.onclick = async () => { await wearOutfit(null); toast("Tenue retirée"); renderDev(); };
   v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🖼️ Œuvres de maîtres (test)</h2><p class="muted">Simule la découverte des toiles (le vrai déclenchement viendra avec les épreuves).</p><div class="dv-src"><button class="btn ghost" data-wk="one">Trouver une toile</button><button class="btn ghost" data-wk="all">Tout débloquer</button><button class="btn ghost" data-wk="reset">Tout verrouiller</button></div></div>`);
   v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🐚 Objets trouvés (test)</h2><div class="dv-src"><button class="btn ghost" data-ob="one">Trouver un objet</button><button class="btn ghost" data-ob="all">Tout trouver</button><button class="btn ghost" data-ob="reset">Tout retirer</button></div></div>`);
-  v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🧩 Épreuves (test)</h2><p class="muted">Remet les questions à zéro, y compris le défi musical. Lieux, objets, œuvres, photos et fragments restent en place.</p><button class="btn ghost" id="reset-trials">↺ Réinitialiser toutes les épreuves</button></div>`);
-  $("#reset-trials", v).onclick = () => {
-    const keys = Object.keys(S.done).filter((key) => has(key) && (key.startsWith("t:") || key.startsWith("fin:") || /^music:[^:]+:q:\d+$/.test(key)));
-    if (!keys.length) { toast("Aucune épreuve à réinitialiser."); return; }
-    keys.forEach(unaward); save(); refreshAll();
-    toast("Épreuves réinitialisées. Les autres découvertes sont conservées.");
+  v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🧩 Épreuves (test)</h2><p class="muted">Remet les lieux dans l'état « jamais visités » : arrivée, questions, plan, trésors, œuvres gagnées, photos du lieu et défi musical. Le profil et les ponts restent.</p><div class="dv-src"><button class="btn ghost" id="reset-miracoli">↺ Réinitialiser l'église-bijou</button><button class="btn ghost" id="reset-trials">↺ Réinitialiser toutes les épreuves</button></div></div>`);
+  const resetDevPlaces = async (places) => {
+    try { await resetPlaceProgress(places); toast(places.length === 1 ? "L'église-bijou est remise à zéro." : "Tous les lieux sont remis à zéro."); setTab("map"); }
+    catch { toast("Réinitialisation incomplète : les photos locales n'ont pas pu être effacées."); }
   };
+  $("#reset-miracoli", v).onclick = () => resetDevPlaces([place("miracoli")]);
+  $("#reset-trials", v).onclick = () => resetDevPlaces(PLACES);
   $$("[data-ob]", v).forEach((b) => (b.onclick = () => { const L = objectList(); if (b.dataset.ob === "one") { const n = L.find((o) => !o.found); if (n) window.__objects.find(n.id); else toast("Tous les objets sont trouvés"); } else if (b.dataset.ob === "all") L.forEach((o) => window.__objects.find(o.id)); else window.__objects.reset(); }));
   $$("[data-wk]", v).forEach((b) => (b.onclick = async () => { const ids = await window.__works.all(); if (b.dataset.wk === "one") { const left = ids.filter((id) => !workFound(id)); if (!left.length) { toast("Toutes les toiles sont déjà trouvées"); return; } await findWork(left[Math.floor(Math.random() * left.length)]); } else if (b.dataset.wk === "all") { for (const id of ids) await findWork(id, { silent: true }); toast("Toutes les toiles sont débloquées"); } else { await window.__works.reset(); toast("Toiles verrouillées"); } }));
   paint();
