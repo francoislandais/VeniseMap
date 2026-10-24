@@ -294,9 +294,122 @@ export const PLACES = [
   { id: "campanile", emoji: "🗼", name: "Le campanile", lat: 45.43404, lon: 12.33904, r: 60,
     story: "C'est la plus haute tour de Venise : 98 mètres ! Un jour de 1902 elle s'est écroulée... et on l'a reconstruite exactement pareil.",
     clue: "L'ange là-haut a vu tomber la tour et la tour se relever. Il sait tout sur les secrets de la place.",
-    tasks: [
-      { t: "choice", q: "Qui est tout en haut, doré, et tourne avec le vent ?", opts: ["👼 Un ange", "🐓 Un coq", "🐘 Un éléphant"], a: 0, fact: "C'est l'archange Gabriel, qui sert de girouette." },
-      { t: "do", q: "Lève la tête, fais coucou à l'ange doré et crie « Bonjour l'ange ! »" },
+    chapters: [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "where": "Depuis la place Saint-Marc, lève les yeux jusqu’à la pointe du campanile. Utilise le zoom si besoin pour observer la silhouette dorée.",
+            "q": "Quel personnage se tient tout en haut ?",
+            "opts": [
+              "Un doge couronné",
+              "Un ange aux grandes ailes",
+              "Un gondolier",
+              "Un lion ailé"
+            ],
+            "a": 1,
+            "reveal": "Il s’agit de l’archange Gabriel. La statue dorée peut tourner avec le vent : elle sert aussi de girouette. Le campanile fut reconstruit après son effondrement du 14 juillet 1902 et inauguré le 25 avril 1912.",
+            "img": "img/q/campanile-0.webp",
+            "src": [
+              "https://www.basilicasanmarco.it/basilica/campanile-2/"
+            ],
+            "cap": "Au sommet, Gabriel se reconnaît à ses grandes ailes dorées."
+          },
+          {
+            "idx": 301,
+            "where": "Regarde la partie verte immédiatement sous l’ange. Suis ses bords depuis la base jusqu’à la pointe.",
+            "q": "Quelle forme a ce grand toit vert ?",
+            "opts": [
+              "Une coupole ronde",
+              "Un cylindre",
+              "Une pyramide",
+              "Un toit plat"
+            ],
+            "a": 2,
+            "reveal": "Cette flèche en forme de pyramide est couverte de cuivre. Elle prolonge la tour de briques et porte la statue de Gabriel. Le campanile atteint 98,6 mètres selon la basilique Saint-Marc.",
+            "img": "img/q/campanile-1.webp",
+            "src": [
+              "https://www.basilicasanmarco.it/basilica/campanile-2/"
+            ],
+            "cap": "Les faces du toit vert montent vers une même pointe."
+          },
+          {
+            "idx": 302,
+            "where": "Fais quelques pas autour du campanile et scrute le grand panneau de briques juste sous le toit vert. Sur certaines faces, un animal blanc apparaît. Un zoom aide beaucoup.",
+            "q": "Quel animal est sculpté sur ce panneau ?",
+            "opts": [
+              "Un cheval marin",
+              "Un aigle",
+              "Un dragon",
+              "Un lion ailé"
+            ],
+            "a": 3,
+            "reveal": "C’est le lion de Saint Marc, emblème historique de Venise. Ses ailes le distinguent d’un lion ordinaire. La Ville de Venise explique que ce symbole représente l’évangéliste Marc, patron de la cité.",
+            "img": "img/q/campanile-2.webp",
+            "src": [
+              "https://www.visitvenezia.eu/venezianita/scopri-venezia/venezia-e-i-suoi-%E2%80%98scrigni-i-campanili",
+              "https://live.comune.venezia.it/it/node/132935"
+            ],
+            "cap": "Le lion blanc, avec ses ailes, occupe le panneau de briques."
+          },
+          {
+            "idx": 303,
+            "where": "Sous les grands panneaux de briques, cherche l’étage blanc ouvert où sont suspendues les cloches. Compte les grandes arcades sur une seule face.",
+            "q": "Combien de grandes arcades vois-tu côte à côte sur cette face ?",
+            "opts": [
+              "Deux",
+              "Quatre",
+              "Cinq",
+              "Six"
+            ],
+            "a": 1,
+            "reveal": "Cet étage est la chambre des cloches. Le campanile possède cinq cloches, même si l’on compte quatre grandes arcades sur une face. Lors de l’effondrement de 1902, une seule des cinq cloches survécut ; les quatre autres furent refondues.",
+            "img": "img/q/campanile-3.webp",
+            "src": [
+              "https://www.basilicasanmarco.it/basilica/campanile-2/",
+              "https://www.basilicasanmarco.it/basilica/campanile-2/le-campane/"
+            ],
+            "cap": "Quatre grandes ouvertures arrondies se suivent sur cette face."
+          },
+          {
+            "idx": 304,
+            "where": "Redescends les yeux jusqu’à la petite façade de marbre au pied du campanile, côté basilique. Compte ses grandes arcades arrondies.",
+            "q": "Combien de grandes arcades rythment la Loggetta ?",
+            "opts": [
+              "Trois",
+              "Quatre",
+              "Cinq",
+              "Six"
+            ],
+            "a": 0,
+            "reveal": "La Loggetta fut bâtie entre 1537 et 1549 par Jacopo Sansovino. Elle servit ensuite de poste de garde aux ouvriers de l’Arsenal pendant les réunions du Grand Conseil. Elle fut très endommagée par la chute du campanile en 1902, puis restaurée.",
+            "img": "img/q/campanile-4.webp",
+            "src": [
+              "https://www.basilicasanmarco.it/basilica/campanile-2/la-loggetta/"
+            ],
+            "cap": "Les trois grandes arcades de la Loggetta sont visibles derrière la balustrade."
+          },
+          {
+            "idx": 305,
+            "where": "Face à la Loggetta, trouve la statue sombre de la niche tout à gauche. Elle porte un casque et un bouclier. Regarde le centre du bouclier ; le zoom peut aider.",
+            "q": "Quel motif est sculpté sur son bouclier ?",
+            "opts": [
+              "Une étoile",
+              "Un bateau",
+              "Un visage",
+              "Un livre ouvert"
+            ],
+            "a": 2,
+            "reveal": "Cette statue représente Minerve, une des quatre figures de bronze placées par Sansovino dans les niches de la Loggetta. Le visage du bouclier est celui de Méduse, personnage de la mythologie antique. Le Nationalmuseum de Stockholm confirme cette identification.",
+            "img": "img/q/campanile-5.webp",
+            "src": [
+              "https://www.basilicasanmarco.it/basilica/campanile-2/la-loggetta/",
+              "https://collection.nationalmuseum.se/en/collection/item/157937/"
+            ],
+            "cap": "Un visage aux traits marqués apparaît au centre du bouclier de Minerve."
+          }
+        ]
+      }
     ] },
   { id: "colonnes", emoji: "🦁", name: "Les deux colonnes", lat: 45.43338, lon: 12.34003, r: 60,
     story: "Sur une colonne, le lion ailé, symbole de Venise. Sur l'autre, saint Théodore et son crocodile-dragon. Légende : ne passe jamais ENTRE les deux colonnes, ça porte malheur !",
