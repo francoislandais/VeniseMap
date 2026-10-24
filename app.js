@@ -271,7 +271,8 @@ try {
   if (QS.has("dev")) { if (QS.get("dev") === "0") localStorage.removeItem("vq_dev"); else localStorage.setItem("vq_dev", "1"); }
   DEV = localStorage.getItem("vq_dev") !== "0" || QS.has("fake"); // phase de test : actif par défaut, ?dev=0 le coupe
 } catch { DEV = QS.has("fake"); }
-const LOCAL_DEV = DEV && (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+const LOCAL_PREVIEW = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+const LOCAL_DEV = DEV && LOCAL_PREVIEW;
 let devPinned = false; // le bateau a été posé à la main : le GPS réel est ignoré
 function startGeo() {
   const fake = QS.get("fake");
@@ -2504,6 +2505,7 @@ function renderSettings() {
   const v = $("#v-settings");
   menuSay("Ici, c'est la salle des machines : demande à tes parents avant de toucher à quelque chose !");
   v.innerHTML = `<h2>⚙️ Réglages</h2>
+    ${LOCAL_PREVIEW ? '<div class="card"><h3 style="margin-top:0">🛠️ Développement local</h3><button class="btn blue wide" id="reset-trials">↺ Réinitialiser toutes les épreuves</button><p class="muted" style="margin:8px 0 0">Remet les questions à zéro, y compris le défi musical. Lieux, objets, œuvres, photos et fragments restent en place.</p></div>' : ""}
     <h3>👫 Les joueurs</h3>${S.kids.map((k, i) => `<div class="card"><input class="t" data-name="${i}" placeholder="Prénom du joueur ${i + 1}" value="${esc(k.name)}"><div class="avs" data-av="${i}">${AVATARS.map((a) => `<button class="${a === k.avatar ? "on" : ""}" data-a="${a}">${a}</button>`).join("")}</div></div>`).join("")}${S.kids.length < 6 ? '<button class="btn ghost" id="addp">➕ Ajouter un joueur</button>' : ""}
     <h3>🗺️ Carte hors-ligne</h3><div class="card"><p class="muted">Télécharge la carte de Venise avant de partir pour qu'elle marche sans réseau (environ 12 Mo : mieux vaut être en Wi-Fi).</p><button class="btn blue wide" id="dl" style="margin-top:8px">⬇️ Télécharger la carte</button><div class="bar" style="margin-top:8px"><i id="dlbar" style="width:0"></i></div><p class="muted" id="dltxt"></p></div>
     <h3>☁️ Équipe et synchronisation</h3><div class="card"><p><b>${esc(S.teamName || (TEAM && TEAM.team) || "")}</b></p><p>${esc(syncStatus)}</p><button class="btn ghost" id="chteam" style="margin:0 6px 6px 0">Changer d'équipe ou de code</button><button class="btn ghost" id="syncnow" style="margin-top:6px">Synchroniser maintenant</button></div>
@@ -2513,7 +2515,6 @@ function renderSettings() {
     <h3>📷 Crédits photos</h3><details class="card"><summary>Photos de Wikimedia Commons</summary><div id="credits" class="muted" style="margin-top:8px"></div></details>
     <h3>🎼 Crédits musicaux</h3><details class="card"><summary>Défi musical : Domine ad adiuvandum</summary><p class="muted">Cantica Symphonia, direction Giuseppe Maletto ; enregistrement Guido Magnano, Turin, 2000. Extraits, fondus et transcodages MP3. <a href="https://commons.wikimedia.org/wiki/File:Deus_in_adiutorium.ogg" target="_blank" rel="noopener">Enregistrement source</a> · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">Licence CC BY-SA 3.0</a>.</p></details>
     <h3>🔧 Parents</h3><div class="card"><button class="btn ghost" id="intro">📖 Revoir l'histoire</button> <button class="btn ghost" id="reset" style="margin-top:6px">🗑️ Tout recommencer</button><label class="chk" style="margin-top:8px"><input type="checkbox" id="devtog" ${DEV && !QS.has("fake") ? "checked" : ""}> <span>Mode développeur : déplacer le bateau</span></label></div>
-    ${LOCAL_DEV ? '<h3>🛠️ Développement</h3><div class="card"><button class="btn ghost wide" id="reset-trials">↺ Réinitialiser toutes les épreuves</button><p class="muted" style="margin:8px 0 0">Remet les questions à zéro, y compris le défi musical. Les lieux découverts, objets, œuvres, photos et fragments gagnés restent en place.</p></div>' : ""}
     <p class="muted" style="text-align:center;margin-top:16px">Le Livre du Lion · V1 · Carte : aquarelle Stamen Design (CC BY 4.0), Stadia Maps, OpenFreeMap, OpenMapTiles · données © contributeurs OpenStreetMap</p>`;
   { const eb = $("#eco", v); if (eb) { const lab = () => (eb.textContent = ecoOn() ? "Mode éco : activé (toucher pour désactiver)" : "Mode éco : désactivé (toucher pour activer)"); lab(); eb.onclick = () => { try { localStorage.setItem("vq_eco", ecoOn() ? "0" : "1"); } catch {} lab(); toast(ecoOn() ? "Mode éco activé" : "Mode éco désactivé"); }; } }
   { const fb = $("#fs", v); if (fb) { const de = document.documentElement;
