@@ -684,6 +684,7 @@ const PLACE_ICONS = {
 // Position et taille (par niveau de zoom) de chaque icône : réglées à la main en mode édition (aperçu local), enregistrées dans data/place-icons.json.
 // { id: { lon, lat, stops: [[zoom, largeur en px], …], pos: [[zoom, lon, lat], …] } } — pos (facultatif) : position du centre à certains niveaux de zoom ; entre deux repères la position glisse en douceur, au-delà elle reste celle du repère le plus proche ; sans repère, lon/lat. — entre deux niveaux réglés, la taille varie en douceur (interpolation géométrique) ; au-delà, l'icône suit l'échelle de la carte (×2 par niveau de zoom).
 const ICONCFG = await fetch("data/place-icons.json?" + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+const CONCLUSION_LAYOUT = await fetch("data/conclusion-layout.json?" + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
 const iconMarkers = {};
 const iconStops = (id) => ((ICONCFG[id] && ICONCFG[id].stops) || []).slice().sort((a, b) => a[0] - b[0]);
 function iconSize(id, z) {
@@ -921,6 +922,7 @@ function resumeSuspended() {
   try { history.pushState({ vqBridge: 1 }, ""); } catch {}
 }
 function closeSheet() {
+  conclusionEditorAbort?.abort(); conclusionEditorAbort = null;
   document.body.classList.remove("chap-open"); suspended = null; stopMusic(500); stopChapAudio(); closeLoc();
   if ((openId === "bridges" || openId === "chap") && history.state && history.state.vqBridge) { destroying = true; history.back(); return; } // popstate rappellera closeSheet
   openId = null; const sh = $("#sheet"); sh.hidden = true; sh.innerHTML = ""; $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext(); }
@@ -1418,7 +1420,9 @@ function chapAudioCard(s) {
   ($("#sheet.chap") ? $("#sheet") : $("#b-talk")).appendChild(card);
 }
 const EXIT_SVG = '<svg viewBox="0 0 48 48" width="24" height="24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M26 5a10 10 0 0 1 10 10c0 8-10 19-10 19S16 23 16 15A10 10 0 0 1 26 5z"/><circle cx="26" cy="15" r="3.5"/><path d="M6 41h18M11 36l-5 5 5 5"/></svg>';
+let conclusionEditorAbort = null;
 function openChapters(p, replay = false, conclusionOnly = false, preview = false) {
+  conclusionEditorAbort?.abort(); conclusionEditorAbort = null;
   chapCur = p; suspended = null; openId = "chap"; chatSel = "#b-talk"; $("#next").hidden = true; $("#bridge-btn").hidden = true;
   const sh = $("#sheet"); sh.hidden = false; sh.className = "medal-wrap bridge-wrap chap"; delete sh.dataset.k;
   sh.innerHTML = `<div class="chap-bg" style="background-image:url(${pic(p.id)})"></div><div class="chap-g chap-g-top"></div><div class="chap-g chap-g-bot"></div>
@@ -1440,8 +1444,48 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
   setTimeout(() => { if (openId === "chap") { if (conclusionOnly) chapEnd(p, replay, preview); else runChapters(p, replay); } }, 350);
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
-const endBravo = () => `Bravo, ${gradeLc()} ! Tu as mené toutes ces épreuves jusqu'au bout.`;
+const endBravo = () => `Bravo, ${gradeLc()} !`;
 const endSecret = (p) => p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
+function conclusionEditor(sh, p, elements, defaults) {
+  conclusionEditorAbort?.abort();
+  const layout = (CONCLUSION_LAYOUT[p.id] ||= {});
+  const apply = (key) => {
+    const el = elements[key], c = layout[key] || {};
+    el.style.translate = `${Number(c.x) || 0}vw ${Number(c.y) || 0}vh`;
+    el.style.scale = String(Number(c.s) || 1);
+    if (key !== "emblem") el.textContent = typeof c.text === "string" ? c.text.replace(/\{grade\}/g, gradeLc()) : defaults[key];
+  };
+  Object.keys(elements).forEach(apply);
+  fitChapTalk();
+  if (!LOCAL_DEV) return;
+  const controller = new AbortController(); conclusionEditorAbort = controller;
+  const emblem = $(".chap-victory", sh), bt = $("#b-talk", sh), lead = elements.lead, clue = elements.secret, planButton = elements.plan;
+  const names = { bravo: "Bravo", completion: "Fin des épreuves", emblem: "Vignette", lead: "Annonce", secret: "Secret", plan: "Bouton du plan" };
+  const bar = document.createElement("div"); bar.className = "chap-edit-bar";
+  bar.innerHTML = '<button type="button" data-ce="toggle">✎ Conclusion</button><div class="chap-edit-tools" hidden><span class="chap-edit-name">Touche un élément</span><button type="button" data-ce="minus">A−</button><button type="button" data-ce="plus">A+</button><button type="button" data-ce="text">✎ Texte</button><button type="button" data-ce="reset">Réinit.</button><button type="button" data-ce="flip">⇅</button><button type="button" data-ce="save">💾 Enregistrer</button><textarea class="chap-edit-text" rows="2" hidden aria-label="Texte de l’élément sélectionné"></textarea><small class="chap-edit-status">Glisse un élément pour le déplacer.</small></div>';
+  sh.appendChild(bar);
+  const tools = $(".chap-edit-tools", bar), field = $(".chap-edit-text", bar), status = $(".chap-edit-status", bar);
+  let editing = false, selected = null, drag = null;
+  const select = (key) => { selected = key; Object.entries(elements).forEach(([k, el]) => el.classList.toggle("chap-edit-selected", k === key)); $(".chap-edit-name", bar).textContent = key ? names[key] : "Touche un élément"; field.hidden = true; if (key && key !== "emblem") field.value = elements[key].textContent; };
+  const cfg = (key) => (layout[key] ||= { x: 0, y: 0, s: 1 });
+  const showAll = () => { emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue.classList.add("shown"); planButton?.classList.add("shown"); };
+  bar.addEventListener("click", async (e) => {
+    const action = e.target.closest("button")?.dataset.ce; if (!action) return;
+    if (action === "toggle") { editing = !editing; sh.classList.toggle("chap-editing", editing); tools.hidden = !editing; if (editing) showAll(); select(null); return; }
+    if (action === "flip") { bar.classList.toggle("at-bottom"); return; }
+    if (action === "save") { try { const r = await fetch("api/conclusion-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CONCLUSION_LAYOUT) }); status.textContent = r.ok ? "Enregistré ✔" : "Échec : serveur sans --dev ?"; } catch { status.textContent = "Échec de l’enregistrement"; } return; }
+    if (!selected) { status.textContent = "Touche d'abord un élément."; return; }
+    if (action === "text") { if (selected === "emblem") { status.textContent = "La vignette n'a pas de texte."; return; } field.hidden = !field.hidden; if (!field.hidden) field.focus(); return; }
+    if (action === "reset") { delete layout[selected]; apply(selected); field.value = elements[selected].textContent; fitChapTalk(); status.textContent = "Élément réinitialisé"; return; }
+    const c = cfg(selected); c.s = Math.max(.5, Math.min(2.5, Math.round(((Number(c.s) || 1) + (action === "plus" ? .05 : -.05)) * 100) / 100)); apply(selected); status.textContent = `${names[selected]} · ${Math.round(c.s * 100)} %`;
+  });
+  field.oninput = () => { if (!selected || selected === "emblem") return; cfg(selected).text = field.value; apply(selected); fitChapTalk(); status.textContent = "Texte modifié · pense à enregistrer"; };
+  for (const [key, el] of Object.entries(elements)) el.dataset.chapEdit = key;
+  sh.addEventListener("pointerdown", (e) => { if (!editing || e.target.closest(".chap-edit-bar")) return; const el = e.target.closest("[data-chap-edit]"); if (!el || !sh.contains(el)) { select(null); return; } e.preventDefault(); e.stopPropagation(); const key = el.dataset.chapEdit; select(key); const c = cfg(key); drag = { id: e.pointerId, key, x: e.clientX, y: e.clientY, ox: Number(c.x) || 0, oy: Number(c.y) || 0 }; try { sh.setPointerCapture(e.pointerId); } catch {} }, { capture: true, signal: controller.signal });
+  sh.addEventListener("pointermove", (e) => { if (!drag || e.pointerId !== drag.id) return; const c = cfg(drag.key); c.x = Math.round(Math.max(-45, Math.min(45, drag.ox + (e.clientX - drag.x) / sh.clientWidth * 100)) * 100) / 100; c.y = Math.round(Math.max(-45, Math.min(45, drag.oy + (e.clientY - drag.y) / sh.clientHeight * 100)) * 100) / 100; apply(drag.key); status.textContent = `${names[drag.key]} · position modifiée`; }, { signal: controller.signal });
+  const stop = (e) => { if (drag?.id === e.pointerId) drag = null; }; sh.addEventListener("pointerup", stop, { signal: controller.signal }); sh.addEventListener("pointercancel", stop, { signal: controller.signal });
+  sh.addEventListener("click", (e) => { if (editing && e.target.closest("[data-chap-edit]")) { e.preventDefault(); e.stopImmediatePropagation(); } }, { capture: true, signal: controller.signal });
+}
 async function chapEnd(p, replay, preview = false) {
   await clearTalk();
   const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.classList.add("chap-conclusion"); sh.dataset.k = "one";
@@ -1449,18 +1493,21 @@ async function chapEnd(p, replay, preview = false) {
   const exitDock = $(".dock", sh); if (exitDock) exitDock.remove();
   const icon = PLACE_ICONS[p.id], emblem = document.createElement("div");
   emblem.className = "chap-victory";
-  emblem.innerHTML = `<p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span></div>`;
+  emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span></div>`;
   sh.appendChild(emblem);
-  $(".chap-victory-line", emblem).textContent = endBravo();
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: "À présent, je vais te confier un secret.", secret: endSecret(p), plan: "Ouvre le plan de l'église." };
+  $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
+  $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
   const msg = chatAdd(typingHtml, "fc chap-final-msg"), bubble = $(".m-bubble", msg);
   bubble.classList.remove("typing");
-  bubble.innerHTML = `<span class="chap-secret-lead">Je vais te confier un secret…</span><span class="chap-secret-clue">${esc(endSecret(p))}</span>`;
+  bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span><span class="chap-secret-clue">${esc(defaults.secret)}</span>`;
   fitChapTalk();
   if (!preview && p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
   let planButton = null;
-  if (p.plan) { planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "chap-end-plan"; planButton.textContent = "Ouvre le plan"; planButton.onclick = () => openPlanPanel(p.plan, p); bt.appendChild(planButton); fitChapTalk(); }
+  if (p.plan) { planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "chap-end-plan"; planButton.textContent = defaults.plan; planButton.onclick = () => openPlanPanel(p.plan, p); bt.appendChild(planButton); fitChapTalk(); }
   if (MONTAGES[p.id]) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-photo"; b.textContent = "📸 Photo souvenir"; b.onclick = () => openMontage(p.id); sh.appendChild(b); }
+  conclusionEditor(sh, p, { bravo: $(".chap-victory-bravo", emblem), completion: $(".chap-victory-line", emblem), emblem: $(".chap-victory-emblem", emblem), lead: $(".chap-secret-lead", bubble), secret: $(".chap-secret-clue", bubble), ...(planButton ? { plan: planButton } : {}) }, defaults);
   const stage = (delay, action) => setTimeout(() => { if (emblem.isConnected) action(); }, delay);
   const lead = $(".chap-secret-lead", bubble), clue = $(".chap-secret-clue", bubble);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
