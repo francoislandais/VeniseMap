@@ -2078,7 +2078,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backg
     stopClip();
     if (!has(`music:${id}:won`)) { award(`music:${id}:won`, 20, meIdx()); save(); refreshAll(); confetti(100); onWon(); }
     body.className = "mq-body mq-victory";
-    body.innerHTML = `<span class="mq-kicker">Fragment gagné · ${esc(id)}</span><h2>Bravo, ${esc(gradeLc())} !</h2><p>Ce morceau de partition rejoint ton livre. Écoute maintenant le mouvement entier en te promenant autour de l'église.</p><button type="button" class="mq-main" data-walk>▶ Écouter en déambulant</button><button type="button" class="mq-later" data-later>Je l'écouterai plus tard</button>${credit}`;
+    body.innerHTML = `<span class="mq-kicker">Fragment gagné</span><h2>Bravo, ${esc(gradeLc())} !</h2><p>Ce morceau de partition rejoint ton livre. Écoute maintenant le mouvement entier en te promenant autour de l'église.</p><button type="button" class="mq-main" data-walk>▶ Écouter en déambulant</button><button type="button" class="mq-later" data-later>Je l'écouterai plus tard</button>${credit}`;
     $("[data-later]", body).onclick = close;
     $("[data-walk]", body).onclick = () => { startMusicWalk(entry); close(); if (tab !== "map") setTab("map"); if (openId) closeSheet(); };
   };
@@ -2087,7 +2087,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backg
     if (index >= entry.questions.length) { victory(); return; }
     const q = entry.questions[index];
     body.className = "mq-body";
-    body.innerHTML = `<span class="mq-kicker">Défi musical · ${index + 1} / ${entry.questions.length}</span><p class="mq-question">${esc(q.question)}</p><button type="button" class="mq-listen">▶ Écouter ${q.audio === "long" ? "le passage long" : "l'extrait court"}</button><div class="mq-options">${q.options.map((answer, j) => `<button type="button" data-answer="${j}">${esc(answer)}</button>`).join("")}</div><div class="mq-feedback" aria-live="polite"></div>${credit}`;
+    body.innerHTML = `<p class="mq-question">${esc(q.question)}</p><button type="button" class="mq-listen">▶ Écouter ${q.audio === "long" ? "le passage long" : "l'extrait court"}</button><div class="mq-options">${q.options.map((answer, j) => `<button type="button" data-answer="${j}">${esc(answer)}</button>`).join("")}</div><div class="mq-feedback" aria-live="polite"></div>${credit}`;
     const listen = $(".mq-listen", body);
     listen.onclick = () => {
       if (clip && !clip.paused) { clip.pause(); listen.textContent = "▶ Reprendre l'écoute"; return; }
@@ -2104,8 +2104,22 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backg
       next.onclick = () => showQuestion(index + 1); feedback.appendChild(next);
     });
   };
+  const showListening = () => {
+    stopClip();
+    body.className = "mq-body mq-listening";
+    body.innerHTML = `<div class="mq-listen-center"><span class="mq-listen-icon" aria-hidden="true">🎧</span><p class="mq-listen-invite">Mets ton casque.</p><p class="mq-listen-note">Prends le temps d’écouter cet extrait de <em>${esc(entry.title)}</em>.</p><button type="button" class="mq-listen-start">▶ Écouter l’extrait</button><p class="mq-listen-status" aria-live="polite"></p><button type="button" class="mq-listen-next" hidden>Continuer</button></div>${credit}`;
+    const listen = $(".mq-listen-start", body), next = $(".mq-listen-next", body), status = $(".mq-listen-status", body);
+    clip = new Audio(entry.short);
+    clip.onended = () => { listen.textContent = "↻ Réécouter"; status.textContent = "Laisse encore résonner la musique…"; next.hidden = false; };
+    listen.onclick = () => {
+      if (!clip.paused) { clip.pause(); listen.textContent = "▶ Reprendre l’écoute"; return; }
+      if (clip.ended) clip.currentTime = 0;
+      clip.play().then(() => { listen.textContent = "❚❚ Pause"; status.textContent = "Écoute simplement la musique…"; }).catch(() => { status.textContent = "La lecture est impossible pour l’instant."; next.hidden = false; });
+    };
+    next.onclick = () => showQuestion(0);
+  };
   const first = replay ? 0 : entry.questions.findIndex((_, index) => !has(`music:${id}:q:${index}`));
-  if (first < 0) victory(); else showQuestion(first);
+  if (first < 0) victory(); else if (first === 0) showListening(); else showQuestion(first);
 }
 async function renderMusicCollection() {
   const v = $("#v-music"); menuSay("Chaque fragment de partition a sa musique. Retrouve-les ici, matelot.");
