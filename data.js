@@ -3320,6 +3320,134 @@ export const PLACES = [
       { t: "choice", q: "Qui aurait gravé des lettres sur le lion ?", opts: ["⚔️ Des Vikings", "🤖 Des robots", "👽 Des extraterrestres"], a: 0, fact: "Ce sont des runes, une vieille écriture nordique." },
       { t: "count", q: "Combien de lions comptes-tu devant l'entrée ?", a: null },
     ] },
+  { id: "castello", emoji: "🧭", name: "Castello, derrière l'Arsenal", lat: 45.43221, lon: 12.35251, r: 90,
+    story: "De la Via Garibaldi au Campo San Pietro, suis les rues, un lion de bronze et une ancienne serre. Tout le parcours se fait dehors.",
+    clue: "Une rue a remplacé l'eau ; plus loin, un lion sans ailes garde le chemin de la tour claire.",
+    chapters: [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "loc": { "lat": 45.43221, "lon": 12.35251 },
+            "where": "Depuis les rues proches de l’Arsenal, trouve la large Via Garibaldi. Observe l’espace entre les deux rangées de maisons et le sol sous tes pieds.",
+            "q": "Qu’est-ce qui occupe aujourd’hui la place centrale de cette large voie ?",
+            "opts": [
+              "Un canal pour les gondoles",
+              "Une rue pavée pour marcher",
+              "Une pelouse sans chemin",
+              "Des rails de tramway"
+            ],
+            "a": 1,
+            "reveal": "La Via Garibaldi est étonnamment large pour Venise. La Ville de Venise explique qu’elle a été créée en comblant un ancien canal. Elle s’appelait autrefois Via Eugenia : derrière ce nom de rue se cache donc un morceau de la géographie passée de la ville.",
+            "img": "img/q/castello-0.webp",
+            "src": [
+              "https://www.comune.venezia.it/it/content/castello-est"
+            ],
+            "cap": "La large chaussée piétonne a pris la place de l’ancien canal."
+          },
+          {
+            "idx": 301,
+            "loc": { "lat": 45.43199, "lon": 12.35486 },
+            "where": "Au bout de la Via Garibaldi, près du viale arboré, trouve la haute statue de Giuseppe Garibaldi. Cherche dans les rochers, sous le personnage principal.",
+            "q": "Quel animal en bronze s’y repose ?",
+            "opts": [
+              "Un lion",
+              "Un cheval",
+              "Un loup",
+              "Un taureau"
+            ],
+            "a": 0,
+            "reveal": "Le monument est l’œuvre du sculpteur Augusto Benvenuti. L’historienne de l’art Cristina Beltrami explique que le lion évoque à la fois Venise et le courage des compagnons de Garibaldi. Cette fois, le lion n’a pas d’ailes.",
+            "img": "img/q/castello-1.webp",
+            "src": [
+              "https://www.comune.venezia.it/it/content/castello-est",
+              "https://ateneoveneto.org/wp-content/uploads/2023/06/Ateneo-Veneto-CC-III-serie-12_I-2013-estratto-Beltrami.pdf"
+            ],
+            "cap": "Le lion est couché dans les rochers, sous Garibaldi."
+          },
+          {
+            "idx": 302,
+            "loc": { "lat": 45.43199, "lon": 12.35486 },
+            "where": "Fais le tour du monument à Garibaldi. Un second personnage se tient derrière les rochers, presque invisible depuis la face du lion. Regarde près de son épaule.",
+            "q": "Quel long objet porte ce personnage ?",
+            "opts": [
+              "Une rame",
+              "Un fusil",
+              "Une trompette",
+              "Une canne à pêche"
+            ],
+            "a": 1,
+            "reveal": "Ce personnage est un jeune soldat de Garibaldi, ou garibaldien. Il paraît monter la garde à l’arrière du monument. L’œuvre a été conçue pour être regardée de tous les côtés : faire le tour permet de découvrir cette partie cachée.",
+            "img": "img/q/castello-2.webp",
+            "src": [
+              "https://ateneoveneto.org/wp-content/uploads/2023/06/Ateneo-Veneto-CC-III-serie-12_I-2013-estratto-Beltrami.pdf",
+              "https://www.openstarts.units.it/bitstreams/57d61d5d-e402-44d7-99db-3b0db8dae213/download"
+            ],
+            "cap": "Le fusil repose en diagonale derrière l’épaule de la sentinelle."
+          },
+          {
+            "idx": 303,
+            "loc": { "lat": 45.43056, "lon": 12.35516 },
+            "where": "Près du viale Garibaldi et des Giardini, repère le long bâtiment appelé Serra dei Giardini. Observe ses hautes fenêtres cintrées.",
+            "q": "Quel matériau couvre une grande partie de sa façade ?",
+            "opts": [
+              "Des plaques de bois",
+              "Du verre",
+              "De la toile",
+              "Des briques pleines"
+            ],
+            "a": 1,
+            "reveal": "C’est une ancienne serre, construite pour accueillir des plantes. La Ville de Venise la situe au bord du viale Garibaldi et la décrit comme un édifice du XIXe siècle. Sa charpente métallique et ses grandes surfaces vitrées laissent entrer la lumière.",
+            "img": "img/q/castello-3.webp",
+            "src": [
+              "https://www.comune.venezia.it/it/content/castello-est",
+              "https://www.veneziaunica.it/en/things-to-do-in-venice/gardens-parks-natural-oases/serra-dei-giardini-the-garden-conservatory"
+            ],
+            "cap": "Les grandes vitres sont prises dans une charpente métallique."
+          },
+          {
+            "idx": 304,
+            "loc": { "lat": 45.43445, "lon": 12.35906 },
+            "where": "Reviens vers la Via Garibaldi, puis suis la Fondamenta Sant’Anna, franchis le Ponte Quintavalle et gagne la Calle drio el Campanile jusqu’au Campo San Pietro. Regarde de chaque côté de l’allée pavée.",
+            "q": "Qu’est-ce qui occupe une grande partie du campo ?",
+            "opts": [
+              "Des pelouses et des arbres",
+              "Des bassins d’eau",
+              "Des mosaïques dorées",
+              "Des étals de poissons"
+            ],
+            "a": 0,
+            "reveal": "Le Campo San Pietro ressemble à un petit jardin, alors que beaucoup de campos vénitiens sont surtout pavés. La Ville de Venise souligne cette particularité. Il se trouve devant l’ancienne cathédrale de San Pietro di Castello.",
+            "img": "img/q/castello-4.webp",
+            "src": [
+              "https://www.comune.venezia.it/it/content/castello-est",
+              "https://chorusvenezia.org/en/visita/basilica-of-san-pietro-di-castello/"
+            ],
+            "cap": "Une allée pavée traverse les pelouses et les arbres du campo."
+          },
+          {
+            "idx": 305,
+            "loc": { "lat": 45.43454, "lon": 12.35986 },
+            "where": "Depuis le Campo San Pietro, lève les yeux vers le campanile, séparé de la façade de l’église. Compare sa couleur à celle des maisons en briques autour de lui.",
+            "q": "Quelle couleur domine sur cette tour ?",
+            "opts": [
+              "Rouge brique",
+              "Blanc crème",
+              "Vert foncé",
+              "Noir"
+            ],
+            "a": 1,
+            "reveal": "La tour doit sa couleur claire à la pierre d’Istrie. Elle fut conçue par Mauro Codussi à la fin du XVe siècle. San Pietro fut longtemps la cathédrale de Venise avant que ce rôle ne passe à Saint-Marc au XIXe siècle.",
+            "img": "img/q/castello-5.webp",
+            "src": [
+              "https://www.comune.venezia.it/it/content/castello-est",
+              "https://chorusvenezia.org/en/visita/basilica-of-san-pietro-di-castello/"
+            ],
+            "cap": "La pierre claire distingue le campanile des maisons voisines."
+          }
+        ]
+      }
+    ] },
   { id: "cortesconta", final: true, emoji: "🗝️", name: "La Corte Sconta", lat: 45.4340, lon: 12.3478, r: 130,
     story: "Dans le quartier de Castello, derrière l'Arsenal, il existe des cours cachées entre les maisons. La Corte Sconta, c'est LA cour secrète : on y entre par un petit passage, et le temps s'arrête. (Parents : le point exact est approximatif, une cour cachée de Castello fait très bien l'affaire. Pour une pause à table, un célèbre restaurant du coin porte ce nom : à réserver.)",
     clue: "Te voilà au bout du voyage. Il ne te manque qu'un mot de passe : le vrai nom de la ville.",

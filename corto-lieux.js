@@ -29,6 +29,7 @@ export const LIEUX = {
   giardini: { la: "les jardins de la Biennale" },
   lido: { la: "la plage du Lido" },
   arsenal: { la: "les lions de l'Arsenal" },
+  castello: { la: "le quartier de Castello derrière l'Arsenal" },
   cortesconta: { la: "la Corte Sconta" },
 };
 export const PLACE_FAR = {
