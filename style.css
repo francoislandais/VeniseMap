@@ -1661,3 +1661,17 @@ body.menu-open #dev-chap-help,body:not(.jeu) #dev-chap-help{display:none!importa
 @keyframes chapOrbitReverse{to{transform:rotate(-360deg)}}
 @keyframes chapStarTwinkle{to{opacity:.48;scale:.7}}
 @media (prefers-reduced-motion:reduce){#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-halo,#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-stars-outer,#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-stars-inner,#sheet.chap.chap-conclusion .chap-victory-stars i{animation:none}}
+
+/* Plan plein écran : une seule image, sans bande descriptive ni croix. */
+#sheet .plan-panel-full{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;overflow:hidden;background:#081b29;mask:none!important;-webkit-mask:none!important;pointer-events:auto}
+#sheet .plan-panel-full .plan-stage{position:relative;flex:1;width:100%;height:100%;min-height:0;box-sizing:border-box;display:grid;place-items:center;padding:calc(12px + var(--safe-t)) 6px calc(12px + var(--safe-b));overflow:hidden}
+#sheet .plan-panel-full .plan-box{position:relative;flex:none;margin:0}
+#sheet .plan-panel-full .plan-img{display:block;width:100%;height:100%;object-fit:contain;opacity:1;mask:none!important;-webkit-mask:none!important}
+#sheet .plan-panel-full .plan-pt{z-index:1}
+#sheet .plan-panel-full .plan-peek{position:absolute;z-index:3;display:flex;align-items:center;gap:10px;width:min(240px,calc(100vw - 20px));min-height:86px;box-sizing:border-box;padding:8px;border:1px solid rgba(230,224,205,.75);border-radius:12px;background:rgba(13,37,51,.96);color:#fff;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,.52);cursor:pointer}
+#sheet .plan-panel-full .plan-peek[hidden]{display:none}
+#sheet .plan-panel-full .plan-peek img{flex:none;width:72px;height:72px;object-fit:cover;border-radius:7px}
+#sheet .plan-panel-full .plan-peek span{font:600 16px/1.25 Georgia,serif;text-wrap:balance}
+#sheet .plan-panel-full .plan-photo{position:absolute;inset:0;z-index:4;display:block!important;padding:0!important;overflow:hidden;background:#061521!important}
+#sheet .plan-panel-full .plan-photo img,#sheet .plan-panel-full .plan-photo img.tall{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain!important;object-position:center!important;mask:none!important;-webkit-mask:none!important}
+#sheet .plan-panel-full .plan-photo-back{position:absolute;z-index:6;top:calc(12px + var(--safe-t));left:12px;min-height:40px;padding:8px 13px;border:1px solid rgba(255,255,255,.55);border-radius:999px;background:rgba(9,38,55,.88);color:#fff;font:700 13px/1.2 Arial,sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.35)}

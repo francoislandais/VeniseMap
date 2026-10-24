@@ -1510,9 +1510,18 @@ async function chapEnd(p, replay, preview = false) {
   fitChapTalk();
   if (!preview && p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
   let planButton = null;
-  if (p.plan) { planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "chap-end-plan"; planButton.textContent = defaults.plan; planButton.onclick = () => openPlanPanel(p.plan, p); bt.appendChild(planButton); fitChapTalk(); }
+  if (p.plan) { planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "chap-end-plan"; planButton.textContent = defaults.plan; bt.appendChild(planButton); fitChapTalk(); }
   if (MONTAGES[p.id]) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-photo"; b.textContent = "📸 Photo souvenir"; b.onclick = () => openMontage(p.id); sh.appendChild(b); }
   conclusionEditor(sh, p, { bravo: $(".chap-victory-bravo", emblem), completion: $(".chap-victory-line", emblem), emblem: $(".chap-victory-emblem", emblem), lead: $(".chap-secret-lead", bubble), secret: $(".chap-secret-clue", bubble), ...(planButton ? { plan: planButton } : {}) }, defaults);
+  const routePlanButton = () => {
+    if (!planButton) return;
+    const M = p.musicChallenge;
+    if (M && has(`music:${M.entry}:found`)) {
+      planButton.textContent = has(`music:${M.entry}:won`) ? "Retrouver mon fragment musical" : "Reprendre le défi musical";
+      planButton.onclick = () => openMusicChallenge(M.entry, p, routePlanButton);
+    } else planButton.onclick = () => openPlanPanel(p.plan, p, routePlanButton);
+  };
+  routePlanButton();
   const stage = (delay, action) => setTimeout(() => { if (emblem.isConnected) action(); }, delay);
   const lead = $(".chap-secret-lead", bubble), clue = $(".chap-secret-clue", bubble);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -1561,54 +1570,64 @@ function showLocBtn(bubbleEl, loc) {
     ui.t = setInterval(upd, 2000);
   };
 }
-/* ───────── Plan de l'église : plein écran, repères cliquables ; en bas, Corto invite à toucher une lettre puis la fiche prend sa place ───────── */
-function openPlanPanel(plan, pl) {
+/* ───────── Plan en pleine page → étiquette → photo en pleine page ───────── */
+function openPlanPanel(plan, pl, onMusicFound = () => {}) {
   const sh = $("#sheet"); if (!sh || !plan) return;
   if (!locUI) locUI = { els: [], map: null, panel: null, t: null, loc: null };
-  const ui = locUI;
-  if (ui.planOpen) return;
-  let panel = null, stage = null, box = null, bottom = null;
-  const hide = () => { panel && panel.remove(); ui.els = ui.els.filter((e) => e !== panel); panel = stage = box = bottom = null; ui.planOpen = false; sh.classList.remove("plan-open"); };
-  const layout = () => { // le plan est posé une fois pour toutes, centré entre le titre et le bas ; seul le bas change
-    if (!panel) return; const PW = stage.clientWidth, PH = stage.clientHeight, sc = Math.min(PW / plan.w, (PH - 8) / plan.h);
-    box.style.width = plan.w * sc + "px"; box.style.height = plan.h * sc + "px"; box.style.fontSize = Math.max(13, plan.w * sc * 0.026) + "px";
+  const ui = locUI; if (ui.planOpen) return;
+  let panel, stage, box, peek = null, photo = null, selected = null, observer = null;
+  const hide = () => {
+    observer?.disconnect(); panel?.remove(); ui.els = ui.els.filter((e) => e !== panel);
+    ui.planOpen = false; ui.closePlan = null; sh.classList.remove("plan-open");
+    panel = stage = box = peek = photo = selected = null;
   };
-  // la photo s'affiche en grand à la place du plan (qui reste en dessous, immobile) ; la croix la fait partir
-  let photo = null;
-  const closePhoto = () => { if (!photo) return; const el = photo; photo = null; if (box) box.style.opacity = 1; el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: "forwards" }).finished.then(() => el.remove()); };
+  const placePeek = () => {
+    if (!peek || !selected || !stage) return;
+    const marker = $$(".plan-pt", box).find((e) => e.dataset.id === selected.id), sr = stage.getBoundingClientRect(), mr = marker?.getBoundingClientRect();
+    if (!mr) return;
+    const cx = mr.left - sr.left + mr.width / 2, cy = mr.top - sr.top + mr.height / 2;
+    peek.style.left = Math.max(10, Math.min(stage.clientWidth - peek.offsetWidth - 10, cx - peek.offsetWidth / 2)) + "px";
+    peek.style.top = (cy + 16 + peek.offsetHeight < stage.clientHeight - 10 ? cy + 16 : Math.max(10, cy - peek.offsetHeight - 16)) + "px";
+  };
+  const layout = () => {
+    if (!stage || !box) return;
+    const sc = Math.min((stage.clientWidth - 12) / plan.w, (stage.clientHeight - SAFE_T() - SAFE_B() - 24) / plan.h);
+    box.style.width = Math.max(1, plan.w * sc) + "px"; box.style.height = Math.max(1, plan.h * sc) + "px";
+    box.style.fontSize = Math.max(13, plan.w * sc * .026) + "px";
+    placePeek();
+  };
+  const closePhoto = () => { if (!photo) return; photo.remove(); photo = null; if (peek) peek.hidden = false; };
   const openPhoto = (pt) => {
-    closePhoto(); photo = document.createElement("div"); photo.className = "plan-photo"; box.style.transition = "opacity .35s"; box.style.opacity = 0; // le plan s'efface derrière la photo
-    photo.style.top = stage.offsetTop + "px"; photo.style.height = stage.offsetHeight + "px";
-    photo.innerHTML = `<img src="${pt.img}" alt=""><button type="button" class="pp-x" aria-label="Revenir au plan">Revenir au plan</button>`;
-    const im = $("img", photo), fit = () => { // image trop haute pour sa largeur : on la coupe (cover) au lieu de la rétrécir
-      const bw = photo.clientWidth, bh = photo.clientHeight - 46, r = im.naturalWidth / im.naturalHeight;
-      if (r < 0.7) im.classList.add("tall"); // image haute (statue) : fondu du haut très court pour garder la tête visible
-      if (r < (bw / bh) * 0.55) { im.style.width = "100%"; im.style.height = "100%"; im.style.objectFit = "cover"; im.style.objectPosition = "50% 0%"; }
-    };
-    panel.appendChild(photo); photo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
-    if (im.complete) fit(); else im.onload = fit;
-    addTreasures(photo, im, pt, pl);
-    $(".pp-x", photo).onclick = closePhoto;
+    closePhoto(); if (peek) peek.hidden = true;
+    photo = document.createElement("div"); photo.className = "plan-photo";
+    photo.innerHTML = `<img src="${esc(pt.img)}" alt="${esc(pt.title)}"><button type="button" class="plan-photo-back">← Retour à la carte</button>`;
+    panel.appendChild(photo);
+    $(".plan-photo-back", photo).onclick = closePhoto;
+    const im = $("img", photo);
+    addTreasures(photo, im, pt, pl, {
+      onClaim: hide,
+      onMusic: (entry) => { hide(); onMusicFound(); openMusicChallenge(entry, pl, onMusicFound); },
+    });
+    photo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280 });
   };
-  const invite = () => { bottom.innerHTML = `<div class="pb-hint"><span class="pb-face"></span><p>Appuie sur une lettre pour découvrir le trésor qui se cache derrière.</p></div>`; };
   const select = (pt) => {
+    closePhoto(); selected = pt;
     $$(".plan-pt", box).forEach((e) => e.classList.toggle("sel", e.dataset.id === pt.id));
-    bottom.innerHTML = `<div class="pb-fiche"><img class="pc-img" src="${pt.img}" alt=""><div class="pc-t"><b>${esc(pt.title)}</b><small>${esc(pt.sub || "")}</small><p>${esc(pt.text)}</p></div></div>`;
-    bottom.animate([{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }], { duration: 260 });
-    closePhoto();
-    $(".pc-img", bottom).onclick = () => openPhoto(pt);
+    peek?.remove(); peek = document.createElement("button"); peek.type = "button"; peek.className = "plan-peek";
+    peek.innerHTML = `<img src="${esc(pt.img)}" alt=""><span>${esc(pt.title)}</span>`;
+    peek.onclick = () => openPhoto(pt);
+    stage.appendChild(peek); placePeek();
+    peek.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 220 });
   };
-  {
-    ui.planOpen = true; ui.closePlan = hide; sh.classList.add("plan-open");
-    panel = document.createElement("div"); panel.className = "plan-panel";
-    panel.innerHTML = `<div class="plan-head"><b>${esc(plan.title || "")}</b></div><div class="plan-stage"><div class="plan-box"><img class="plan-img" src="${plan.img}" alt="">${plan.points.map((p) => `<button type="button" class="plan-pt" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%">${p.id}</button>`).join("")}</div></div><div class="plan-bottom"></div><button type="button" class="loc-x plan-x" aria-label="Fermer le plan">✕</button>`;
-    if (!sh.classList.contains("chap") && pl) panel.style.cssText += `;background:linear-gradient(to bottom,rgba(2,10,16,.45),rgba(2,10,16,.72)),url(${pic(pl.id)}) center/cover #05121c`; // hors épreuve : fond opaque (l'écran du lieu ne doit pas transparaître)
-    sh.appendChild(panel); ui.els.push(panel); stage = $(".plan-stage", panel); box = $(".plan-box", panel); bottom = $(".plan-bottom", panel); invite(); layout();
-    $(".plan-x", panel).onclick = hide;
-    $$(".plan-pt", box).forEach((e) => (e.onclick = () => select(plan.points.find((p) => p.id === e.dataset.id))));
-    const kf = [{ maskPosition: "0 100%", webkitMaskPosition: "0 100%" }, { maskPosition: "0 0", webkitMaskPosition: "0 0" }];
-    panel.animate(kf, { duration: 900, easing: "ease-out" }); // le plan apparaît en fondu, du haut vers le bas
-  };
+  ui.planOpen = true; ui.closePlan = hide; sh.classList.add("plan-open");
+  panel = document.createElement("div"); panel.className = "plan-panel plan-panel-full";
+  panel.innerHTML = `<div class="plan-stage"><div class="plan-box"><img class="plan-img" src="${esc(plan.img)}" alt="Plan de ${esc(plan.title || pl?.name || "l'église")}">${plan.points.map((pt) => `<button type="button" class="plan-pt" data-id="${esc(pt.id)}" style="left:${pt.x}%;top:${pt.y}%" aria-label="Voir ${esc(pt.title)}">${esc(pt.id)}</button>`).join("")}</div></div>`;
+  sh.appendChild(panel); ui.els.push(panel); stage = $(".plan-stage", panel); box = $(".plan-box", panel);
+  stage.onclick = (e) => { if (e.target === stage || e.target.classList.contains("plan-img")) hide(); };
+  $$(".plan-pt", box).forEach((e) => { e.onclick = () => { const pt = plan.points.find((x) => x.id === e.dataset.id); if (pt) select(pt); }; });
+  layout();
+  if (window.ResizeObserver) { observer = new ResizeObserver(layout); observer.observe(stage); }
+  panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, easing: "ease-out" });
 }
 async function runChapters(p, replay = false) {
   const myLoop = ++curLoop;
@@ -1925,7 +1944,7 @@ function solemn(p) {
   });
 }
 // Trésors cachés sur les photos (une fois le mot de Corto entendu) : étoiles à tapoter et, sur la photo du saint, l'objet magique.
-function addTreasures(photo, im, pt, p) {
+function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {} } = {}) {
   if (!p || !has("fin:" + p.id)) return;
   const place = () => { // position d'un point (fx, fy) de l'image, que l'image soit entière ou recadrée (cover)
     const r = im.getBoundingClientRect(), pr = photo.getBoundingClientRect(), nw = im.naturalWidth, nh = im.naturalHeight; if (!nw) return null;
@@ -1935,19 +1954,22 @@ function addTreasures(photo, im, pt, p) {
   };
   const hash = (str) => { let h = 7; for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 9973; return h; };
   const go = () => {
+    if (!photo.isConnected) return;
     const at = place(); if (!at) return;
     const fx = (n) => 0.15 + 0.7 * (((hash(p.id + pt.id) * (n + 3) * 37) % 100) / 100), fy = (n) => 0.12 + 0.7 * (((hash(pt.id + p.id) * (n + 5) * 53) % 100) / 100);
     const put = (cls, text, x, y, onTap) => { const e = document.createElement("button"); e.type = "button"; e.className = cls; e.textContent = text; const [l, t] = at(x, y); e.style.left = l + "px"; e.style.top = t + "px"; e.onclick = (ev) => { ev.stopPropagation(); onTap(e); }; photo.appendChild(e); e.animate([{ opacity: 0, transform: "translate(-50%,-50%) scale(.3)" }, { opacity: 1, transform: "translate(-50%,-50%) scale(1)" }], { duration: 600, delay: 400 }); };
     [0, 1].forEach((k) => { const key = `st:${p.id}:${pt.id}:${k}`; if (!has(key)) put("hid-star", "⭐", fx(k), fy(k), (e) => { award(key, 2, meIdx()); save(); refreshAll(); starBurst(e, 2, true); toast("+2 ⭐"); e.remove(); }); });
     const R = p.reward;
     if (R && R.point === pt.id && !has("tr:" + p.id)) put("hid-trophy", R.emoji, R.at[0], R.at[1], (e) => {
+      e.disabled = true;
       award("tr:" + p.id, 0, meIdx()); save(); refreshAll(); confetti(120); toast(`${R.emoji} Tu as trouvé : ${R.name} !`);
-      e.animate([{ transform: "translate(-50%,-50%) scale(1.4)" }, { transform: "translate(-50%,-50%) scale(.2)", opacity: 0 }], { duration: 700, fill: "forwards" }).finished.then(() => e.remove());
+      e.animate([{ transform: "translate(-50%,-50%) scale(1.4)" }, { transform: "translate(-50%,-50%) scale(.2)", opacity: 0 }], { duration: 700, fill: "forwards" }).finished.then(() => { e.remove(); onClaim(); });
     });
     const M = p.musicChallenge;
     if (M && M.point === pt.id && !has(`music:${M.entry}:won`)) put("hid-music", "🎼", M.at[0], M.at[1], (e) => {
+      e.disabled = true;
       if (!has(`music:${M.entry}:found`)) { award(`music:${M.entry}:found`, 0, meIdx()); save(); }
-      openMusicChallenge(M.entry, p, () => e.remove());
+      onMusic(M.entry);
     });
   };
   if (im.complete) setTimeout(go, 60); else im.addEventListener("load", () => setTimeout(go, 60));
