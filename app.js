@@ -63,6 +63,7 @@ const unaward = (k) => { S.done[k] = { t: Date.now(), p: 0, d: 1 }; };
 const points = () => Object.values(S.done).reduce((n, v) => n + (v.d ? 0 : v.p || 0), 0);
 const pointsOf = (i) => Object.values(S.done).reduce((n, v) => n + (!v.d && (v.w == null || v.w === "all" || v.w === i) ? v.p || 0 : 0), 0);
 let active = 0;
+let tab = "map", lastTab = "days", menuOpen = false;
 try { active = +localStorage.getItem("vq_active") || 0; } catch {}
 const me = () => S.kids[Math.min(active, S.kids.length - 1)];
 const meIdx = () => Math.min(active, S.kids.length - 1);
@@ -263,7 +264,7 @@ function userEl() {
   return el;
 }
 function refreshUserMarker() { if (userMarker) { const ll = userMarker.getLngLat(); userMarker.remove(); userMarker = null; if (pos) onPos(pos.lat, pos.lon, pos.acc, true); } }
-let watchId, userMarker;
+let watchId, userMarker, geoStarted = false, geoSimulated = false;
 // Mode développeur : le bateau se déplace au doigt / à la souris. Activé par ?dev (mémorisé), désactivé par ?dev=0, ou par le réglage dans Réglages. ?fake=lat,lon l'active aussi.
 const QS = new URLSearchParams(location.search);
 let DEV = false;
@@ -274,17 +275,26 @@ try {
 const LOCAL_PREVIEW = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 const LOCAL_DEV = DEV && LOCAL_PREVIEW;
 let devPinned = false; // le bateau a été posé à la main : le GPS réel est ignoré
+// Le GPS précis ne sert qu'avec la carte active ; la dernière position reste affichée pendant les autres écrans.
+function syncGeoWatch() {
+  if (!geoStarted || geoSimulated || !navigator.geolocation) return;
+  const needed = !document.hidden && !devPinned && tab === "map" && $("#quest").hidden && !document.body.classList.contains("chap-open") && !$(".music-found,.music-quest");
+  if (!needed && watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  if (needed && watchId == null) watchId = navigator.geolocation.watchPosition((e) => onPos(e.coords.latitude, e.coords.longitude, e.coords.accuracy), () => { if (locateAsked) toast("📍 Je ne te trouve pas… active la localisation !"); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+}
+const scheduleGeoSync = () => queueMicrotask(syncGeoWatch);
 function startGeo() {
+  if (geoStarted) { syncGeoWatch(); return; }
+  geoStarted = true;
   const fake = QS.get("fake");
   window.__fake = (a, b) => { devPinned = true; onPos(a, b, 10, true); };
-  if (fake) { const [la, lo] = fake.split(",").map(Number); window.__fake(la, lo); return; }
+  if (fake) { geoSimulated = true; const [la, lo] = fake.split(",").map(Number); window.__fake(la, lo); return; }
   const gps = QS.get("gps"); // simule un vrai GPS (soumis à la limite de Venise) : ?gps=lat,lon
-  if (gps) { const [la, lo] = gps.split(",").map(Number); setTimeout(() => onPos(la, lo, 15), 600); return; }
+  if (gps) { geoSimulated = true; const [la, lo] = gps.split(",").map(Number); setTimeout(() => onPos(la, lo, 15), 600); return; }
   // Mode dev : un tapotement sur la carte déplace le pictogramme (pour tester différentes positions).
-  if (DEV) map.on("click", (e) => { devPinned = true; onPos(e.lngLat.lat, e.lngLat.lng, 10, true); });
+  if (DEV) map.on("click", (e) => { devPinned = true; onPos(e.lngLat.lat, e.lngLat.lng, 10, true); syncGeoWatch(); });
   if (DEV) setTimeout(() => { if (!pos) { const c = map.getCenter(); onPos(c.lat, c.lng, 10); } }, 1500);
-  if (!navigator.geolocation || watchId != null) return;
-  watchId = navigator.geolocation.watchPosition((e) => onPos(e.coords.latitude, e.coords.longitude, e.coords.accuracy), () => { if (locateAsked) toast("📍 Je ne te trouve pas… active la localisation !"); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  syncGeoWatch();
 }
 function onPos(lat, lon, acc, manual = false) {
   if (devPinned && !manual) return;
@@ -422,9 +432,11 @@ function ensureBoat(fresh) { // fresh : fin de l'intro → le voilier repart du 
   requestAnimationFrame(boatTick);
 }
 let boatLast = 0;
+const mapWorkVisible = () => !document.hidden && tab === "map" && $("#quest").hidden && !document.body.classList.contains("chap-open") && !document.body.classList.contains("intro-open") && !$(".music-found,.music-quest");
 function boatTick(ts) {
+  if (!boatMarker || !mapWorkVisible()) { setTimeout(() => requestAnimationFrame(boatTick), 250); return; }
   requestAnimationFrame(boatTick);
-  if (!boatMarker || document.hidden || ts - boatLast < (ecoOn() ? 120 : 40)) return; boatLast = ts;
+  if (ts - boatLast < (ecoOn() ? 120 : 40)) return; boatLast = ts;
   const b = boatAt(); if (boatMarker.getElement().style.visibility === "hidden") return; boatMarker.setLngLat(b.ll);
   if (!b.moored) { // il regarde dans le sens de la marche (retournement doux)
     const a = map.project(b.ll), c = map.project(boatAt(Date.now() + 8000).ll), dx = c.x - a.x; if (Math.abs(dx) > 0.3) { const left = dx < 0; if (left !== boatLeft) { boatLeft = left; boatMarker.getElement().classList.toggle("left", left); } }
@@ -648,6 +660,7 @@ let walkLast = 0;
 const ecoOn = () => { try { return localStorage.getItem("vq_eco") === "1"; } catch { return false; } };
 let walkPrev = 0;
 function walkTick(ts) {
+  if (!mapWorkVisible()) { setTimeout(() => requestAnimationFrame(walkTick), 250); return; }
   if (ecoOn() && ts - walkPrev < 49) { requestAnimationFrame(walkTick); return; } // saute les images intermédiaires (≈ 20 images/s sur un écran 60 Hz)
   const eco = ecoOn(), k = walkPrev ? Math.min(3, Math.max(1, (ts - walkPrev) / 16.7)) : 1; walkPrev = ts; // k : lissages recalés sur le temps réel écoulé
   const now = nowMs();
@@ -914,19 +927,19 @@ let suspended = null, chapCur = null, destroying = false;
 function suspendChap(fromPop) {
   if (openId !== "chap" || !chapCur) return; document.body.classList.remove("chap-open");
   if ($("#sheet.chap .chap-final-msg")) { closeSheet(); return; } // fin achevée : le lieu rouvrira sur son bilan et permettra de rejouer
-  suspended = { id: chapCur.id }; openId = null; $("#sheet").hidden = true; stopChapAudio();
+  suspended = { id: chapCur.id }; openId = null; $("#sheet").hidden = true; stopChapAudio(); scheduleGeoSync();
   if (!fromPop && history.state && history.state.vqBridge) history.back(); // le popstate qui suit ne fait rien : openId est nul
   $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext();
 }
 function resumeSuspended() {
-  suspended = null; openId = "chap"; chatSel = "#b-talk"; document.body.classList.add("chap-open"); $("#sheet").hidden = false; $("#next").hidden = true; $("#bridge-btn").hidden = true;
+  suspended = null; openId = "chap"; chatSel = "#b-talk"; document.body.classList.add("chap-open"); $("#sheet").hidden = false; $("#next").hidden = true; $("#bridge-btn").hidden = true; scheduleGeoSync();
   try { history.pushState({ vqBridge: 1 }, ""); } catch {}
 }
 function closeSheet() {
   conclusionEditorAbort?.abort(); conclusionEditorAbort = null;
   document.body.classList.remove("chap-open"); suspended = null; stopMusic(500); stopChapAudio(); closeLoc();
   if ((openId === "bridges" || openId === "chap") && history.state && history.state.vqBridge) { destroying = true; history.back(); return; } // popstate rappellera closeSheet
-  openId = null; const sh = $("#sheet"); sh.hidden = true; sh.innerHTML = ""; $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext(); }
+  openId = null; const sh = $("#sheet"); sh.hidden = true; sh.innerHTML = ""; $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext(); scheduleGeoSync(); }
 function closeMedal() {
   const sh = $("#sheet"), medal = $("#medal"); if (!medal || !medalOrigin) { closeSheet(); return; }
   const { dx, dy, s } = medalOrigin; medalOrigin = null;
@@ -1403,7 +1416,7 @@ function openQuest(id) {
   if (place(id).chapters) { openChapters(place(id)); return; }
   const p = place(id), first = p.tasks.findIndex((_, i) => !taskDone(id, i));
   quest = { id, step: first < 0 ? p.tasks.length : first, phase: first < 0 ? "end" : doneTasks(p) === 0 && !introSeen[id] ? "intro" : "task" };
-  $("#quest").hidden = false; $("#next").hidden = true; $("#bridge-btn").hidden = true;
+  $("#quest").hidden = false; $("#next").hidden = true; $("#bridge-btn").hidden = true; scheduleGeoSync();
   map.easeTo({ center: [p.lon, p.lat] }); renderQuest();
 }
 /* ───────── Épreuves à chapitres : Corto pose une question, l'enfant choisit parmi plusieurs réponses ───────── */
@@ -1429,7 +1442,7 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
   sh.innerHTML = `<div class="chap-bg" style="background-image:url(${pic(p.id)})"></div><div class="chap-g chap-g-top"></div><div class="chap-g chap-g-bot"></div>
     <div class="m-chat b-talk" id="b-talk"></div><div class="b-actions" id="b-actions" hidden></div><img class="cq-head" src="img/corto-content.webp" alt="">`;
   // Épreuve : Corto parle comme partout ailleurs (bande en bas, texte à gauche, sa tête à droite) ; plus de pastille de Corto ni de boutons du coin.
-  document.body.classList.add("chap-open");
+  document.body.classList.add("chap-open"); scheduleGeoSync();
   { const bt = $("#b-talk"); if (window.ResizeObserver) new ResizeObserver(() => { sh.style.setProperty("--cqh", bt.offsetHeight + "px"); $$(".rev-img").forEach(fitRevImg); }).observe(bt); }
   if (DEV && !conclusionOnly) { const sk = document.createElement("button"); sk.type = "button"; sk.className = "dev-skip"; sk.textContent = "⏭ Fin"; sk.onclick = () => skipEnd && skipEnd(); sh.appendChild(sk); } // mode dev : sauter à l'écran final
   if (LOCAL_DEV && p.musicChallenge) { const b = document.createElement("button"); b.type = "button"; b.className = "dev-music"; b.textContent = "🔧 Dev · Défi musical"; b.onclick = () => openMusicChallenge(p.musicChallenge.entry, p, () => {}, true); sh.appendChild(b); }
@@ -1707,7 +1720,7 @@ async function runChapters(p, replay = false) {
     await chapEnd(p, replay); return;
   } catch (e) { if (e !== 0) throw e; }
 }
-function closeQuest() { quest = null; $("#quest").hidden = true; $("#bridge-btn").hidden = tab !== "map" || !!openId; renderNext(); }
+function closeQuest() { quest = null; $("#quest").hidden = true; $("#bridge-btn").hidden = tab !== "map" || !!openId; renderNext(); scheduleGeoSync(); }
 function questHero(p) {
   const dots = p.tasks.map((_, i) => `<i class="${taskDone(p.id, i) ? "ok" : quest.phase === "task" && quest.step === i ? "cur" : ""}"></i>`).join("");
   return `<div class="q-hero"><img src="img/places/${p.id}.webp" alt="" onerror="this.remove()"><button class="q-close" data-qx aria-label="Fermer">✕</button><div class="q-title">${esc(p.name)}</div><div class="q-dots">${dots}</div></div>`;
@@ -1740,7 +1753,6 @@ function renderQuest() {
 }
 
 /* ───────── Onglets ───────── */
-let tab = "map", lastTab = "days", menuOpen = false;
 // Pastille « retour à la carte » du menu : la même que dans les épreuves (coin bas gauche) ; le retour arrière du téléphone fait la même chose.
 function menuDock() {
   let d = $("#up-dock"); if (d) return d;
@@ -1762,6 +1774,7 @@ function setTab(t) {
   if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "music") renderMusicCollection(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
   if (t === "map") { setTimeout(() => map.resize(), 50); renderNext(); } else $("#next").hidden = true;
   if (t !== "map") closeSheetKeep();
+  scheduleGeoSync();
 }
 // Ouverture du menu depuis sa propre image : le panneau est déjà là, visible seulement dans un disque qui part du pictogramme et grandit jusqu'à remplir l'écran.
 function openMenuFrom(me) {
@@ -2024,7 +2037,7 @@ function openMusicFragmentReveal(id, p, rect = null) {
   const overlay = document.createElement("section"); overlay.className = "music-found"; overlay.setAttribute("aria-label", "Morceau de partition découvert. Touchez pour continuer."); overlay.tabIndex = 0;
   overlay.style.setProperty("--music-found-bg", `url("${pic(p.id)}")`);
   overlay.innerHTML = `<img class="mu-found-fragment" src="img/music/${esc(id)}-parchemin.png" alt="Morceau de la partition des Vêpres"><div class="mu-found-stars" aria-hidden="true">${Array.from({ length: 12 }, () => "<i>✦</i>").join("")}</div><div class="mu-found-message" aria-live="polite"><strong>Extraordinaire !</strong><span>Tu as trouvé un morceau de la partition des Vêpres.</span></div>`;
-  document.body.appendChild(overlay);
+  document.body.appendChild(overlay); scheduleGeoSync();
   const fragment = $(".mu-found-fragment", overlay);
   musicCatalog().then((items) => { const entry = items.find((item) => item.id === id && item.place === p.id); if (entry?.fragment && overlay.isConnected) fragment.src = entry.fragment; }).catch(() => {});
   const continueToQuestions = () => {
@@ -2041,7 +2054,7 @@ function openMusicFragmentReveal(id, p, rect = null) {
     setTimeout(async () => {
       if (!overlay.isConnected) return;
       await openMusicChallenge(id, p);
-      if ($(".music-quest")) overlay.remove(); else overlay.classList.remove("flow");
+      if ($(".music-quest")) { overlay.remove(); scheduleGeoSync(); } else overlay.classList.remove("flow");
     }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1450);
   };
   overlay.onclick = continueToQuestions;
@@ -2137,11 +2150,11 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
   const overlay = document.createElement("section"); overlay.className = "music-quest music-flow-quest"; overlay.setAttribute("aria-label", "Défi musical");
   overlay.style.setProperty("--music-flow-bg", `url("${pic(p.id)}")`);
   overlay.innerHTML = `<button type="button" class="mq-exit" aria-label="Quitter le défi musical">←</button><img class="mq-fragment" src="${esc(entry.fragment)}" alt="Morceau de la partition des Vêpres"><div class="mq-body"></div>`;
-  document.body.appendChild(overlay); document.body.classList.add("music-quest-active"); musicOpening = false;
+  document.body.appendChild(overlay); document.body.classList.add("music-quest-active"); musicOpening = false; scheduleGeoSync();
   const body = $(".mq-body", overlay);
   let clip = null, stopMusicEditor = () => {};
   const stopClip = () => { if (clip) { clip.pause(); clip = null; } };
-  const close = () => { stopMusicEditor(); stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); };
+  const close = () => { stopMusicEditor(); stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); scheduleGeoSync(); };
   $(".mq-exit", overlay).onclick = close;
   const credit = `<p class="mq-credit">${esc(entry.credit.text)}${entry.credit.source ? ` <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a>` : ""}${entry.credit.license ? ` · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">Licence</a>` : ""}</p>`;
   const victory = () => {
@@ -3011,4 +3024,4 @@ function joinGame(msg = "") {
 }
 setInterval(sync, 45000);
 addEventListener("online", sync);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(); });
+document.addEventListener("visibilitychange", () => { syncGeoWatch(); if (!document.hidden) sync(); });
