@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0ab"/><stop offset=".45" stop-color="#d6aa4a"/><stop offset="1" stop-color="#9a6828"/></linearGradient>
+<linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9f6940"/><stop offset=".5" stop-color="#75462e"/><stop offset="1" stop-color="#4d3028"/></linearGradient>
+<linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff6d9"/><stop offset=".55" stop-color="#efdbaf"/><stop offset="1" stop-color="#cda875"/></linearGradient>
+<linearGradient id="water" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a6e5d9"/><stop offset=".55" stop-color="#469aaa"/><stop offset="1" stop-color="#28627d"/></linearGradient>
+<linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#eaffed"/><stop offset=".35" stop-color="#9ad1cf"/><stop offset=".7" stop-color="#6a9db8"/><stop offset="1" stop-color="#345d88"/></linearGradient>
+</defs><ellipse cx="100" cy="188" rx="60" ry="6" fill="#000" opacity=".16"/>
+<path d="M45 54Q100 34 155 54V131Q143 164 100 180Q57 164 45 131Z" fill="url(#gold)" stroke="#73521d" stroke-width="5"/>
+<path d="M59 67Q100 53 141 67V129Q131 151 100 164Q69 151 59 129Z" fill="#bd5946" stroke="#843d35" stroke-width="3"/>
+<path d="M88 90Q100 69 113 91L122 103L114 118L124 137L105 132L96 147L87 128L72 130L82 109L76 96Z" fill="url(#gold)" stroke="#73521d" stroke-width="3"/>
+<path d="M93 93Q100 88 107 93M97 107H103M92 117Q100 121 108 117" stroke="#73521d" stroke-width="3" fill="none" stroke-linecap="round"/>
+<path d="M100 72V56" stroke="#73521d" stroke-width="4"/><path d="M81 84Q70 68 58 69M119 84Q130 68 142 69" stroke="#ddbb64" stroke-width="5" fill="none"/></svg>

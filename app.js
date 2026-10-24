@@ -1902,10 +1902,28 @@ const BADGES = [
   { e: "🌟", n: "Maître de Venise", ok: () => PLACES.every(complete) },
   { e: "👑", n: "Gardiens du Lion", ok: () => has("finale") },
 ];
-/* ───────── Objets trouvés : petits trésors à collectionner (ex. la coquille d'or donnée par saint Jean-Baptiste aux Frari) ─────────
-   Un objet trouvé = S.done["tr:" + id du lieu] (déjà posé par le jeu quand l'enfant le ramasse). Ils pourront servir plus tard à différents moments de l'aventure. */
-const OBJECT_IMG = { frari: "img/objets/coquille.svg", miracoli: "img/objets/perle.svg", basilique: "img/objets/plume.svg" };
-const objectList = () => PLACES.filter((p) => p.reward).map((p) => ({ id: p.id, name: p.reward.name, emoji: p.reward.emoji, img: OBJECT_IMG[p.id] || "", found: has("tr:" + p.id) }));
+/* ───────── Objets de poche : les trois trésors du parcours et douze futurs objets à collectionner. ─────────
+   PREVIEW_OBJECTS présente le catalogue entier sans attribuer les objets au joueur ni les synchroniser.
+   Les trésors existants gardent leur clé tr:<lieu> ; les nouveaux utiliseront o:<id> quand une épreuve les remettra. */
+const PREVIEW_OBJECTS = true;
+const OBJECTS = [
+  { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
+  { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
+  { id: "basilique", name: "La plume de l’évangéliste", img: "plume.svg", key: "tr:basilique" },
+  { id: "coffre-code", name: "Le coffret à code", img: "coffre-code.svg", key: "o:coffre-code" },
+  { id: "parchemin", name: "Le parchemin déchiré", img: "parchemin.svg", key: "o:parchemin" },
+  { id: "partition", name: "La partition oubliée", img: "partition.svg", key: "o:partition" },
+  { id: "cle-bronze", name: "La clé de bronze", img: "cle-bronze.svg", key: "o:cle-bronze" },
+  { id: "fiole-lagune", name: "La fiole de lagune", img: "fiole-lagune.svg", key: "o:fiole-lagune" },
+  { id: "verre-murano", name: "La goutte de Murano", img: "verre-murano.svg", key: "o:verre-murano" },
+  { id: "boussole", name: "La boussole de poche", img: "boussole.svg", key: "o:boussole" },
+  { id: "masque", name: "Le masque miniature", img: "masque.svg", key: "o:masque" },
+  { id: "sceau-lion", name: "Le sceau du lion", img: "sceau-lion.svg", key: "o:sceau-lion" },
+  { id: "diamant", name: "Le diamant de la lagune", img: "diamant.svg", key: "o:diamant" },
+  { id: "ruban-soie", name: "Le ruban de soie", img: "ruban-soie.svg", key: "o:ruban-soie" },
+  { id: "lanterne", name: "La lanterne secrète", img: "lanterne.svg", key: "o:lanterne" },
+];
+const objectList = () => OBJECTS.map((o) => ({ ...o, img: "img/objets/" + o.img, found: has(o.key) }));
 // Objet « pris » : il quitte sa case, s'agrandit, vient se poser sur le côté droit de l'écran et oscille doucement. Il y reste (même sur la carte, même après un rechargement) : l'enfant pourra le donner à quelqu'un. Un nouveau toucher dans l'onglet le repose.
 const HELD_KEY = "vq_held", HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
@@ -1914,7 +1932,7 @@ const HELD_POS = "vq_held_pos";
 const clampHeld = (p) => ({ left: Math.max(4, Math.min(innerWidth - HELD_SIZE - 4, p.left)), top: Math.max(4, Math.min(innerHeight - HELD_SIZE - 4, p.top)) });
 const heldSpot = () => { try { const p = JSON.parse(localStorage.getItem(HELD_POS)); if (p && isFinite(p.left) && isFinite(p.top)) return clampHeld(p); } catch {} return { left: innerWidth - HELD_SIZE - 8, top: Math.round(innerHeight * 0.36) }; }; // là où l'enfant l'a laissé, sinon sur le côté droit
 function mountHeld(id, fromRect) {
-  const o = objectList().find((x) => x.id === id && x.found); if (!o) { heldId = null; saveHeld(); return; }
+  const o = objectList().find((x) => x.id === id && (x.found || PREVIEW_OBJECTS)); if (!o) { heldId = null; saveHeld(); return; }
   if (heldEl) heldEl.remove();
   const el = document.createElement("div"); el.className = "held-ob"; el.dataset.o = id; el.innerHTML = o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${o.emoji}</span>`;
   const p = heldSpot(); el.style.cssText = `left:${p.left}px;top:${p.top}px;width:${HELD_SIZE}px;height:${HELD_SIZE}px`;
@@ -1954,12 +1972,18 @@ function holdObject(btn) {
   heldId = id; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} btn.classList.add("away"); mountHeld(id, btn.getBoundingClientRect());
 }
 function renderObjects() {
-  const v = $("#v-objects"), got = objectList().filter((o) => o.found);
-  menuSay(got.length ? "Voici tous les objets que tu as trouvés : peut-être pourront-ils te servir !" : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
-  v.innerHTML = got.length ? `<div class="ogrid">${got.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${o.emoji}</span>`}</button>`).join("")}</div>` : "";
+  const v = $("#v-objects"), objects = objectList();
+  const shown = PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found);
+  menuSay(PREVIEW_OBJECTS ? "Voici les petits trésors que nous pourrons glisser dans ton livre. Leurs cachettes viendront plus tard !" : shown.length ? "Voici tous les objets que tu as trouvés : peut-être pourront-ils te servir !" : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
+  v.innerHTML = (PREVIEW_OBJECTS ? `<p class="ob-preview">Aperçu de la collection · ${objects.length} objets</p>` : "") + (shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}"><img src="${o.img}" alt=""><span class="ob-name">${esc(o.name)}</span></button>`).join("")}</div>` : "");
   $$(".ob", v).forEach((b) => (b.onclick = () => holdObject(b)));
 }
-window.__objects = { list: objectList, find: (id) => { if (!has("tr:" + id)) { award("tr:" + id, 0, meIdx()); save(); refreshAll(); if (tab === "objects") renderObjects(); } }, reset: () => { PLACES.filter((p) => p.reward && has("tr:" + p.id)).forEach((p) => unaward("tr:" + p.id)); heldId = null; saveHeld(); if (heldEl) { heldEl.remove(); heldEl = null; } save(); refreshAll(); if (tab === "objects") renderObjects(); }, hold: (id) => { if (!has("tr:" + id)) window.__objects.find(id); heldId = id; saveHeld(); mountHeld(id); if (tab === "objects") renderObjects(); } };
+window.__objects = {
+  list: objectList,
+  find: (id) => { const o = OBJECTS.find((item) => item.id === id); if (o && !has(o.key)) { award(o.key, 0, meIdx()); save(); refreshAll(); if (tab === "objects") renderObjects(); } },
+  reset: () => { OBJECTS.filter((o) => has(o.key)).forEach((o) => unaward(o.key)); heldId = null; saveHeld(); if (heldEl) { heldEl.remove(); heldEl = null; } save(); refreshAll(); if (tab === "objects") renderObjects(); },
+  hold: (id) => { const o = OBJECTS.find((item) => item.id === id); if (!o) return; if (!PREVIEW_OBJECTS && !has(o.key)) window.__objects.find(id); heldId = id; saveHeld(); mountHeld(id); if (tab === "objects") renderObjects(); },
+};
 if (heldId) setTimeout(() => mountHeld(heldId), 0); // objet pris avant un rechargement : il est toujours là
 addEventListener("resize", () => { if (heldEl) { const p = heldSpot(); heldEl.style.left = p.left + "px"; heldEl.style.top = p.top + "px"; } });
 
