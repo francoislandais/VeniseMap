@@ -1462,9 +1462,105 @@ export const PLACES = [
   { id: "margherita", emoji: "⚽", name: "Campo Santa Margherita", lat: 45.43435, lon: 12.32377, r: 90,
     story: "Une grande place où les Vénitiens se retrouvent, discutent, mangent des glaces. Et où les enfants peuvent courir !",
     clue: "Là où l'on rit, le trésor sourit. Prenez le temps de jouer, Gardiens.",
-    tasks: [
-      { t: "do", q: "Mission jeu : lancez un défi de course ou de cache-cache sur la place (3 minutes !)." },
-      { t: "do", q: "Offrez-vous un gelato 🍦 ! Puis coche-le dans la collection." },
+    chapters: [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "where": "Cherche la haute tour de briques à l’extrémité du campo. Regarde bien sa partie supérieure : elle ne ressemble pas au sommet habituel d’un clocher.",
+            "q": "Comment se termine cette tour aujourd’hui ?",
+            "opts": [
+              "Par un sommet plat et tronqué",
+              "Par une flèche très pointue",
+              "Par une grande coupole",
+              "Par une statue dorée"
+            ],
+            "a": 0,
+            "reveal": "C’est le clocher de l’ancienne église Santa Margherita, qui a donné son nom au campo. Sa partie haute fut démolie en 1808 parce qu’elle était devenue dangereuse. L’église, désacralisée au XIXe siècle, sert aujourd’hui d’auditorium de l’université Ca’ Foscari.",
+            "img": "img/q/margherita-0.webp",
+            "src": [
+              "https://live.comune.venezia.it/it/2025/04/una-calle-una-storia-santa-margherita",
+              "https://www.unive.it/pag/fileadmin/user_upload/ateneo/spazi/schede-storiche/scheda_cenni_storici_smargherita_eng.pdf"
+            ],
+            "cap": "Le clocher de briques se termine brusquement : son sommet a disparu."
+          },
+          {
+            "idx": 301,
+            "where": "Approche de l’ancien clocher et cherche, au-dessus d’un encadrement de pierre, une petite sculpture blanche. Observe son dos et ses côtés ; tu peux utiliser le zoom d’un appareil.",
+            "q": "Quel détail distingue cette créature sculptée ?",
+            "opts": [
+              "Deux grandes ailes",
+              "Une nageoire de poisson",
+              "Des bois de cerf",
+              "Une longue corne"
+            ],
+            "a": 0,
+            "reveal": "Cette petite créature fantastique montre des ailes et des pattes. Elle décore l’ancien clocher de l’église Santa Margherita. Le sommet du clocher a été retiré en 1808 parce qu’il menaçait de s’écrouler.",
+            "img": "img/q/margherita-1.webp",
+            "src": [
+              "https://live.comune.venezia.it/it/2025/04/una-calle-una-storia-santa-margherita",
+              "https://www.unive.it/pag/fileadmin/user_upload/ateneo/spazi/schede-storiche/scheda_cenni_storici_smargherita_eng.pdf"
+            ],
+            "cap": "Les ailes sont visibles de part et d’autre du corps de la créature."
+          },
+          {
+            "idx": 302,
+            "where": "Trouve le bâtiment isolé au milieu de la place. Sur sa façade portant un relief blanc, compare les deux grandes fenêtres de l’étage.",
+            "q": "Quelle forme a le haut de ces deux fenêtres ?",
+            "opts": [
+              "Un arc arrondi",
+              "Une pointe triangulaire",
+              "Une ligne horizontale",
+              "Un cercle"
+            ],
+            "a": 0,
+            "reveal": "Ce bâtiment est l’ancienne Scuola dei Varoteri, siège d’une confrérie liée au travail des fourrures et des peaux. Il fut construit ici en 1725. La confrérie avait auparavant un bâtiment près de l’église des Gesuiti.",
+            "img": "img/q/margherita-2.webp",
+            "src": [
+              "https://live.comune.venezia.it/it/2025/04/una-calle-una-storia-santa-margherita"
+            ],
+            "cap": "Les deux fenêtres hautes, de part et d’autre du relief, sont arrondies au sommet."
+          },
+          {
+            "idx": 303,
+            "where": "Reste devant la même façade. Au centre de l’étage, repère le grand relief blanc et lève les yeux vers la tête du personnage principal.",
+            "q": "Que porte ce personnage sur la tête ?",
+            "opts": [
+              "Une couronne",
+              "Un casque",
+              "Un large chapeau",
+              "Une capuche"
+            ],
+            "a": 0,
+            "reveal": "Le relief représente la Vierge Marie, avec l’Enfant et des membres de la confrérie sous son manteau. Cette image religieuse rappelle qu’une scuola vénitienne était aussi un lieu de dévotion et d’entraide pour ses membres.",
+            "img": "img/q/margherita-3.webp",
+            "src": [
+              "https://www.conoscerevenezia.it/?p=15418",
+              "https://live.comune.venezia.it/it/2025/04/una-calle-una-storia-santa-margherita"
+            ],
+            "cap": "Une couronne de pierre est visible au-dessus du visage central."
+          },
+          {
+            "idx": 304,
+            "where": "Cherche une margelle de puits en pierre sur la place. Examine sa partie supérieure : elle est fermée par un objet sombre en métal.",
+            "q": "Qu’est-ce qui couvre l’ouverture du puits ?",
+            "opts": [
+              "Une grille de fer",
+              "Une plaque de verre",
+              "Un couvercle en bois",
+              "Une pierre sculptée en lion"
+            ],
+            "a": 0,
+            "reveal": "À Venise, l’eau des canaux est salée. Autrefois, de nombreux puits donnaient accès à l’eau de pluie recueillie et filtrée dans des citernes souterraines. La margelle visible ici rappelle ce système ingénieux ; la grille ferme aujourd’hui l’ouverture.",
+            "img": "img/q/margherita-4.webp",
+            "src": [
+              "https://live.comune.venezia.it/it/node/125815",
+              "https://live.comune.venezia.it/it/2025/04/campiello-del-piovan"
+            ],
+            "cap": "La grille métallique barre le dessus de la margelle en pierre."
+          }
+        ]
+      }
     ] },
 
   // ─── JOUR 4 : les îles du verre ───
