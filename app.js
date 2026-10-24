@@ -362,9 +362,9 @@ async function arrivalReveal(p) {
   const devFinish = $(".arr-dev-finish", arr);
   if (devFinish) devFinish.onclick = () => devCompleteChapter(p);
 }
-// Raccourci réservé à l'aperçu local : termine les questions et les toiles, puis révèle l'indice sans ramasser le trésor.
-function devCompleteChapter(p, fromLocalMap = false) {
-  if (!(fromLocalMap ? LOCAL_PREVIEW : LOCAL_DEV) || !p.chapters) return;
+// Test depuis l'accueil du lieu ou depuis la carte : questions terminées, trésors encore à trouver.
+function devCompleteChapter(p, fromMapButton = false) {
+  if (!p.chapters || (!fromMapButton && !LOCAL_DEV)) return;
   if (!arrived(p.id)) award("a:" + p.id, POINTS.arrive, meIdx());
   p.tasks.forEach((t) => { if (!taskDone(p.id, t.idx)) award(`t:${p.id}:${t.idx}`, t.pts, meIdx()); });
   const steps = p.chapters.flatMap((c) => c.steps.filter((s) => !s.pending).flatMap(chainOf));
@@ -2781,7 +2781,7 @@ function onboarding() {
 function refreshAll() { renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "trophies") renderTrophies(); if (openId) renderSheet(); }
 refreshAll();
 setTab("map");
-if (LOCAL_PREVIEW) {
+{
   const help = $("#dev-chap-help"); help.hidden = false;
   help.textContent = "🔧 Réinitialiser l'église-bijou et ouvrir sa conclusion";
   help.onclick = async () => {
