@@ -271,7 +271,8 @@ try {
   if (QS.has("dev")) { if (QS.get("dev") === "0") localStorage.removeItem("vq_dev"); else localStorage.setItem("vq_dev", "1"); }
   DEV = localStorage.getItem("vq_dev") !== "0" || QS.has("fake"); // phase de test : actif par défaut, ?dev=0 le coupe
 } catch { DEV = QS.has("fake"); }
-const LOCAL_DEV = DEV && (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+const LOCAL_PREVIEW = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+const LOCAL_DEV = DEV && LOCAL_PREVIEW;
 let devPinned = false; // le bateau a été posé à la main : le GPS réel est ignoré
 function startGeo() {
   const fake = QS.get("fake");
@@ -362,8 +363,8 @@ async function arrivalReveal(p) {
   if (devFinish) devFinish.onclick = () => devCompleteChapter(p);
 }
 // Raccourci réservé à l'aperçu local : termine les questions et les toiles, puis révèle l'indice sans ramasser le trésor.
-function devCompleteChapter(p) {
-  if (!LOCAL_DEV || !p.chapters) return;
+function devCompleteChapter(p, fromLocalMap = false) {
+  if (!(fromLocalMap ? LOCAL_PREVIEW : LOCAL_DEV) || !p.chapters) return;
   if (!arrived(p.id)) award("a:" + p.id, POINTS.arrive, meIdx());
   p.tasks.forEach((t) => { if (!taskDone(p.id, t.idx)) award(`t:${p.id}:${t.idx}`, t.pts, meIdx()); });
   const steps = p.chapters.flatMap((c) => c.steps.filter((s) => !s.pending).flatMap(chainOf));
@@ -2780,10 +2781,16 @@ function onboarding() {
 function refreshAll() { renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "trophies") renderTrophies(); if (openId) renderSheet(); }
 refreshAll();
 setTab("map");
-if (LOCAL_DEV) {
+if (LOCAL_PREVIEW) {
   const help = $("#dev-chap-help"); help.hidden = false;
-  help.textContent = "🔧 Conclusion église-bijou";
-  help.onclick = () => { if (tab === "map" && $("#sheet").hidden) openChapters(place("miracoli"), false, true, true); };
+  help.textContent = "🔧 Réinitialiser l'église-bijou et ouvrir sa conclusion";
+  help.onclick = async () => {
+    if (tab !== "map" || !$("#sheet").hidden || help.disabled) return;
+    help.disabled = true;
+    try { const p = place("miracoli"); await resetPlaceProgress([p]); devCompleteChapter(p, true); }
+    catch { toast("Impossible de préparer la conclusion de l'église-bijou."); }
+    finally { help.disabled = false; }
+  };
 }
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 let pendingTeamName = "";

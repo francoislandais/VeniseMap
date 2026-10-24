@@ -1675,3 +1675,7 @@ body.menu-open #dev-chap-help,body:not(.jeu) #dev-chap-help{display:none!importa
 #sheet .plan-panel-full .plan-photo{position:absolute;inset:0;z-index:4;display:block!important;padding:0!important;overflow:hidden;background:#061521!important}
 #sheet .plan-panel-full .plan-photo img,#sheet .plan-panel-full .plan-photo img.tall{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain!important;object-position:center!important;mask:none!important;-webkit-mask:none!important}
 #sheet .plan-panel-full .plan-photo-back{position:absolute;z-index:6;top:calc(12px + var(--safe-t));left:12px;min-height:40px;padding:8px 13px;border:1px solid rgba(255,255,255,.55);border-radius:999px;background:rgba(9,38,55,.88);color:#fff;font:700 13px/1.2 Arial,sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.35)}
+
+/* Commande de test unique, bien visible sur la carte locale. */
+#dev-chap-help{top:calc(78px + var(--safe-t));left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(360px,calc(100vw - 24px));min-height:62px;padding:11px 16px;border:2px solid #efcf83;border-radius:15px;background:rgba(8,37,56,.96);color:#fff;font:700 15px/1.25 Arial,sans-serif;text-align:center;text-wrap:balance;box-shadow:0 5px 20px rgba(0,8,18,.5),0 0 14px rgba(239,207,131,.3);pointer-events:auto}
+#dev-chap-help:disabled{opacity:.6}
