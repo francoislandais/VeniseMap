@@ -1559,3 +1559,7 @@ body.intro-open > .cam.cam{visibility:visible!important}
 #music-walk{position:fixed;z-index:1800;left:12px;right:12px;bottom:calc(86px + var(--safe-b));display:flex;align-items:center;gap:8px;max-width:520px;margin:auto;padding:8px 10px;border:1px solid rgba(204,228,232,.8);border-radius:14px;background:rgba(7,34,52,.96);color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.35)}
 #music-walk span{min-width:72px;display:grid;gap:2px;font-size:11px}#music-walk span small{color:#c1d1d9}#music-walk audio{min-width:0;flex:1;height:34px}#music-walk>button{border:0;background:none;color:#fff;font-size:21px}
 #v-music .music-fragment{max-width:340px;margin:16px auto;text-align:center;color:#1d3040}#v-music .music-fragment img{display:block;width:min(76vw,240px);max-height:46vh;object-fit:contain;margin:auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.3))}#v-music .music-fragment h2{font:22px Georgia,serif;margin:8px 0 2px}#v-music .music-fragment p,#v-music .music-empty{text-align:center;color:#334b5c;font:15px/1.4 Georgia,serif}
+
+/* Raccourci local de test : accessible pendant les questions et sur la conclusion. */
+#sheet.chap .dev-music{position:absolute;top:calc(44px + var(--safe-t));right:10px;z-index:15;padding:6px 10px;border:1px solid rgba(255,255,255,.55);border-radius:999px;background:rgba(4,20,32,.78);color:#fff;font-size:11px;font-weight:700;pointer-events:auto}
+#sheet.chap.chap-conclusion .dev-music{top:auto;bottom:calc(var(--cqh,150px) + 12px)}

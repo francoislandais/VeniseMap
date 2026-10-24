@@ -1427,6 +1427,7 @@ function openChapters(p, replay = false, conclusionOnly = false) {
   document.body.classList.add("chap-open");
   { const bt = $("#b-talk"); if (window.ResizeObserver) new ResizeObserver(() => { sh.style.setProperty("--cqh", bt.offsetHeight + "px"); $$(".rev-img").forEach(fitRevImg); }).observe(bt); }
   if (DEV && !conclusionOnly) { const sk = document.createElement("button"); sk.type = "button"; sk.className = "dev-skip"; sk.textContent = "⏭ Fin"; sk.onclick = () => skipEnd && skipEnd(); sh.appendChild(sk); } // mode dev : sauter à l'écran final
+  if (LOCAL_DEV && p.musicChallenge) { const b = document.createElement("button"); b.type = "button"; b.className = "dev-music"; b.textContent = "🔧 Dev · Défi musical"; b.onclick = () => openMusicChallenge(p.musicChallenge.entry, p, () => {}, true); sh.appendChild(b); }
   { // coin haut gauche : seul le retour à la carte reste présent pendant l'épreuve
     const dk = document.createElement("div"); dk.className = "dock";
     dk.innerHTML = `<button type="button" class="dk dk-exit" aria-label="Revenir à la carte de Venise">${EXIT_SVG}</button>`;
@@ -1883,6 +1884,7 @@ function addTreasures(photo, im, pt, p) {
 }
 /* Un défi musical correspond à une seule entrée de la bibliothèque et à un seul lieu. */
 let musicCatalogPromise = null;
+let musicOpening = false;
 const musicCatalog = () => (musicCatalogPromise ||= fetch("data/music-challenges.json").then((r) => { if (!r.ok) throw new Error("Bibliothèque musicale indisponible"); return r.json(); }).then((items) => {
   const ids = new Set();
   items.forEach((item) => { if (ids.has(item.id) || place(item.place)?.musicChallenge?.entry !== item.id) throw new Error("Correspondance musicale invalide"); ids.add(item.id); });
@@ -1896,13 +1898,14 @@ function startMusicWalk(entry) {
   $("button", player).onclick = () => { $("audio", player).pause(); player.remove(); };
   const play = $("audio", player).play(); if (play?.catch) play.catch(() => toast("Appuie sur lecture pour lancer la musique."));
 }
-async function openMusicChallenge(id, p, onWon = () => {}) {
-  if ($(".music-quest")) return;
+async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
+  if ($(".music-quest") || musicOpening) return;
+  musicOpening = true;
   let entry;
-  try { entry = (await musicCatalog()).find((item) => item.id === id && item.place === p.id); } catch { toast("Le défi musical n'est pas disponible pour l'instant."); return; }
-  if (!entry) { toast("Ce fragment musical est introuvable."); return; }
+  try { entry = (await musicCatalog()).find((item) => item.id === id && item.place === p.id); } catch { musicOpening = false; toast("Le défi musical n'est pas disponible pour l'instant."); return; }
+  if (!entry) { musicOpening = false; toast("Ce fragment musical est introuvable."); return; }
   const overlay = document.createElement("section"); overlay.className = "music-quest"; overlay.setAttribute("aria-label", "Défi musical");
-  document.body.appendChild(overlay);
+  document.body.appendChild(overlay); musicOpening = false;
   let clip = null;
   const stopClip = () => { if (clip) { clip.pause(); clip = null; } };
   const close = () => { stopClip(); overlay.remove(); };
@@ -1935,7 +1938,7 @@ async function openMusicChallenge(id, p, onWon = () => {}) {
       next.onclick = () => showQuestion(index + 1); feedback.after(next);
     });
   };
-  const first = entry.questions.findIndex((_, index) => !has(`music:${id}:q:${index}`));
+  const first = replay ? 0 : entry.questions.findIndex((_, index) => !has(`music:${id}:q:${index}`));
   if (first < 0) victory(); else showQuestion(first);
 }
 async function renderMusicCollection() {
