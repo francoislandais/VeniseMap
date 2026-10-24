@@ -2009,36 +2009,38 @@ function holdObject(btn) {
   if (heldId) releaseHeld();
   heldId = id; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} btn.classList.add("away"); mountHeld(id, btn.getBoundingClientRect());
 }
-// Zone d'assemblage locale : les pièces peuvent se chevaucher, sans être attribuées au joueur.
+// Zone de mélange locale : un objet déposé quitte sa case et reste entièrement dans le cercle.
 const OBJECT_PIECE_SIZE = 54;
 const objectAssembly = new Map();
-const assemblyClamp = (value) => Math.max(0, Math.min(1, value));
+const assemblyRadius = (board) => Math.max(0, Math.min(board.clientWidth, board.clientHeight) / 2 - OBJECT_PIECE_SIZE / 2 - 4);
 function assemblyPoint(board, clientX, clientY) {
   const r = board.getBoundingClientRect();
-  return {
-    x: assemblyClamp((clientX - r.left - OBJECT_PIECE_SIZE / 2) / Math.max(1, r.width - OBJECT_PIECE_SIZE)),
-    y: assemblyClamp((clientY - r.top - OBJECT_PIECE_SIZE / 2) / Math.max(1, r.height - OBJECT_PIECE_SIZE)),
-  };
+  const dx = clientX - (r.left + r.width / 2), dy = clientY - (r.top + r.height / 2);
+  const distance = Math.hypot(dx, dy), radius = assemblyRadius(board);
+  const ratio = distance ? Math.min(1, radius / distance) : 1;
+  return { x: radius ? dx * ratio / radius : 0, y: radius ? dy * ratio / radius : 0 };
 }
 function assemblyPlace(piece, board, point) {
-  piece.style.left = `${point.x * Math.max(0, board.clientWidth - OBJECT_PIECE_SIZE)}px`;
-  piece.style.top = `${point.y * Math.max(0, board.clientHeight - OBJECT_PIECE_SIZE)}px`;
+  const radius = assemblyRadius(board);
+  piece.style.left = `${board.clientWidth / 2 - OBJECT_PIECE_SIZE / 2 + point.x * radius}px`;
+  piece.style.top = `${board.clientHeight / 2 - OBJECT_PIECE_SIZE / 2 + point.y * radius}px`;
 }
 function renderObjectAssembly() {
   const board = $("#ob-assembly"); if (!board) return;
   board.classList.toggle("filled", objectAssembly.size > 0);
+  $$(".ob", $("#v-objects")).forEach((button) => button.classList.toggle("in-assembly", objectAssembly.has(button.dataset.o)));
   board.querySelectorAll(".ob-piece").forEach((piece) => piece.remove());
   objectAssembly.forEach((point, id) => {
     const object = objectList().find((o) => o.id === id); if (!object) return;
     const piece = document.createElement("button"); piece.type = "button"; piece.className = "ob-piece";
-    piece.setAttribute("aria-label", object.name); piece.title = object.name; piece.innerHTML = `<img src="${object.img}" alt="">`;
+    piece.setAttribute("aria-label", `Remettre ${object.name} dans les objets`); piece.title = object.name; piece.innerHTML = `<img src="${object.img}" alt="">`;
     board.appendChild(piece); assemblyPlace(piece, board, point);
-    let dragging = false;
-    piece.onpointerdown = (e) => { e.preventDefault(); dragging = true; try { piece.setPointerCapture(e.pointerId); } catch {} };
-    piece.onpointermove = (e) => { if (!dragging) return; const next = assemblyPoint(board, e.clientX, e.clientY); objectAssembly.set(id, next); assemblyPlace(piece, board, next); };
-    piece.onpointerup = () => { dragging = false; };
-    piece.onpointercancel = () => { dragging = false; };
-    piece.onclick = (e) => { if (e.detail === 0) { const source = $(`.ob[data-o="${id}"]`); if (source) holdObject(source); } };
+    let start = null;
+    piece.onpointerdown = (e) => { e.preventDefault(); start = { x: e.clientX, y: e.clientY, moved: false }; try { piece.setPointerCapture(e.pointerId); } catch {} };
+    piece.onpointermove = (e) => { if (!start) return; if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) return; start.moved = true; const next = assemblyPoint(board, e.clientX, e.clientY); objectAssembly.set(id, next); assemblyPlace(piece, board, next); };
+    piece.onpointerup = () => { if (!start) return; const moved = start.moved; start = null; if (!moved) { objectAssembly.delete(id); renderObjectAssembly(); } };
+    piece.onpointercancel = () => { start = null; };
+    piece.onclick = (e) => { if (e.detail === 0) { objectAssembly.delete(id); renderObjectAssembly(); } };
   });
 }
 function bindObjectDrag(button) {
@@ -2061,7 +2063,8 @@ function bindObjectDrag(button) {
     const moved = start.moved; start = null; removeGhost();
     if (!moved) { holdObject(button); return; }
     const board = $("#ob-assembly"), r = board?.getBoundingClientRect();
-    if (r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+    if (r && Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) <= Math.min(r.width, r.height) / 2) {
+      if (heldId === button.dataset.o) { heldEl?.remove(); heldEl = null; heldId = null; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} }
       objectAssembly.set(button.dataset.o, assemblyPoint(board, e.clientX, e.clientY));
       renderObjectAssembly();
     }
@@ -2073,15 +2076,15 @@ function renderObjects() {
   const v = $("#v-objects"), objects = objectList();
   const shown = PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found);
   menuSay(shown.length ? "Collectionne ces objets ici et vois ce que tu peux faire avec." : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
-  v.innerHTML = shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}"><img src="${o.img}" alt=""></button>`).join("")}</div><div id="ob-assembly" class="ob-assembly" aria-label="Espace d’assemblage"><span class="ob-workhint">Glisse des objets ici</span></div>` : "";
+  v.innerHTML = shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}"><img src="${o.img}" alt=""></button>`).join("")}</div><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Combine tes objets ici</span></div>` : "";
   $$(".ob", v).forEach(bindObjectDrag);
   renderObjectAssembly();
 }
 window.__objects = {
   list: objectList,
   find: (id) => { const o = OBJECTS.find((item) => item.id === id); if (o && !has(o.key)) { award(o.key, 0, meIdx()); save(); refreshAll(); if (tab === "objects") renderObjects(); } },
-  reset: () => { OBJECTS.filter((o) => has(o.key)).forEach((o) => unaward(o.key)); heldId = null; saveHeld(); if (heldEl) { heldEl.remove(); heldEl = null; } save(); refreshAll(); if (tab === "objects") renderObjects(); },
-  hold: (id) => { const o = OBJECTS.find((item) => item.id === id); if (!o) return; if (!PREVIEW_OBJECTS && !has(o.key)) window.__objects.find(id); heldId = id; saveHeld(); mountHeld(id); if (tab === "objects") renderObjects(); },
+  reset: () => { OBJECTS.filter((o) => has(o.key)).forEach((o) => unaward(o.key)); objectAssembly.clear(); heldId = null; saveHeld(); if (heldEl) { heldEl.remove(); heldEl = null; } save(); refreshAll(); if (tab === "objects") renderObjects(); },
+  hold: (id) => { const o = OBJECTS.find((item) => item.id === id); if (!o) return; if (!PREVIEW_OBJECTS && !has(o.key)) window.__objects.find(id); objectAssembly.delete(id); heldId = id; saveHeld(); mountHeld(id); if (tab === "objects") renderObjects(); },
 };
 if (heldId) setTimeout(() => mountHeld(heldId), 0); // objet pris avant un rechargement : il est toujours là
 function syncHeldPosition() {
