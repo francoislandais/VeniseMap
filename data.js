@@ -2498,7 +2498,7 @@ export const PLACES = [
     story: "Santa Maria dei Miracoli est toute en marbre de couleurs : on dirait une boîte à bijoux posée au bord du canal.",
     clue: "Un coffre de marbre ne contient pas toujours de l'or. Compte ses couleurs, elles sont la clé.",
     reward: {"point": "I", "emoji": "💎", "name": "La perle du miracle", "at": [0.63, 0.5], "hint": "La Vierge de l'autel a quelque chose pour toi."},
-    musicChallenge: { entry: "02", point: "A", at: [0.53, 0.36], hint: "La tribune des religieuses a quelque chose pour toi." },
+    musicChallenge: { entry: "04", point: "A", at: [0.53, 0.36], hint: "La tribune des religieuses a quelque chose pour toi." },
     plan: {
       "img": "img/plan/miracoli.webp",
       "w": 1311,

@@ -371,7 +371,7 @@ function devCompleteChapter(p, fromMapButton = false) {
   new Set(steps.map((s) => s.work).filter(Boolean)).forEach((id) => { if (!workFound(id)) award("w:" + id, POINTS.work, meIdx()); });
   if (has("fin:" + p.id)) unaward("fin:" + p.id);
   if (has("tr:" + p.id)) unaward("tr:" + p.id);
-  Object.keys(S.done).filter((key) => has(key) && (key.startsWith(`st:${p.id}:`) || (p.musicChallenge && key.startsWith(`music:${p.musicChallenge.entry}:`)))).forEach(unaward);
+  Object.keys(S.done).filter((key) => has(key) && (key.startsWith(`st:${p.id}:`) || (p.musicChallenge && key.startsWith(`music:${p.musicChallenge.entry}:`)) || (p.id === "miracoli" && key.startsWith("music:02:")))).forEach(unaward);
   save(); closeSheet(); refreshAll(); openChapters(p, false, true);
 }
 function doArrive(p, manual) {
@@ -2073,7 +2073,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backg
   const stopClip = () => { if (clip) { clip.pause(); clip = null; } };
   const close = () => { stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); };
   $(".mq-exit", overlay).onclick = close;
-  const credit = `<p class="mq-credit">${esc(entry.credit.text)} <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a> · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">CC BY-SA 3.0</a></p>`;
+  const credit = `<p class="mq-credit">${esc(entry.credit.text)}${entry.credit.source ? ` <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a>` : ""}${entry.credit.license ? ` · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">Licence</a>` : ""}</p>`;
   const victory = () => {
     stopClip();
     if (!has(`music:${id}:won`)) { award(`music:${id}:won`, 20, meIdx()); save(); refreshAll(); confetti(100); onWon(); }
@@ -2646,6 +2646,7 @@ window.__compose = (...a) => composeOutfit(...a); window.__metrics = (i, c) => h
 async function resetPlaceProgress(places) {
   const ids = new Set(places.map((p) => p.id));
   const musicIds = new Set(places.map((p) => p.musicChallenge?.entry).filter(Boolean));
+  if (ids.has("miracoli")) musicIds.add("02"); // ancien défi remplacé par « Pulchra es »
   const workIds = new Set(places.flatMap((p) => p.chapters?.flatMap((c) => c.steps.flatMap(chainOf).map((s) => s.work).filter(Boolean)) || []));
   const keys = Object.keys(S.done).filter((key) => {
     if (!has(key)) return false;
@@ -2711,7 +2712,7 @@ function renderSettings() {
     <h3>🖥️ Plein écran</h3><div class="card"><p class="muted">Cache les barres du téléphone (dont la barre blanche du bas). Glisse depuis le bord de l'écran pour les revoir un instant.</p><button class="btn ghost" id="fs"></button></div>
     <h3>📲 Installer l'appli</h3><div class="card">${installHtml()}</div>
     <h3>📷 Crédits photos</h3><details class="card"><summary>Photos de Wikimedia Commons</summary><div id="credits" class="muted" style="margin-top:8px"></div></details>
-    <h3>🎼 Crédits musicaux</h3><details class="card"><summary>Défi musical : Domine ad adiuvandum</summary><p class="muted">Cantica Symphonia, direction Giuseppe Maletto ; enregistrement Guido Magnano, Turin, 2000. Extraits, fondus et transcodages MP3. <a href="https://commons.wikimedia.org/wiki/File:Deus_in_adiutorium.ogg" target="_blank" rel="noopener">Enregistrement source</a> · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">Licence CC BY-SA 3.0</a>.</p></details>
+    <h3>🎼 Crédits musicaux</h3><details class="card"><summary>Défi musical : Pulchra es</summary><p class="muted">Enregistrement fourni pour le projet et autorisé à la publication par son responsable. « René Jacobs » figure dans le nom du fichier ; attribution exacte à confirmer. Extraits et transcodages locaux.</p></details>
     <h3>🔧 Parents</h3><div class="card"><button class="btn ghost" id="intro">📖 Revoir l'histoire</button> <button class="btn ghost" id="reset" style="margin-top:6px">🗑️ Tout recommencer</button><label class="chk" style="margin-top:8px"><input type="checkbox" id="devtog" ${DEV && !QS.has("fake") ? "checked" : ""}> <span>Mode développeur : déplacer le bateau</span></label></div>
     <p class="muted" style="text-align:center;margin-top:16px">Le Livre du Lion · V1 · Carte : aquarelle Stamen Design (CC BY 4.0), Stadia Maps, OpenFreeMap, OpenMapTiles · données © contributeurs OpenStreetMap</p>`;
   { const eb = $("#eco", v); if (eb) { const lab = () => (eb.textContent = ecoOn() ? "Mode éco : activé (toucher pour désactiver)" : "Mode éco : désactivé (toucher pour activer)"); lab(); eb.onclick = () => { try { localStorage.setItem("vq_eco", ecoOn() ? "0" : "1"); } catch {} lab(); toast(ecoOn() ? "Mode éco activé" : "Mode éco désactivé"); }; } }

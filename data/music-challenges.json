@@ -1,43 +1,43 @@
 [
   {
-    "id": "02",
+    "id": "04",
     "place": "miracoli",
-    "title": "Domine ad adiuvandum",
-    "subtitle": "La fanfare des Vêpres de Monteverdi",
-    "fragment": "img/music/02-parchemin.png",
-    "score": "img/music/02-facsimile.png",
-    "short": "audio/music/02-court.mp3",
-    "long": "audio/music/02-long.mp3",
-    "complete": "audio/music/02-complet.mp3",
+    "title": "Pulchra es",
+    "subtitle": "Le duo des Vêpres de Monteverdi",
+    "fragment": "img/music/04-parchemin.png",
+    "score": "img/music/04-facsimile.png",
+    "short": "audio/music/04-court.mp3",
+    "long": "audio/music/04-long.mp3",
+    "complete": "audio/music/04-long.mp3",
     "credit": {
-      "text": "Cantica Symphonia, direction Giuseppe Maletto ; enregistrement Guido Magnano, Turin, 2000. Extraits et transcodages.",
-      "source": "https://commons.wikimedia.org/wiki/File:Deus_in_adiutorium.ogg",
-      "license": "https://creativecommons.org/licenses/by-sa/3.0/"
+      "text": "Enregistrement transmis pour le projet et autorisé à la publication par son responsable. « René Jacobs » figure dans le nom du fichier ; attribution exacte à confirmer. Extraits préparés localement.",
+      "source": null,
+      "license": null
     },
     "questions": [
       {
-        "type": "écoute courte",
-        "question": "Après le chantre, entends-tu seulement des voix ?",
-        "options": ["Oui, seulement des voix", "Non, les instruments jouent aussi une fanfare", "Non, on entend seulement des cloches"],
-        "answer": 1,
-        "explanation": "Tu as entendu la fanfare des instruments répondre à l'appel du chantre.",
-        "audio": "short"
-      },
-      {
-        "type": "lecture et écoute",
-        "question": "Sur la partition, la ligne rapide appartient-elle à une voix ou à un instrument ?",
-        "options": ["À une voix du chœur", "À un instrument, comme le cornetto ou le violon", "À une cloche"],
-        "answer": 1,
-        "explanation": "Cette ligne est instrumentale : le cornetto ou le violon y joue un motif rapide.",
-        "audio": "short"
-      },
-      {
         "type": "écoute longue",
-        "question": "Le chœur et les instruments jouent-ils de la même façon ?",
-        "options": ["Oui, ils suivent exactement le même rythme", "Non, le chœur tient de longues notes et les instruments bougent davantage", "Non, les instruments s'arrêtent dès que le chœur commence"],
+        "question": "Les deux voix aiguës chantent-elles toujours ensemble ou se répondent-elles ?",
+        "options": ["Elles chantent toujours exactement ensemble", "Elles se répondent et se rejoignent", "Une seule voix chante pendant tout le morceau"],
         "answer": 1,
-        "explanation": "Le chœur chante de longues notes pendant que les instruments dessinent des figures plus mobiles.",
+        "explanation": "Les deux voix se répondent, puis unissent leurs lignes dans ce duo.",
         "audio": "long"
+      },
+      {
+        "type": "texte",
+        "question": "Que signifie « Pulchra es, amica mea » ?",
+        "options": ["Tu es belle, mon amie", "La mer est calme ce soir", "Chante avec moi, mon frère"],
+        "answer": 0,
+        "explanation": "Ces mots latins signifient « Tu es belle, mon amie ».",
+        "audio": "short"
+      },
+      {
+        "type": "lecture",
+        "question": "Le fragment de partition montre-t-il les deux voix du duo ?",
+        "options": ["Oui, les deux voix sont écrites ici", "Non, il montre seulement la première ligne de chant", "Non, il montre seulement les instruments"],
+        "answer": 1,
+        "explanation": "Le parchemin montre la ligne de Cantus I, la première voix du duo.",
+        "audio": "short"
       }
     ]
   }
