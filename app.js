@@ -2107,16 +2107,25 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backg
   const showListening = () => {
     stopClip();
     body.className = "mq-body mq-listening";
-    body.innerHTML = `<div class="mq-listen-center"><span class="mq-listen-icon" aria-hidden="true">🎧</span><p class="mq-listen-invite">Mets ton casque.</p><p class="mq-listen-note">Prends le temps d’écouter cet extrait de <em>${esc(entry.title)}</em>.</p><button type="button" class="mq-listen-start">▶ Écouter l’extrait</button><p class="mq-listen-status" aria-live="polite"></p><button type="button" class="mq-listen-next" hidden>Continuer</button></div>${credit}`;
-    const listen = $(".mq-listen-start", body), next = $(".mq-listen-next", body), status = $(".mq-listen-status", body);
+    const heights = Array.isArray(entry.waveform) && entry.waveform.length ? entry.waveform : Array.from({ length: 56 }, (_, i) => 30 + 45 * Math.abs(Math.sin(i * .7)));
+    const bars = heights.map((height) => `<i style="height:${Math.max(9, Math.min(100, Number(height) || 9))}%"></i>`).join("");
+    body.innerHTML = `<div class="mq-listen-center"><p class="mq-listen-note">Prends le temps d’entendre la musique que portent ces notes.</p><div class="mq-listen-player"><button type="button" class="mq-play-toggle" aria-label="Lire l’extrait">▶</button><div class="mq-wave-track" role="progressbar" aria-label="Avancement de l’écoute" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="--progress:0%"><div class="mq-wave-bars">${bars}</div><div class="mq-wave-bars mq-wave-filled">${bars}</div></div></div><p class="mq-listen-status" aria-live="polite"></p><button type="button" class="mq-listen-next" hidden>Continuer <span aria-hidden="true">→</span></button></div>${credit}`;
+    const listen = $(".mq-play-toggle", body), wave = $(".mq-wave-track", body), next = $(".mq-listen-next", body), status = $(".mq-listen-status", body);
     clip = new Audio(entry.short);
-    clip.onended = () => { listen.textContent = "↻ Réécouter"; status.textContent = "Laisse encore résonner la musique…"; next.hidden = false; };
-    listen.onclick = () => {
-      if (!clip.paused) { clip.pause(); listen.textContent = "▶ Reprendre l’écoute"; return; }
+    let finished = false;
+    const progress = () => { const amount = Number.isFinite(clip.duration) && clip.duration > 0 ? Math.min(100, clip.currentTime / clip.duration * 100) : 0; wave.style.setProperty("--progress", amount + "%"); wave.setAttribute("aria-valuenow", String(Math.round(amount))); };
+    clip.ontimeupdate = progress;
+    clip.onended = () => { finished = true; progress(); listen.textContent = "↻"; listen.setAttribute("aria-label", "Réécouter l’extrait"); next.hidden = false; body.classList.add("mq-listen-finished"); };
+    const advance = () => { if (!finished) return; overlay.removeEventListener("click", onScreenTap); showQuestion(0); };
+    const onScreenTap = (event) => { if (!finished || event.target.closest(".mq-listen-player,.mq-exit")) return; advance(); };
+    overlay.addEventListener("click", onScreenTap);
+    listen.onclick = (event) => {
+      event.stopPropagation();
+      if (!clip.paused) { clip.pause(); listen.textContent = "▶"; listen.setAttribute("aria-label", "Reprendre l’écoute"); return; }
       if (clip.ended) clip.currentTime = 0;
-      clip.play().then(() => { listen.textContent = "❚❚ Pause"; status.textContent = "Écoute simplement la musique…"; }).catch(() => { status.textContent = "La lecture est impossible pour l’instant."; next.hidden = false; });
+      clip.play().then(() => { listen.textContent = "❚❚"; listen.setAttribute("aria-label", "Mettre en pause"); status.textContent = ""; }).catch(() => { status.textContent = "La lecture est impossible pour l’instant."; finished = true; next.hidden = false; });
     };
-    next.onclick = () => showQuestion(0);
+    next.onclick = (event) => { event.stopPropagation(); advance(); };
   };
   const first = replay ? 0 : entry.questions.findIndex((_, index) => !has(`music:${id}:q:${index}`));
   if (first < 0) victory(); else if (first === 0) showListening(); else showQuestion(first);
