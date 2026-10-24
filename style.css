@@ -1568,3 +1568,7 @@ body.intro-open > .cam.cam{visibility:visible!important}
 #sheet.chap.chap-conclusion .chap-final-msg .m-bubble{text-align:center;text-wrap:balance}
 #sheet.chap.chap-conclusion .chap-final-msg .m-bubble::before{content:"✦  ÉPREUVE ACCOMPLIE";text-align:center}
 #sheet.chap.chap-conclusion .b-talk .chap-end-plan{position:relative;left:auto;bottom:auto;align-self:center;margin:18px auto 0;pointer-events:auto}
+
+/* Raccourci d'aide local pour rouvrir la conclusion de l'église-bijou depuis la carte. */
+#dev-chap-help{position:fixed;top:calc(82px + var(--safe-t));left:10px;z-index:520;padding:7px 10px;border:1px solid rgba(213,229,235,.7);border-radius:999px;background:rgba(8,38,57,.86);color:#fff;font-size:12px;font-weight:700;box-shadow:0 2px 8px rgba(0,8,18,.3)}
+body.menu-open #dev-chap-help,body:not(.jeu) #dev-chap-help{display:none!important}

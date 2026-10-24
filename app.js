@@ -1418,7 +1418,7 @@ function chapAudioCard(s) {
   ($("#sheet.chap") ? $("#sheet") : $("#b-talk")).appendChild(card);
 }
 const EXIT_SVG = '<svg viewBox="0 0 48 48" width="24" height="24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M26 5a10 10 0 0 1 10 10c0 8-10 19-10 19S16 23 16 15A10 10 0 0 1 26 5z"/><circle cx="26" cy="15" r="3.5"/><path d="M6 41h18M11 36l-5 5 5 5"/></svg>';
-function openChapters(p, replay = false, conclusionOnly = false) {
+function openChapters(p, replay = false, conclusionOnly = false, preview = false) {
   chapCur = p; suspended = null; openId = "chap"; chatSel = "#b-talk"; $("#next").hidden = true; $("#bridge-btn").hidden = true;
   const sh = $("#sheet"); sh.hidden = false; sh.className = "medal-wrap bridge-wrap chap"; delete sh.dataset.k;
   sh.innerHTML = `<div class="chap-bg" style="background-image:url(${pic(p.id)})"></div><div class="chap-g chap-g-top"></div><div class="chap-g chap-g-bot"></div>
@@ -1437,7 +1437,7 @@ function openChapters(p, replay = false, conclusionOnly = false) {
   try { history.pushState({ vqBridge: 1 }, ""); } catch {}
   sh.style.backgroundColor = "#0a1c28";
   $(".chap-bg", sh).animate([{ opacity: 0, transform: "scale(1)" }, { opacity: 1, transform: "scale(1.04)", offset: .08 }, { opacity: 1, transform: "scale(1.16)" }], { duration: 20000, easing: "ease-out", fill: "forwards" }); // l'image reste en fond, avec un très lent zoom
-  setTimeout(() => { if (openId === "chap") { if (conclusionOnly) chapEnd(p, replay); else runChapters(p, replay); } }, 350);
+  setTimeout(() => { if (openId === "chap") { if (conclusionOnly) chapEnd(p, replay, preview); else runChapters(p, replay); } }, 350);
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
 const endMessage = (p, again = false) => {
@@ -1445,16 +1445,16 @@ const endMessage = (p, again = false) => {
   if (p.musicChallenge) return `${bravo} ${again ? "Rappelle-toi mon indice :" : "Je vais te confier un secret :"} **${p.musicChallenge.hint}** Ouvre le plan et regarde bien. ${p.reward ? `Un autre secret t'attend : **${p.reward.hint}**` : ""}`;
   return p.reward ? `${bravo} ${again ? "Rappelle-toi mon indice :" : "Je vais te confier un secret :"} **${p.reward.hint}** Ouvre le plan et regarde cet endroit de près.` : `${bravo} Garde en mémoire ce que tu as découvert ici. Quand tu seras prêt, reprends la carte de Venise.`;
 };
-async function chapEnd(p, replay) {
+async function chapEnd(p, replay, preview = false) {
   await clearTalk();
   const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.classList.add("chap-conclusion"); sh.dataset.k = "one";
   const devSkip = $(".dev-skip", sh); if (devSkip) devSkip.remove();
   const exitDock = $(".dock", sh); if (exitDock) exitDock.remove();
   const msg = chatAdd(typingHtml, "fc chap-final-msg"); cortoFill(msg, endMessage(p, replay));
-  if (p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
+  if (!preview && p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
   if (p.plan) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-plan"; b.textContent = "🗺️ Voir le plan"; b.onclick = () => openPlanPanel(p.plan, p); $("#b-talk", sh).appendChild(b); fitChapTalk(); }
   if (MONTAGES[p.id]) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-photo"; b.textContent = "📸 Photo souvenir"; b.onclick = () => openMontage(p.id); sh.appendChild(b); }
-  if (!replay) confetti(45);
+  if (!replay && !preview) confetti(45);
 }
 /* ───────── « Où ? » : une petite carte avec une cible sur l'objet désigné par la question (champ loc des étapes) ───────── */
 let skipEnd = null; // (mode dev) saute directement à l'écran final de l'épreuve
@@ -2663,6 +2663,10 @@ function onboarding() {
 function refreshAll() { renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "trophies") renderTrophies(); if (openId) renderSheet(); }
 refreshAll();
 setTab("map");
+if (LOCAL_DEV) {
+  const help = $("#dev-chap-help"); help.hidden = false;
+  help.onclick = () => { if (tab === "map" && $("#sheet").hidden) openChapters(place("miracoli"), false, true, true); };
+}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 let pendingTeamName = "";
 startFlow();
