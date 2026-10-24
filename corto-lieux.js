@@ -26,6 +26,7 @@ export const LIEUX = {
   miracoli: { la: "l'église Santa Maria dei Miracoli", in: "entrer dans l'église Santa Maria dei Miracoli" },
   ghetto: { la: "le Campo del Ghetto Nuovo" },
   frari: { la: "la basilique des Frari", in: "entrer dans la basilique des Frari" },
+  sanrocco: { la: "la Scuola Grande di San Rocco", in: "entrer dans la Scuola Grande di San Rocco" },
   sangiorgio: { la: "le campanile de San Giorgio", in: "monter au campanile de San Giorgio" },
   giardini: { la: "les jardins de la Biennale" },
   lido: { la: "la plage du Lido" },

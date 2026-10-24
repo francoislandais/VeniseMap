@@ -3267,6 +3267,174 @@ export const PLACES = [
         ]
       }
     ] },
+  {
+    "id": "sanrocco",
+    "emoji": "🎨",
+    "name": "La Scuola Grande di San Rocco",
+    "lat": 45.43657,
+    "lon": 12.32531,
+    "r": 65,
+    "story": "Sur le Campo San Rocco, entre dans l’ancienne confrérie. Tintoret a couvert ses salles de grandes peintures. Parcours le rez-de-chaussée, l’escalier puis l’étage ; pour les plafonds, un miroir de visite peut aider. Vérifie les salles ouvertes à l’accueil.",
+    "clue": "Des oiseaux, une étoile et même des serpents t’attendent dans les tableaux de San Rocco.",
+    "chapters": [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "where": "Repère la grande Annonciation. Près de Marie, à droite, regarde la lumière devant le rideau rouge.",
+            "q": "Quel oiseau apparaît dans cette clarté ?",
+            "opts": [
+              "Une chouette",
+              "Une colombe",
+              "Un paon",
+              "Un corbeau"
+            ],
+            "a": 1,
+            "reveal": "Dans cette scène, l’ange annonce à Marie la naissance de Jésus. La Scuola identifie la colombe comme le symbole du Saint-Esprit. Tintoret a peint les grands tableaux de cette salle à partir de 1582.",
+            "work": "ROC05",
+            "img": "img/q/sanrocco-0.webp",
+            "src": [
+              "https://www.scuolagrandesanrocco.org/tintoretto/sala-terrena/"
+            ],
+            "cap": "la colombe blanche brille près du rideau rouge."
+          },
+          {
+            "idx": 301,
+            "where": "Dans la même salle, trouve les visiteurs venus voir l’enfant Jésus. Scrute le ciel au-dessus du toit.",
+            "q": "Quel signe lumineux guide les voyageurs ?",
+            "opts": [
+              "Une étoile",
+              "La lune",
+              "Un phare",
+              "Une torche"
+            ],
+            "a": 0,
+            "reveal": "Dans le récit chrétien, les mages suivent une étoile. La notice de la Scuola souligne que Tintoret la place juste au-dessus de l’enfant dans cette scène nocturne.",
+            "work": "ROC06",
+            "img": "img/q/sanrocco-1.webp",
+            "src": [
+              "https://www.scuolagrandesanrocco.org/tintoretto/sala-terrena/"
+            ],
+            "cap": "une étoile brille au-dessus de l’enfant."
+          },
+          {
+            "idx": 302,
+            "where": "Sur le palier, cherche la toile de Titien au-dessus d’une arcade. Observe la main de l’ange vêtu de rose.",
+            "q": "Quelle fleur blanche tient-il ?",
+            "opts": [
+              "Une rose",
+              "Une marguerite",
+              "Un lys",
+              "Une tulipe"
+            ],
+            "a": 2,
+            "reveal": "Cette autre Annonciation, peinte vers 1535, est entrée dans la confrérie par un legs en 1555. L’ange porte un lys, traditionnel symbole de pureté dans l’art chrétien.",
+            "work": "ROC07",
+            "img": "img/q/sanrocco-2.webp",
+            "src": [
+              "https://www.scuolagrandesanrocco.org/non-solo-tintoretto/tiziano/"
+            ],
+            "cap": "le lys blanc se trouve dans la main de l’ange."
+          },
+          {
+            "idx": 303,
+            "where": "Dans la grande salle de l’étage, cherche la vaste scène avec la famille de Jésus et les bergers. Regarde la charpente qui sépare la composition.",
+            "q": "Où se trouve la Sainte Famille ?",
+            "opts": [
+              "Dans une barque",
+              "Sur un toit",
+              "Au rez-de-chaussée",
+              "À l’étage supérieur"
+            ],
+            "a": 3,
+            "reveal": "Tintoret organise cette peinture sur deux niveaux superposés. La famille occupe la partie droite du niveau du haut ; les bergers apportent leurs présents en bas. La confrérie aidait aussi les personnes dans le besoin.",
+            "work": "ROC04",
+            "img": "img/q/sanrocco-3.webp",
+            "src": [
+              "https://www.scuolagrandesanrocco.org/tintoretto/sala-capitolare/"
+            ],
+            "cap": "la Sainte Famille est installée en haut, à droite."
+          },
+          {
+            "idx": 304,
+            "where": "Lève les yeux vers la grande toile centrale du plafond. Parmi les personnes au-dessous des nuages, cherche les animaux qui les effraient.",
+            "q": "Quels animaux vois-tu ramper parmi les personnages ?",
+            "opts": [
+              "Des lézards",
+              "Des serpents",
+              "Des poissons",
+              "Des chauves-souris"
+            ],
+            "a": 1,
+            "reveal": "La scène vient de l’Exode. Selon le récit, Moïse dresse un serpent de bronze sur une perche : ceux qui le regardent peuvent survivre aux morsures. Tintoret commence cette toile en 1575.",
+            "work": "ROC08",
+            "img": "img/q/sanrocco-4.webp",
+            "src": [
+              "https://www.scuolagrandesanrocco.org/tintoretto/sala-capitolare/"
+            ],
+            "cap": "les serpents se glissent entre les corps."
+          },
+          {
+            "idx": 305,
+            "where": "Entre dans la salle de l’Albergo et lève les yeux vers le tableau placé au milieu du plafond.",
+            "q": "Quelle forme a la peinture centrale de saint Roch ?",
+            "opts": [
+              "Un triangle",
+              "Un carré",
+              "Un ovale",
+              "Une étoile"
+            ],
+            "a": 2,
+            "reveal": "En 1564, la confrérie avait demandé des projets pour ce plafond. D’après le récit rapporté par Vasari et repris par la Scuola, Tintoret surprit les responsables en installant directement cette peinture achevée ; elle fut acceptée comme un don.",
+            "work": "ROC02",
+            "img": "img/q/sanrocco-5.webp",
+            "src": [
+              "https://www.scuolagrandesanrocco.org/tintoretto/sala-dellalbergo-tintoretto/"
+            ],
+            "cap": "saint Roch apparaît dans un ovale entouré d’un riche cadre doré."
+          },
+          {
+            "idx": 306,
+            "where": "Sur le mur de l’entrée, la scène de Pilate est tout à droite. Observe le personnage assis en rouge, face à Jésus vêtu de blanc.",
+            "q": "Dans quoi verse-t-il de l’eau ?",
+            "opts": [
+              "Dans une coupe posée au sol",
+              "Dans un bassin tenu devant lui",
+              "Dans une jarre",
+              "Dans une fontaine"
+            ],
+            "a": 1,
+            "reveal": "Le peintre montre Pilate se lavant symboliquement les mains au moment de condamner Jésus. L’opposition entre la tunique blanche du Christ et l’ombre autour de la foule renforce la tension de la scène.",
+            "work": "ROC03",
+            "img": "img/q/sanrocco-6.webp",
+            "src": [
+              "https://www.scuolagrandesanrocco.org/tintoretto/sala-dellalbergo-tintoretto/"
+            ],
+            "cap": "l’eau coule vers le bassin placé devant Pilate."
+          },
+          {
+            "idx": 307,
+            "where": "Tourne-toi vers l’immense peinture au-dessus du grand meuble. Au-delà de la croix centrale, explore les bords de la foule.",
+            "q": "Quel animal aperçois-tu près des côtés de la scène ?",
+            "opts": [
+              "Des chevaux",
+              "Des chameaux",
+              "Des éléphants",
+              "Des moutons"
+            ],
+            "a": 0,
+            "reveal": "La Crucifixion, achevée en 1565, occupe le mur le plus important de la salle. Tintoret remplit la scène de personnages et d’actions autour de la croix du Christ, d’où rayonne une lumière.",
+            "work": "ROC01",
+            "img": "img/q/sanrocco-7.webp",
+            "src": [
+              "https://www.scuolagrandesanrocco.org/tintoretto/sala-dellalbergo-tintoretto/"
+            ],
+            "cap": "un cheval blanc apparaît sur le bord gauche de la scène."
+          }
+        ]
+      }
+    ]
+  },
   { id: "sangiorgio", emoji: "🔭", name: "Le grand panorama", lat: 45.42945, lon: 12.34335, r: 100,
     story: "Sur l'île de San Giorgio, un ascenseur monte tout en haut du campanile. De là-haut, Venise ressemble à un jouet géant.",
     clue: "Pour voir le trésor, il faut d'abord voir la ville entière. Monte, Gardien, et trouve où dort le Lion.",
