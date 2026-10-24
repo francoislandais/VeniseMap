@@ -1756,8 +1756,10 @@ body.music-star-flight .fly-star{z-index:2601}
 
 /* Première halte musicale : lecture discrète et onde remplie par la progression réelle. */
 .mq-body.mq-listening{gap:0}
-.mq-listen-center{flex:1;min-height:0;width:100%;max-width:430px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
-.mq-listen-note{max-width:350px;margin:0;color:#f3ede0;font:clamp(23px,6vw,30px)/1.26 Georgia,serif;text-wrap:balance;text-shadow:0 2px 9px #06131d}
+.mq-listen-center{flex:1;min-height:0;width:100%;max-width:430px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:17px}
+.mq-listen-lead,.mq-listen-invitation{max-width:350px;margin:0;color:#f3ede0;font-family:Georgia,serif;line-height:1.26;text-wrap:balance;text-shadow:0 2px 9px #06131d}
+.mq-listen-lead{font-size:clamp(23px,6vw,30px)}
+.mq-listen-invitation{font-size:clamp(21px,5.5vw,27px)}
 .mq-listen-player{width:min(94%,420px);display:flex;align-items:center;gap:10px;margin:5px auto 0}
 .mq-play-toggle{flex:none;width:46px;height:52px;padding:0;border:0;background:none;color:#fff;font:30px/1 Arial,sans-serif;text-shadow:0 0 12px rgba(233,245,246,.7);cursor:pointer}
 .mq-play-toggle:focus-visible{outline:2px solid #f5e0a4;outline-offset:2px}
@@ -1770,3 +1772,19 @@ body.music-star-flight .fly-star{z-index:2601}
 .mq-listen-next span{display:inline-block;margin-left:5px;color:#f7d884}
 .mq-listen-next[hidden]{display:none!important}
 .mq-body.mq-listening .mq-credit{display:none}
+
+/* Édition locale des deux textes et du lecteur sur l'écran d'écoute. */
+.mq-edit-bar{position:fixed;z-index:5;bottom:calc(8px + var(--safe-b));left:50%;width:min(calc(100vw - 16px),430px);box-sizing:border-box;transform:translateX(-50%);text-align:left;font:12px/1.3 Arial,sans-serif;pointer-events:auto}
+.mq-edit-bar.at-top{top:calc(56px + var(--safe-t));bottom:auto}
+.mq-edit-bar button{min-height:30px;padding:6px 8px;border:1px solid rgba(225,232,228,.7);border-radius:8px;background:rgba(8,34,51,.94);color:#fff;font:inherit}
+.mq-edit-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:5px;padding:8px;border:1px solid rgba(225,232,228,.65);border-radius:10px;background:rgba(5,23,39,.96);color:#fff;box-shadow:0 3px 16px rgba(0,0,0,.4)}
+.mq-edit-tools[hidden]{display:none}
+.mq-edit-name,.mq-edit-status{flex:1 0 100%}
+.mq-edit-tools label{display:flex;align-items:center;gap:5px;flex:1 0 100%}
+.mq-edit-tools input[type=range]{flex:1;min-width:90px;accent-color:#f1d58b}
+.mq-edit-tools output{min-width:42px;text-align:right}
+.mq-edit-tools textarea{flex:1 0 100%;box-sizing:border-box;width:100%;min-height:62px;padding:6px;border-radius:5px;font:14px/1.3 Arial,sans-serif}
+.mq-edit-tools textarea[hidden]{display:none}
+.mq-edit-status{color:#d6e8ef}
+.music-flow-quest.mq-editing [data-music-edit]{touch-action:none;cursor:grab;outline:1px dashed rgba(228,237,242,.6);outline-offset:3px}
+.music-flow-quest.mq-editing [data-music-edit].mq-edit-selected{outline:2px solid #ffe18b;outline-offset:4px}

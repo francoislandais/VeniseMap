@@ -1,8 +1,8 @@
-const VERSION = "v2.232.0";
+const VERSION = "v2.233.0";
 const SHELL = `vq-shell-${VERSION}`;
 // Cœur de l'appli précaché ; tout le reste (images, données, vendor) est mis en cache à la volée.
 const FILES = ["./", "index.html", "style.css", "app.js", "data.js", "corto-lieux.js", "intro.js", "mapstyle.js", "config.js", "manifest.webmanifest", "vendor/maplibre-gl.js", "vendor/maplibre-gl.css", "fonts/special-elite-latin.woff2", "img/map-icon.webp", "img/objets/coquille.svg", "img/objets/perle.svg", "img/objets/plume.svg", "img/objets/coffre-code.svg", "img/objets/parchemin.svg", "img/objets/partition.svg", "img/objets/cle-bronze.svg", "img/objets/fiole-lagune.svg", "img/objets/verre-murano.svg", "img/objets/boussole.svg", "img/objets/masque.svg", "img/objets/sceau-lion.svg", "img/objets/diamant.svg", "img/objets/ruban-soie.svg", "img/objets/lanterne.svg", "img/intro/bg.webp", "img/home-icon.webp", "img/bridge-icon.webp", "data/petits-canaux.json", "data/outfits.json", "data/bridges.json", "data/facts.json", "icons/icon-192.png", "icons/icon-512.png", "img/corto-face.webp", "img/corto-content.webp", "img/corto-venise-pastel.webp"];
-FILES.push("data/music-challenges.json", "data/conclusion-layout.json", "img/music/02-facsimile.png", "img/music/02-parchemin.png", "audio/music/02-court.mp3", "audio/music/02-long.mp3", "audio/music/02-complet.mp3");
+FILES.push("data/music-challenges.json", "data/conclusion-layout.json", "data/music-layout.json", "img/music/02-facsimile.png", "img/music/02-parchemin.png", "audio/music/02-court.mp3", "audio/music/02-long.mp3", "audio/music/02-complet.mp3");
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(SHELL).then((c) => Promise.all(FILES.map((f) => c.add(f).catch(() => {})))).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith("vq-shell-") && k !== SHELL).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", (e) => {

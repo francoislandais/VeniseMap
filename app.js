@@ -684,6 +684,8 @@ const PLACE_ICONS = {
 // { id: { lon, lat, stops: [[zoom, largeur en px], …], pos: [[zoom, lon, lat], …] } } — pos (facultatif) : position du centre à certains niveaux de zoom ; entre deux repères la position glisse en douceur, au-delà elle reste celle du repère le plus proche ; sans repère, lon/lat. — entre deux niveaux réglés, la taille varie en douceur (interpolation géométrique) ; au-delà, l'icône suit l'échelle de la carte (×2 par niveau de zoom).
 const ICONCFG = await fetch("data/place-icons.json?" + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
 const CONCLUSION_LAYOUT = await fetch("data/conclusion-layout.json?" + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+const MUSIC_LAYOUT = await fetch("data/music-layout.json?" + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+if (LOCAL_DEV) { try { Object.assign(MUSIC_LAYOUT, JSON.parse(localStorage.getItem("vq_music_layout_draft") || "{}")); } catch {} }
 const iconMarkers = {};
 const iconStops = (id) => ((ICONCFG[id] && ICONCFG[id].stops) || []).slice().sort((a, b) => a[0] - b[0]);
 function iconSize(id, z) {
@@ -2058,6 +2060,74 @@ function startMusicWalk(entry) {
   $("button", player).onclick = () => { $("audio", player).pause(); player.remove(); };
   const play = $("audio", player).play(); if (play?.catch) play.catch(() => toast("Appuie sur lecture pour lancer la musique."));
 }
+function musicListeningEditor(overlay, p, elements, defaults) {
+  const layout = (MUSIC_LAYOUT[p.id] ||= {}), controller = new AbortController();
+  const apply = (key) => {
+    const el = elements[key], c = layout[key] || {}, size = Math.max(.5, Math.min(2, Number(c.s) || 1));
+    el.style.translate = `${Number(c.x) || 0}vw ${Number(c.y) || 0}vh`;
+    if (key === "player") el.style.scale = String(size);
+    else {
+      const base = key === "lead" ? Math.min(30, Math.max(23, innerWidth * .06)) : Math.min(27, Math.max(21, innerWidth * .055));
+      el.style.fontSize = `${Math.round(base * size * 10) / 10}px`;
+      el.textContent = typeof c.text === "string" ? c.text : defaults[key];
+    }
+  };
+  Object.keys(elements).forEach(apply);
+  window.addEventListener("resize", () => Object.keys(elements).forEach(apply), { signal: controller.signal });
+  if (!LOCAL_DEV) return () => controller.abort();
+  const bar = document.createElement("div"); bar.className = "mq-edit-bar";
+  bar.innerHTML = '<button type="button" data-me="toggle">✎ Mode édition</button><div class="mq-edit-tools" hidden><strong class="mq-edit-name">Touche un élément</strong><button type="button" data-me="minus">Taille −</button><button type="button" data-me="plus">Taille +</button><label>Taille <input type="range" min="50" max="200" step="5" value="100" aria-label="Taille de l’élément sélectionné"><output>100 %</output></label><button type="button" data-me="text">✎ Texte</button><button type="button" data-me="reset">Réinit.</button><button type="button" data-me="flip">⇅</button><button type="button" data-me="save">💾 Enregistrer</button><textarea rows="3" hidden aria-label="Texte de l’élément sélectionné"></textarea><small class="mq-edit-status">Touche puis glisse un élément pour le déplacer.</small></div>';
+  overlay.appendChild(bar);
+  const tools = $(".mq-edit-tools", bar), name = $(".mq-edit-name", bar), range = $("input[type=range]", bar), output = $("output", bar), field = $("textarea", bar), status = $(".mq-edit-status", bar);
+  const names = { lead: "Premier texte", invitation: "Deuxième texte", player: "Lecteur audio" };
+  let editing = false, selected = null, drag = null;
+  const cfg = (key) => (layout[key] ||= { x: 0, y: 0, s: 1 });
+  const remember = () => { try { localStorage.setItem("vq_music_layout_draft", JSON.stringify(MUSIC_LAYOUT)); } catch {} };
+  const select = (key) => {
+    selected = key;
+    Object.entries(elements).forEach(([id, el]) => el.classList.toggle("mq-edit-selected", id === key));
+    name.textContent = key ? names[key] : "Touche un élément";
+    field.hidden = true; range.disabled = !key;
+    range.value = String(Math.round((Number(layout[key]?.s) || 1) * 100)); output.textContent = `${range.value} %`;
+    if (key && key !== "player") field.value = typeof layout[key]?.text === "string" ? layout[key].text : defaults[key];
+  };
+  bar.addEventListener("click", async (event) => {
+    const action = event.target.closest("button")?.dataset.me; if (!action) return;
+    if (action === "toggle") { editing = !editing; overlay.classList.toggle("mq-editing", editing); tools.hidden = !editing; select(null); return; }
+    if (action === "flip") { bar.classList.toggle("at-top"); return; }
+    if (action === "save") {
+      try { const response = await fetch("api/music-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(MUSIC_LAYOUT) }); if (!response.ok) throw new Error("save"); localStorage.removeItem("vq_music_layout_draft"); status.textContent = "Enregistré dans la mise en page locale ✔"; }
+      catch { remember(); status.textContent = "Enregistré sur cet appareil ; démarre l’aperçu avec --dev pour publier ce réglage."; }
+      return;
+    }
+    if (!selected) { status.textContent = "Touche d’abord un élément."; return; }
+    if (action === "text") { if (selected === "player") { status.textContent = "Le lecteur n’a pas de texte à modifier."; return; } field.hidden = !field.hidden; if (!field.hidden) field.focus(); return; }
+    if (action === "reset") { delete layout[selected]; apply(selected); select(selected); remember(); status.textContent = "Élément réinitialisé"; return; }
+    const c = cfg(selected); c.s = Math.max(.5, Math.min(2, Math.round(((Number(c.s) || 1) + (action === "plus" ? .05 : -.05)) * 100) / 100)); apply(selected); range.value = String(Math.round(c.s * 100)); output.textContent = `${range.value} %`; remember();
+  }, { signal: controller.signal });
+  range.oninput = () => { if (!selected) return; cfg(selected).s = Number(range.value) / 100; apply(selected); output.textContent = `${range.value} %`; remember(); };
+  field.oninput = () => { if (!selected || selected === "player") return; cfg(selected).text = field.value; apply(selected); remember(); };
+  overlay.addEventListener("pointerdown", (event) => {
+    if (!editing || event.target.closest(".mq-edit-bar")) return;
+    const el = event.target.closest("[data-music-edit]"); if (!el || !overlay.contains(el)) { select(null); return; }
+    event.preventDefault(); event.stopPropagation();
+    const key = el.dataset.musicEdit, c = cfg(key); select(key);
+    drag = { id: event.pointerId, key, x: event.clientX, y: event.clientY, ox: Number(c.x) || 0, oy: Number(c.y) || 0 };
+    try { overlay.setPointerCapture(event.pointerId); } catch {}
+  }, { capture: true, signal: controller.signal });
+  overlay.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const c = cfg(drag.key);
+    c.x = Math.round(Math.max(-45, Math.min(45, drag.ox + (event.clientX - drag.x) / innerWidth * 100)) * 100) / 100;
+    c.y = Math.round(Math.max(-45, Math.min(45, drag.oy + (event.clientY - drag.y) / innerHeight * 100)) * 100) / 100;
+    apply(drag.key); status.textContent = `${names[drag.key]} · position modifiée`;
+  }, { signal: controller.signal });
+  const stop = (event) => { if (drag?.id === event.pointerId) { drag = null; remember(); } };
+  overlay.addEventListener("pointerup", stop, { signal: controller.signal });
+  overlay.addEventListener("pointercancel", stop, { signal: controller.signal });
+  overlay.addEventListener("click", (event) => { if (editing && event.target.closest("[data-music-edit]")) { event.preventDefault(); event.stopImmediatePropagation(); } }, { capture: true, signal: controller.signal });
+  return () => { controller.abort(); bar.remove(); overlay.classList.remove("mq-editing"); };
+}
 async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backgroundImage = null) {
   if ($(".music-quest") || musicOpening) return;
   musicOpening = true;
@@ -2069,9 +2139,9 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backg
   overlay.innerHTML = `<button type="button" class="mq-exit" aria-label="Quitter le défi musical">←</button><img class="mq-fragment" src="${esc(entry.fragment)}" alt="Morceau de la partition des Vêpres"><div class="mq-body"></div>`;
   document.body.appendChild(overlay); document.body.classList.add("music-quest-active"); musicOpening = false;
   const body = $(".mq-body", overlay);
-  let clip = null;
+  let clip = null, stopMusicEditor = () => {};
   const stopClip = () => { if (clip) { clip.pause(); clip = null; } };
-  const close = () => { stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); };
+  const close = () => { stopMusicEditor(); stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); };
   $(".mq-exit", overlay).onclick = close;
   const credit = `<p class="mq-credit">${esc(entry.credit.text)}${entry.credit.source ? ` <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a>` : ""}${entry.credit.license ? ` · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">Licence</a>` : ""}</p>`;
   const victory = () => {
@@ -2083,7 +2153,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backg
     $("[data-walk]", body).onclick = () => { startMusicWalk(entry); close(); if (tab !== "map") setTab("map"); if (openId) closeSheet(); };
   };
   const showQuestion = (index) => {
-    stopClip();
+    stopMusicEditor(); stopClip();
     if (index >= entry.questions.length) { victory(); return; }
     const q = entry.questions[index];
     body.className = "mq-body";
@@ -2105,11 +2175,13 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backg
     });
   };
   const showListening = () => {
-    stopClip();
+    stopMusicEditor(); stopClip();
     body.className = "mq-body mq-listening";
     const heights = Array.isArray(entry.waveform) && entry.waveform.length ? entry.waveform : Array.from({ length: 56 }, (_, i) => 30 + 45 * Math.abs(Math.sin(i * .7)));
     const bars = heights.map((height) => `<i style="height:${Math.max(9, Math.min(100, Number(height) || 9))}%"></i>`).join("");
-    body.innerHTML = `<div class="mq-listen-center"><p class="mq-listen-note">Les quelques notes dessinées sur cette portée font naître une mélodie unique et mystérieuse, qui a traversé les siècles jusqu’à toi… Ouvre grand tes oreilles et écoute !</p><div class="mq-listen-player"><button type="button" class="mq-play-toggle" aria-label="Lire l’extrait">▶</button><div class="mq-wave-track" role="progressbar" aria-label="Avancement de l’écoute" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="--progress:0%"><div class="mq-wave-bars">${bars}</div><div class="mq-wave-bars mq-wave-filled">${bars}</div></div></div><p class="mq-listen-status" aria-live="polite"></p><button type="button" class="mq-listen-next" hidden>Continuer <span aria-hidden="true">→</span></button></div>${credit}`;
+    const defaults = { lead: "Les quelques notes dessinées sur cette portée font naître une mélodie unique et mystérieuse, qui a traversé les siècles jusqu’à toi…", invitation: "Ouvre grand tes oreilles et écoute !" };
+    body.innerHTML = `<div class="mq-listen-center"><p class="mq-listen-lead" data-music-edit="lead">${esc(defaults.lead)}</p><p class="mq-listen-invitation" data-music-edit="invitation">${esc(defaults.invitation)}</p><div class="mq-listen-player" data-music-edit="player"><button type="button" class="mq-play-toggle" aria-label="Lire l’extrait">▶</button><div class="mq-wave-track" role="progressbar" aria-label="Avancement de l’écoute" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="--progress:0%"><div class="mq-wave-bars">${bars}</div><div class="mq-wave-bars mq-wave-filled">${bars}</div></div></div><p class="mq-listen-status" aria-live="polite"></p><button type="button" class="mq-listen-next" hidden>Continuer <span aria-hidden="true">→</span></button></div>${credit}`;
+    stopMusicEditor = musicListeningEditor(overlay, p, { lead: $(".mq-listen-lead", body), invitation: $(".mq-listen-invitation", body), player: $(".mq-listen-player", body) }, defaults);
     const listen = $(".mq-play-toggle", body), wave = $(".mq-wave-track", body), next = $(".mq-listen-next", body), status = $(".mq-listen-status", body);
     clip = new Audio(entry.short);
     let finished = false;
@@ -2117,7 +2189,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false, backg
     clip.ontimeupdate = progress;
     clip.onended = () => { finished = true; progress(); listen.textContent = "↻"; listen.setAttribute("aria-label", "Réécouter l’extrait"); next.hidden = false; body.classList.add("mq-listen-finished"); };
     const advance = () => { if (!finished) return; overlay.removeEventListener("click", onScreenTap); showQuestion(0); };
-    const onScreenTap = (event) => { if (!finished || event.target.closest(".mq-listen-player,.mq-exit")) return; advance(); };
+    const onScreenTap = (event) => { if (!finished || overlay.classList.contains("mq-editing") || event.target.closest(".mq-listen-player,.mq-exit,.mq-edit-bar")) return; advance(); };
     overlay.addEventListener("click", onScreenTap);
     listen.onclick = (event) => {
       event.stopPropagation();
