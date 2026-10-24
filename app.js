@@ -784,7 +784,7 @@ function renderHud() {
 $("#hud-kids").onclick = () => setTab(lastTab);
 function renderProfileBar() {
   const pts = pointsOf(meIdx()), cur = LEVELS[level(pts)];
-  $("#up-me").innerHTML = `<span class="mb-av">${PROFILE ? profileHtml() : me().avatar}</span><span class="up-n"><b>${esc(myName())}</b><small>${cur.name}</small></span>`; // photo, nom, grade : rien d'autre (les étoiles sont dans le compteur, toujours visible)
+  $("#up-me").innerHTML = `<span class="mb-av${PROFILE?.photo ? " up-avatar-frame" : ""}">${PROFILE?.photo ? `<span class="me ph up-avatar">${profileHtml()}</span>` : PROFILE ? profileHtml() : me().avatar}</span><span class="up-n"><b>${esc(myName())}</b><small>${cur.name}</small></span>`; // photo, nom, grade : rien d'autre (les étoiles sont dans le compteur, toujours visible)
 }
 $("#up-me").onclick = async () => {
   if (!PROFILE) return;

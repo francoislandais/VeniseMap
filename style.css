@@ -1538,3 +1538,7 @@ body.objects-has-items #v-objects{bottom:calc(86px + var(--safe-b))!important}
 /* Promotion : chapeau et col gardent chacun leur propre position sur le portrait. */
 .cer-adjusting .cer-stage{touch-action:none}
 .cer-adjusting .cer-clothes{transform:none!important}
+
+/* Livre ouvert : même cadre photo et mêmes calques de tenue que sur la carte, agrandis ensemble. */
+#up-me .mb-av.up-avatar-frame{border:0;background:none;box-shadow:none;overflow:visible}
+#up-me .up-avatar.me.ph{width:50px;height:50px;margin:0;animation:none;transform:scale(1.28);transform-origin:center;overflow:visible;flex:none}
