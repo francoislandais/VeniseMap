@@ -1516,8 +1516,8 @@ async function chapEnd(p, replay, preview = false) {
     if (!planButton) return;
     const M = p.musicChallenge;
     if (M && has(`music:${M.entry}:found`)) {
-      planButton.textContent = has(`music:${M.entry}:won`) ? "Retrouver mon fragment musical" : "Reprendre le défi musical";
-      planButton.onclick = () => openMusicChallenge(M.entry, p, routePlanButton);
+      planButton.textContent = "Revoir le morceau de partition";
+      planButton.onclick = () => openMusicFragmentReveal(M.entry, p);
     } else planButton.onclick = () => openPlanPanel(p.plan, p, routePlanButton, preview);
   };
   routePlanButton();
@@ -1606,7 +1606,7 @@ function openPlanPanel(plan, pl, onMusicFound = () => {}, preview = false) {
     addTreasures(photo, im, pt, pl, {
       preview,
       onClaim: hide,
-      onMusic: (entry) => { hide(); onMusicFound(); openMusicScrollReveal(entry, pl, () => openMusicChallenge(entry, pl, onMusicFound)); },
+      onMusic: (entry, rect) => { hide(); onMusicFound(); openMusicFragmentReveal(entry, pl, rect, pt.img); },
     });
     photo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280 });
   };
@@ -1944,6 +1944,32 @@ function solemn(p) {
     o.onclick = close;
   });
 }
+// Le vrai fragment flotte doucement dans la partie visible de la photo et rebondit sur ses bords.
+function floatMusicFragment(photo, im, fragment, start) {
+  let x = start[0], y = start[1], vx = 29, vy = 21, frame = 0, last = 0;
+  const bounds = () => {
+    const r = im.getBoundingClientRect(), pr = photo.getBoundingClientRect();
+    const scale = Math.min(r.width / im.naturalWidth, r.height / im.naturalHeight);
+    const w = im.naturalWidth * scale, h = im.naturalHeight * scale;
+    const left = r.left - pr.left + (r.width - w) / 2, top = r.top - pr.top + (r.height - h) / 2;
+    const halfW = fragment.offsetWidth / 2, halfH = fragment.offsetHeight / 2;
+    return { minX: left + halfW + 8, maxX: left + w - halfW - 8, minY: top + halfH + 8, maxY: top + h - halfH - 8 };
+  };
+  const position = () => { fragment.style.left = x + "px"; fragment.style.top = y + "px"; };
+  const fit = () => { const b = bounds(); x = Math.max(b.minX, Math.min(b.maxX, x)); y = Math.max(b.minY, Math.min(b.maxY, y)); position(); };
+  const tick = (now) => {
+    if (!fragment.isConnected) return;
+    const dt = Math.min((now - (last || now)) / 1000, .05); last = now;
+    const b = bounds();
+    x += vx * dt; y += vy * dt;
+    if (x <= b.minX || x >= b.maxX) { x = Math.max(b.minX, Math.min(b.maxX, x)); vx = -vx; }
+    if (y <= b.minY || y >= b.maxY) { y = Math.max(b.minY, Math.min(b.maxY, y)); vy = -vy; }
+    position(); frame = requestAnimationFrame(tick);
+  };
+  fit();
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) frame = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(frame);
+}
 // Trésors cachés sur les photos (une fois le mot de Corto entendu) : étoiles à tapoter et, sur la photo du saint, l'objet magique.
 function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {}, preview = false } = {}) {
   if (!p || (!preview && !has("fin:" + p.id))) return;
@@ -1968,13 +1994,16 @@ function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {}
       e.animate([{ transform: "translate(-50%,-50%) scale(1.4)" }, { transform: "translate(-50%,-50%) scale(.2)", opacity: 0 }], { duration: 700, fill: "forwards" }).finished.then(() => { e.remove(); onClaim(); });
     });
     if (musicHere && !has(`music:${M.entry}:won`)) {
-      const scroll = put("hid-music-scroll", "", M.at[0], M.at[1], (e) => {
-        e.disabled = true;
+      const fragment = document.createElement("button"); fragment.type = "button"; fragment.className = "hid-music-fragment";
+      fragment.setAttribute("aria-label", "Attraper le morceau de partition");
+      fragment.innerHTML = `<img src="img/music/${esc(M.entry)}-parchemin.png" alt="">`;
+      photo.appendChild(fragment);
+      const stop = floatMusicFragment(photo, im, fragment, at(M.at[0], M.at[1]));
+      fragment.onclick = (ev) => {
+        ev.stopPropagation(); stop(); fragment.disabled = true;
         if (!has(`music:${M.entry}:found`)) { award(`music:${M.entry}:found`, 0, meIdx()); save(); }
-        onMusic(M.entry);
-      });
-      scroll.innerHTML = '<span class="music-scroll-roll"><span class="music-scroll-string"></span><span class="music-scroll-knot"></span></span>';
-      scroll.setAttribute("aria-label", "Découvrir le parchemin musical");
+        onMusic(M.entry, fragment.getBoundingClientRect());
+      };
     }
   };
   if (im.complete) setTimeout(go, 60); else im.addEventListener("load", () => setTimeout(go, 60));
@@ -1987,22 +2016,21 @@ const musicCatalog = () => (musicCatalogPromise ||= fetch("data/music-challenges
   items.forEach((item) => { if (ids.has(item.id) || place(item.place)?.musicChallenge?.entry !== item.id) throw new Error("Correspondance musicale invalide"); ids.add(item.id); });
   return items;
 }).catch((e) => { musicCatalogPromise = null; throw e; }));
-// La partition apparaît en se déroulant avant que l'enfant n'entre dans le défi musical.
-async function openMusicScrollReveal(id, p, continueToChallenge) {
-  let entry;
-  try { entry = (await musicCatalog()).find((item) => item.id === id && item.place === p.id); } catch {}
-  if (!entry) { continueToChallenge(); return; }
-  const overlay = document.createElement("section"); overlay.className = "music-unroll"; overlay.setAttribute("aria-label", "Parchemin musical découvert");
-  overlay.style.setProperty("--music-place-bg", `url("${pic(p.id)}")`);
-  overlay.innerHTML = `<div class="mu-stage"><div class="mu-roll" aria-hidden="true"><span class="mu-roll-body"></span><span class="mu-string"></span><span class="mu-knot"></span></div><img class="mu-score" src="${esc(entry.fragment)}" alt="Fragment de la partition de ${esc(entry.title)}"></div><p class="mu-caption">Tu as trouvé un parchemin musical !</p><div class="mu-actions" hidden><button type="button" class="mu-continue">Découvrir le défi musical</button><button type="button" class="mu-later">Plus tard</button></div>`;
+// La découverte s'arrête ici pour l'instant : fragment en grand et message de félicitations.
+function openMusicFragmentReveal(id, p, rect = null, photoImage = null) {
+  if ($(".music-found")) return;
+  const overlay = document.createElement("section"); overlay.className = "music-found"; overlay.setAttribute("aria-label", "Morceau de partition découvert");
+  overlay.style.setProperty("--music-found-bg", `url("${photoImage || pic(p.id)}")`);
+  overlay.innerHTML = `<button type="button" class="mu-close" aria-label="Fermer">×</button><img class="mu-found-fragment" src="img/music/${esc(id)}-parchemin.png" alt="Morceau de la partition des Vêpres"><div class="mu-found-stars" aria-hidden="true">${Array.from({ length: 12 }, () => "<i>✦</i>").join("")}</div><div class="mu-found-message" aria-live="polite"><strong>Extraordinaire !</strong><span>Tu as trouvé un morceau de la partition des Vêpres.</span></div>`;
   document.body.appendChild(overlay);
-  const actions = $(".mu-actions", overlay);
-  $(".mu-continue", overlay).onclick = () => { overlay.remove(); continueToChallenge(); };
-  $(".mu-later", overlay).onclick = () => overlay.remove();
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { overlay.classList.add("unrolling", "opened"); actions.hidden = false; return; }
-  setTimeout(() => { if (overlay.isConnected) overlay.classList.add("unrolling"); }, 350);
-  setTimeout(() => { if (overlay.isConnected) overlay.classList.add("opened"); }, 1150);
-  setTimeout(() => { if (overlay.isConnected) actions.hidden = false; }, 2850);
+  $(".mu-close", overlay).onclick = () => overlay.remove();
+  const fragment = $(".mu-found-fragment", overlay);
+  musicCatalog().then((items) => { const entry = items.find((item) => item.id === id && item.place === p.id); if (entry?.fragment && overlay.isConnected) fragment.src = entry.fragment; }).catch(() => {});
+  const enlarge = () => { fragment.style.left = "50%"; fragment.style.top = "41%"; fragment.style.width = "min(94vw,760px)"; fragment.style.transform = "translate(-50%,-50%)"; overlay.classList.add("revealed"); };
+  if (!rect || matchMedia("(prefers-reduced-motion: reduce)").matches) { enlarge(); overlay.classList.add("message"); return; }
+  fragment.style.left = rect.left + "px"; fragment.style.top = rect.top + "px"; fragment.style.width = rect.width + "px"; fragment.style.transform = "none";
+  requestAnimationFrame(() => requestAnimationFrame(enlarge));
+  setTimeout(() => { if (overlay.isConnected) overlay.classList.add("message"); }, 1500);
 }
 function startMusicWalk(entry) {
   const old = $("#music-walk"); if (old) { $("audio", old)?.pause(); old.remove(); }
