@@ -1,4 +1,4 @@
-import { loadProfile, saveProfile, clearProfile, runIntro, cortoSays, editProfile, FACE, typewriter } from "./intro.js";
+import { loadProfile, saveProfile, clearProfile, runIntro, cortoSays, editProfile, FACE } from "./intro.js";
 import { createMap, WC_URL, OSM_URL, OFM_TILEJSON, FONTS, useStamen } from "./mapstyle.js";
 import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
 import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
@@ -1440,11 +1440,8 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
   setTimeout(() => { if (openId === "chap") { if (conclusionOnly) chapEnd(p, replay, preview); else runChapters(p, replay); } }, 350);
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
-const endBravo = (again = false) => again ? "Tu as déjà mené toutes ces épreuves jusqu'au bout." : `Bravo, ${gradeLc()} ! Tu as mené toutes ces épreuves jusqu'au bout.`;
-const endMessage = (p, again = false) => {
-  if (p.musicChallenge) return `${again ? "Rappelle-toi mon indice :" : "Je vais te confier un secret :"} **${p.musicChallenge.hint}** Ouvre le plan et regarde bien. ${p.reward ? `Un autre secret t'attend : **${p.reward.hint}**` : ""}`;
-  return p.reward ? `${again ? "Rappelle-toi mon indice :" : "Je vais te confier un secret :"} **${p.reward.hint}** Ouvre le plan et regarde cet endroit de près.` : "Garde en mémoire ce que tu as découvert ici. Quand tu seras prêt, reprends la carte de Venise.";
-};
+const endBravo = () => `Bravo, ${gradeLc()} ! Tu as mené toutes ces épreuves jusqu'au bout.`;
+const endSecret = (p) => p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
 async function chapEnd(p, replay, preview = false) {
   await clearTalk();
   const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.classList.add("chap-conclusion"); sh.dataset.k = "one";
@@ -1454,19 +1451,27 @@ async function chapEnd(p, replay, preview = false) {
   emblem.className = "chap-victory";
   emblem.innerHTML = `<p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span></div>`;
   sh.appendChild(emblem);
+  $(".chap-victory-line", emblem).textContent = endBravo();
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
-  const msg = chatAdd(typingHtml, "fc chap-final-msg"); cortoFill(msg, endMessage(p, replay));
+  const msg = chatAdd(typingHtml, "fc chap-final-msg"), bubble = $(".m-bubble", msg);
+  bubble.classList.remove("typing");
+  bubble.innerHTML = `<span class="chap-secret-lead">Je vais te confier un secret…</span><span class="chap-secret-clue">${esc(endSecret(p))}</span>`;
+  fitChapTalk();
   if (!preview && p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
-  if (p.plan) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-plan"; b.textContent = "🗺️ Voir le plan"; b.onclick = () => openPlanPanel(p.plan, p); bt.appendChild(b); fitChapTalk(); }
+  let planButton = null;
+  if (p.plan) { planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "chap-end-plan"; planButton.textContent = "Ouvre le plan"; planButton.onclick = () => openPlanPanel(p.plan, p); bt.appendChild(planButton); fitChapTalk(); }
   if (MONTAGES[p.id]) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-photo"; b.textContent = "📸 Photo souvenir"; b.onclick = () => openMontage(p.id); sh.appendChild(b); }
-  const typed = typewriter($(".chap-victory-line", emblem), endBravo(replay), 300);
-  const reveal = () => {
-    if (!emblem.isConnected) return;
-    if (!typed.done) { setTimeout(reveal, 80); return; }
-    emblem.classList.add("lit");
-    setTimeout(() => { if (emblem.isConnected) bt.classList.remove("chap-hint-pending"); }, 1100);
-  };
-  reveal();
+  const stage = (delay, action) => setTimeout(() => { if (emblem.isConnected) action(); }, delay);
+  const lead = $(".chap-secret-lead", bubble), clue = $(".chap-secret-clue", bubble);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue.classList.add("shown"); planButton?.classList.add("shown");
+  } else {
+    stage(180, () => emblem.classList.add("shown"));
+    stage(2500, () => emblem.classList.add("lit"));
+    stage(3500, () => { bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); });
+    stage(4750, () => clue.classList.add("shown"));
+    stage(5650, () => planButton?.classList.add("shown"));
+  }
 }
 /* ───────── « Où ? » : une petite carte avec une cible sur l'objet désigné par la question (champ loc des étapes) ───────── */
 let skipEnd = null; // (mode dev) saute directement à l'écran final de l'épreuve

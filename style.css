@@ -1570,16 +1570,17 @@ body.intro-open > .cam.cam{visibility:visible!important}
 #dev-chap-help{position:fixed;top:calc(82px + var(--safe-t));left:10px;z-index:520;padding:7px 10px;border:1px solid rgba(213,229,235,.7);border-radius:999px;background:rgba(8,38,57,.86);color:#fff;font-size:12px;font-weight:700;box-shadow:0 2px 8px rgba(0,8,18,.3)}
 body.menu-open #dev-chap-help,body:not(.jeu) #dev-chap-help{display:none!important}
 
-/* Conclusion : félicitations dactylographiées, puis pictogramme du lieu qui s'éclaire. */
+/* Conclusion : la phrase émerge de l'ombre, puis le pictogramme du lieu s'éclaire. */
 #sheet.chap.chap-conclusion .chap-final-msg .m-bubble::before{content:none;display:none}
 #sheet.chap.chap-conclusion .b-talk{padding-top:36px!important}
 #sheet.chap.chap-conclusion .b-talk.chap-hint-pending{opacity:0}
 #sheet.chap.chap-conclusion .b-talk{transition:opacity .7s ease}
 #sheet.chap.chap-conclusion .chap-hint-pending .chap-end-plan{pointer-events:none}
 #sheet.chap.chap-conclusion .chap-victory{position:absolute;z-index:3;top:calc(62px + var(--safe-t));bottom:calc(var(--cqh,260px) + 8px);left:12px;right:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;pointer-events:none}
-#sheet.chap.chap-conclusion .chap-victory-line{max-width:420px;margin:0;text-align:center;text-wrap:balance;color:#fff;font:clamp(24px,6.5vw,31px)/1.2 "Special Elite","Courier New",monospace;text-shadow:0 2px 10px rgba(0,10,22,.95),0 0 3px rgba(0,10,22,.9)}
-#sheet.chap.chap-conclusion .chap-victory-line .tw-caret{border-right-color:#fff}
-#sheet.chap.chap-conclusion .chap-victory-emblem{position:relative;flex:none;width:min(34vw,138px,18vh);aspect-ratio:1;opacity:.82;transform:scale(.92);transition:transform 1.2s ease,opacity 1.2s ease}
+#sheet.chap.chap-conclusion .chap-victory-line{max-width:420px;margin:0;text-align:center;text-wrap:balance;color:#fff;font:clamp(24px,6.5vw,31px)/1.2 Arial,Helvetica,sans-serif;text-shadow:0 2px 10px rgba(0,10,22,.95),0 0 3px rgba(0,10,22,.9);opacity:0;filter:blur(14px) brightness(.3);transform:translateY(12px);transition:opacity 1.5s ease,filter 1.5s ease,transform 1.5s ease}
+#sheet.chap.chap-conclusion .chap-victory.shown .chap-victory-line{opacity:1;filter:blur(0) brightness(1);transform:none}
+#sheet.chap.chap-conclusion .chap-victory-emblem{position:relative;flex:none;width:min(34vw,138px,18vh);aspect-ratio:1;opacity:0;transform:scale(.92);transition:transform 1.2s ease,opacity 1.2s ease}
+#sheet.chap.chap-conclusion .chap-victory.shown .chap-victory-emblem{opacity:.82}
 #sheet.chap.chap-conclusion .chap-victory-halo{position:absolute;inset:-25%;border-radius:50%;background:radial-gradient(circle,rgba(255,222,132,.58) 0%,rgba(255,218,122,.22) 32%,transparent 68%);opacity:0;transform:scale(.7);transition:opacity 1.3s ease,transform 1.3s ease}
 #sheet.chap.chap-conclusion .chap-victory-art{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;border-radius:50%}
 #sheet.chap.chap-conclusion .chap-victory-art img{display:block;width:100%;height:100%;object-fit:contain;filter:grayscale(1) brightness(.62);transition:filter 1.4s ease}
@@ -1600,3 +1601,14 @@ body.menu-open #dev-chap-help,body:not(.jeu) #dev-chap-help{display:none!importa
 @keyframes chapGlint{to{transform:translateX(150%) rotate(-12deg)}}
 @keyframes chapOrbit{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-halo,#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-art::after,#sheet.chap.chap-conclusion .chap-victory.lit .chap-victory-stars{animation:none}}
+
+/* L'indice se révèle en deux phrases ; le plan suit seul, sans phrase supplémentaire. */
+#sheet.chap.chap-conclusion .chap-secret-lead,#sheet.chap.chap-conclusion .chap-secret-clue{display:block;opacity:0;filter:blur(5px);transform:translateY(7px);transition:opacity .75s ease,filter .75s ease,transform .75s ease}
+#sheet.chap.chap-conclusion .chap-secret-lead{margin-bottom:13px}
+#sheet.chap.chap-conclusion .chap-secret-lead.shown,#sheet.chap.chap-conclusion .chap-secret-clue.shown{opacity:1;filter:blur(0);transform:none}
+#sheet.chap.chap-conclusion .b-talk .chap-end-plan{opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .7s ease,transform .7s ease}
+#sheet.chap.chap-conclusion .b-talk .chap-end-plan.shown{opacity:1;transform:none;pointer-events:auto}
+
+/* Le raccourci musical Dev reste à gauche, à l'écart du texte et de la photo souvenir. */
+#sheet.chap .dev-music{top:calc(58px + var(--safe-t));left:10px;right:auto}
+#sheet.chap.chap-conclusion .dev-music{top:calc(10px + var(--safe-t));bottom:auto;left:10px;right:auto}
