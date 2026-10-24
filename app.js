@@ -1640,6 +1640,7 @@ function menuDock() {
 }
 function setTab(t) {
   tab = t; if (t !== "map") lastTab = t;
+  if (t !== "objects") document.body.classList.remove("objects-has-items");
   if (t !== "map" && !menuOpen) { menuOpen = true; try { history.pushState({ vqMenu: 1 }, ""); } catch {} } if (t === "map") menuOpen = false;
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
@@ -1971,12 +1972,74 @@ function holdObject(btn) {
   if (heldId) releaseHeld();
   heldId = id; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} btn.classList.add("away"); mountHeld(id, btn.getBoundingClientRect());
 }
+// Zone d'assemblage locale : les pièces peuvent se chevaucher, sans être attribuées au joueur.
+const OBJECT_PIECE_SIZE = 54;
+const objectAssembly = new Map();
+const assemblyClamp = (value) => Math.max(0, Math.min(1, value));
+function assemblyPoint(board, clientX, clientY) {
+  const r = board.getBoundingClientRect();
+  return {
+    x: assemblyClamp((clientX - r.left - OBJECT_PIECE_SIZE / 2) / Math.max(1, r.width - OBJECT_PIECE_SIZE)),
+    y: assemblyClamp((clientY - r.top - OBJECT_PIECE_SIZE / 2) / Math.max(1, r.height - OBJECT_PIECE_SIZE)),
+  };
+}
+function assemblyPlace(piece, board, point) {
+  piece.style.left = `${point.x * Math.max(0, board.clientWidth - OBJECT_PIECE_SIZE)}px`;
+  piece.style.top = `${point.y * Math.max(0, board.clientHeight - OBJECT_PIECE_SIZE)}px`;
+}
+function renderObjectAssembly() {
+  const board = $("#ob-assembly"); if (!board) return;
+  board.classList.toggle("filled", objectAssembly.size > 0);
+  board.querySelectorAll(".ob-piece").forEach((piece) => piece.remove());
+  objectAssembly.forEach((point, id) => {
+    const object = objectList().find((o) => o.id === id); if (!object) return;
+    const piece = document.createElement("button"); piece.type = "button"; piece.className = "ob-piece";
+    piece.setAttribute("aria-label", object.name); piece.title = object.name; piece.innerHTML = `<img src="${object.img}" alt="">`;
+    board.appendChild(piece); assemblyPlace(piece, board, point);
+    let dragging = false;
+    piece.onpointerdown = (e) => { e.preventDefault(); dragging = true; try { piece.setPointerCapture(e.pointerId); } catch {} };
+    piece.onpointermove = (e) => { if (!dragging) return; const next = assemblyPoint(board, e.clientX, e.clientY); objectAssembly.set(id, next); assemblyPlace(piece, board, next); };
+    piece.onpointerup = () => { dragging = false; };
+    piece.onpointercancel = () => { dragging = false; };
+    piece.onclick = (e) => { if (e.detail === 0) { const source = $(`.ob[data-o="${id}"]`); if (source) holdObject(source); } };
+  });
+}
+function bindObjectDrag(button) {
+  let start = null, ghost = null;
+  const removeGhost = () => { if (ghost) ghost.remove(); ghost = null; };
+  button.onpointerdown = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); start = { x: e.clientX, y: e.clientY, moved: false };
+    try { button.setPointerCapture(e.pointerId); } catch {}
+  };
+  button.onpointermove = (e) => {
+    if (!start) return;
+    if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 7) return;
+    start.moved = true;
+    if (!ghost) { ghost = document.createElement("img"); ghost.className = "ob-ghost"; ghost.src = $("img", button).src; ghost.alt = ""; document.body.appendChild(ghost); }
+    ghost.style.left = `${e.clientX}px`; ghost.style.top = `${e.clientY}px`;
+  };
+  button.onpointerup = (e) => {
+    if (!start) return;
+    const moved = start.moved; start = null; removeGhost();
+    if (!moved) { holdObject(button); return; }
+    const board = $("#ob-assembly"), r = board?.getBoundingClientRect();
+    if (r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+      objectAssembly.set(button.dataset.o, assemblyPoint(board, e.clientX, e.clientY));
+      renderObjectAssembly();
+    }
+  };
+  button.onpointercancel = () => { start = null; removeGhost(); };
+  button.onclick = (e) => { if (e.detail === 0) holdObject(button); };
+}
 function renderObjects() {
   const v = $("#v-objects"), objects = objectList();
   const shown = PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found);
-  menuSay(PREVIEW_OBJECTS ? "Voici les petits trésors que nous pourrons glisser dans ton livre. Leurs cachettes viendront plus tard !" : shown.length ? "Voici tous les objets que tu as trouvés : peut-être pourront-ils te servir !" : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
-  v.innerHTML = (PREVIEW_OBJECTS ? `<p class="ob-preview">Aperçu de la collection · ${objects.length} objets</p>` : "") + (shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}"><img src="${o.img}" alt=""><span class="ob-name">${esc(o.name)}</span></button>`).join("")}</div>` : "");
-  $$(".ob", v).forEach((b) => (b.onclick = () => holdObject(b)));
+  document.body.classList.toggle("objects-has-items", shown.length > 0);
+  menuSay(shown.length ? "" : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
+  v.innerHTML = shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}"><img src="${o.img}" alt=""></button>`).join("")}</div><div id="ob-assembly" class="ob-assembly" aria-label="Espace d’assemblage"><span class="ob-workhint">Glisse des objets ici</span></div>` : "";
+  $$(".ob", v).forEach(bindObjectDrag);
+  renderObjectAssembly();
 }
 window.__objects = {
   list: objectList,
