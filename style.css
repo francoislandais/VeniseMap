@@ -1696,7 +1696,7 @@ body.menu-open #dev-chap-help{display:none!important}
 
 /* L'objet attrapé grandit sur l'écran ; les étoiles soulignent seulement la découverte. */
 .music-found{position:fixed;inset:0;z-index:1950;overflow:hidden;background:#081925;color:#fff;text-align:center;isolation:isolate}
-.music-found::before{content:"";position:absolute;inset:0;z-index:0;background:var(--music-found-bg) center/cover no-repeat;filter:brightness(.72)}
+.music-found::before{content:"";position:absolute;inset:0;z-index:0;background:var(--music-found-bg) center/cover no-repeat;filter:brightness(.66)}
 .music-found::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(3,16,28,.16),rgba(3,16,28,.4) 55%,rgba(3,16,28,.78));pointer-events:none}
 .mu-close{position:absolute;z-index:5;top:calc(13px + var(--safe-t));right:14px;width:40px;height:40px;border:1px solid rgba(255,255,255,.55);border-radius:50%;background:rgba(8,35,53,.75);color:#fff;font:26px/1 Arial,sans-serif}
 .mu-found-fragment{position:fixed;z-index:3;max-height:38vh;height:auto;object-fit:contain;filter:drop-shadow(0 9px 18px rgba(0,0,0,.65));transition:left 1.35s cubic-bezier(.2,.72,.24,1),top 1.35s cubic-bezier(.2,.72,.24,1),width 1.35s cubic-bezier(.2,.72,.24,1),transform 1.35s cubic-bezier(.2,.72,.24,1)}
@@ -1728,7 +1728,7 @@ body.music-star-flight .fly-star{z-index:2601}
 
 /* Toutes les questions gardent le même fond et la vraie partition en haut. */
 .music-quest.music-flow-quest{display:block;overflow:hidden;padding:0;background:#081925;isolation:isolate}
-.music-flow-quest::before{content:"";position:absolute;inset:0;z-index:0;background:var(--music-flow-bg) center/cover no-repeat;filter:brightness(.72)}
+.music-flow-quest::before{content:"";position:absolute;inset:0;z-index:0;background:var(--music-flow-bg) center/cover no-repeat;filter:brightness(.66)}
 .music-flow-quest::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(3,16,28,.16),rgba(3,16,28,.4) 55%,rgba(3,16,28,.78));pointer-events:none}
 .mq-exit{position:absolute;z-index:4;top:calc(12px + var(--safe-t));left:12px;width:40px;height:40px;border:1px solid rgba(255,255,255,.55);border-radius:50%;background:rgba(8,35,53,.75);color:#fff;font:23px/1 Arial,sans-serif}
 .mq-fragment{position:absolute;z-index:2;top:calc(111px + var(--safe-t));left:50%;width:min(86vw,420px);max-height:22vh;height:auto;object-fit:contain;transform:translate(-50%,-50%);filter:drop-shadow(0 9px 18px rgba(0,0,0,.65))}
