@@ -222,8 +222,25 @@ function outfitStyle(l, cut, frame, shift = {}) { // place la tenue dans les mê
   const top = ((1 - h * scale) * (frame ? 0.34 : 0.5) - pad * scale) * 100 + dy;
   return `--gear-left:${left}%;--gear-top:${top}%;--gear-width:${cw * scale * 100}%;--gear-height:${ch * scale * 100}%`;
 }
+function outfitPartShift(shift) { // ancien décalage commun -> deux décalages indépendants
+  const clamp = (part) => ({
+    x: Number.isFinite(part?.x) ? Math.max(-30, Math.min(30, part.x)) : 0,
+    y: Number.isFinite(part?.y) ? Math.max(-25, Math.min(25, part.y)) : 0,
+  });
+  const legacy = shift && !shift.hat && !shift.body ? shift : null;
+  return { hat: clamp(shift?.hat || legacy), body: clamp(shift?.body || legacy) };
+}
 function profileHtml() {
   if (!PROFILE) return "🙂";
+  if (PROFILE.photo && PROFILE.outfitOverlayHat && PROFILE.outfitOverlayBody && PROFILE.outfitLayout && PROFILE.outfitOverlayVersion === 3) {
+    const shifts = outfitPartShift(PROFILE.outfitShift);
+    const hatStyle = outfitStyle(PROFILE.outfitLayout, !!PROFILE.cut, PROFILE.frame, shifts.hat);
+    const bodyStyle = outfitStyle(PROFILE.outfitLayout, !!PROFILE.cut, PROFILE.frame, shifts.body);
+    if (hatStyle && bodyStyle) {
+      const cls = PROFILE.cut ? ` cut${PROFILE.frame ? " frame" : ""}` : "";
+      return `<span class="avatar-dressed"><img class="avatar-base${cls}" src="${PROFILE.photo}" alt=""><img class="avatar-gear avatar-gear-body" style="${bodyStyle}" src="${PROFILE.outfitOverlayBody}" alt=""><img class="avatar-gear avatar-gear-hat" style="${hatStyle}" src="${PROFILE.outfitOverlayHat}" alt=""></span>`;
+    }
+  }
   if (PROFILE.photo && PROFILE.outfitOverlay && PROFILE.outfitLayout && PROFILE.outfitOverlayVersion === 2) {
     const style = outfitStyle(PROFILE.outfitLayout, !!PROFILE.cut, PROFILE.frame, PROFILE.outfitShift);
     if (style) {
@@ -772,7 +789,7 @@ function renderProfileBar() {
 $("#up-me").onclick = async () => {
   if (!PROFILE) return;
   const p = await editProfile(PROFILE); if (!p) return;
-  if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitLayout = PROFILE.outfitLayout; p.outfitOverlayVersion = PROFILE.outfitOverlayVersion; p.outfitShift = PROFILE.outfitShift; } // nouvelle photo = plus de tenue
+  if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitOverlayHat = PROFILE.outfitOverlayHat; p.outfitOverlayBody = PROFILE.outfitOverlayBody; p.outfitLayout = PROFILE.outfitLayout; p.outfitOverlayVersion = PROFILE.outfitOverlayVersion; p.outfitShift = PROFILE.outfitShift; } // nouvelle photo = plus de tenue
   applyProfile(p);
 };
 function applyProfile(p) {
@@ -2222,10 +2239,21 @@ const CER_TEXT = {
   amiral: "Amiral ! Toute la flotte de Venise est à tes ordres.",
 };
 let ceremonyBusy = false;
-async function wearOutfit(key) { // pose (ou retire, key = null) la tenue sur la photo du profil
+async function wearOutfit(key, initialShift) { // pose (ou retire) les deux pièces sur la photo du profil
   const P = PROFILE; if (!P || !P.photo) return;
-  if (!key) { delete P.outfit; delete P.outfitPhoto; delete P.outfitOverlay; delete P.outfitLayout; delete P.outfitOverlayVersion; delete P.outfitShift; }
-  else { OUTFITS ||= await (await fetch("data/outfits.json")).json(); const c = await composeOutfit(P.photo, !!P.cut, key, { garmentsOnly: true }, P.frame || false), du = c.toDataURL("image/webp", 0.9); P.outfit = key; P.outfitOverlay = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); P.outfitLayout = c.outfitLayout; P.outfitOverlayVersion = 2; P.outfitShift = { x: 0, y: 0 }; delete P.outfitPhoto; }
+  if (!key) {
+    for (const field of ["outfit", "outfitPhoto", "outfitOverlay", "outfitOverlayHat", "outfitOverlayBody", "outfitLayout", "outfitOverlayVersion", "outfitShift"]) delete P[field];
+  } else {
+    OUTFITS ||= await (await fetch("data/outfits.json")).json();
+    const [body, hat] = await Promise.all([
+      composeOutfit(P.photo, !!P.cut, key, { garmentsOnly: true, noHat: true }, P.frame || false),
+      composeOutfit(P.photo, !!P.cut, key, { garmentsOnly: true, hatOnly: true }, P.frame || false),
+    ]);
+    const url = (canvas) => { const webp = canvas.toDataURL("image/webp", 0.9); return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png"); };
+    P.outfit = key; P.outfitOverlayBody = url(body); P.outfitOverlayHat = url(hat);
+    P.outfitLayout = body.outfitLayout; P.outfitOverlayVersion = 3;
+    P.outfitShift = outfitPartShift(initialShift); delete P.outfitOverlay; delete P.outfitPhoto;
+  }
   saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
 }
 async function ceremony(key, li) {
@@ -2254,37 +2282,73 @@ async function ceremony(key, li) {
       const portrait = document.createElement("span"); portrait.className = "avatar-dressed cer-avatar";
       portrait.innerHTML = `<img class="avatar-base${cls}" src="${P.photo}" alt="">`;
       const base = $(".avatar-base", portrait); if (base.decode) await base.decode().catch(() => {});
-      const gear = async (grade, options = {}, shift = {}) => { const c = await composeOutfit(P.photo, !!P.cut, grade, { garmentsOnly: true, ...options }, f), im = document.createElement("img"); const du = c.toDataURL("image/webp", 0.9); im.className = "avatar-gear"; im.src = du.startsWith("data:image/webp") ? du : c.toDataURL("image/png"); im.style.cssText = outfitStyle(c.outfitLayout, !!P.cut, f, shift); if (im.decode) await im.decode().catch(() => {}); return im; };
-      const oldGear = had ? await gear(had, {}, P.outfitShift) : null;
-      const body = await gear(key, { noHat: true }), hat = await gear(key, { hatOnly: true });
-      if (oldGear) portrait.appendChild(oldGear);
+      const gear = async (grade, options = {}, shift = {}) => {
+        const canvas = await composeOutfit(P.photo, !!P.cut, grade, { garmentsOnly: true, ...options }, f);
+        const im = document.createElement("img"), webp = canvas.toDataURL("image/webp", 0.9);
+        im.className = "avatar-gear"; im.src = webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png");
+        im.style.cssText = outfitStyle(canvas.outfitLayout, !!P.cut, f, shift);
+        if (im.decode) await im.decode().catch(() => {});
+        return { im, canvas };
+      };
+      const previousShift = outfitPartShift(P.outfitShift);
+      const oldGear = had ? await Promise.all([
+        gear(had, { noHat: true }, previousShift.body),
+        gear(had, { hatOnly: true }, previousShift.hat),
+      ]) : [];
+      const bodyGear = await gear(key, { noHat: true }), hatGear = await gear(key, { hatOnly: true });
+      const body = bodyGear.im, hat = hatGear.im;
+      oldGear.forEach((part) => portrait.appendChild(part.im));
       const clothes = document.createElement("span"); clothes.className = "cer-clothes";
       await corto.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, fill: "forwards" }).finished; corto.remove();
       stage.appendChild(portrait);
       await portrait.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: "ease-out" }).finished;
       say(had ? "L'ancien uniforme s'en va…" : "Voici ton uniforme…");
-      if (oldGear) { await oldGear.animate([{ opacity: 1 }, { opacity: 0, transform: "translateY(16px)" }], { duration: 450, fill: "forwards", easing: "ease-in" }).finished; oldGear.remove(); }
+      if (oldGear.length) {
+        await Promise.all(oldGear.map(({ im }) => im.animate([{ opacity: 1 }, { opacity: 0, transform: "translateY(16px)" }], { duration: 450, fill: "forwards", easing: "ease-in" }).finished));
+        oldGear.forEach(({ im }) => im.remove());
+      }
       body.style.opacity = "0"; hat.style.opacity = "0"; clothes.append(body, hat); portrait.appendChild(clothes);
       await body.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 700, fill: "forwards", easing: "ease-out" }).finished; body.style.opacity = "1";
       await hat.animate([{ opacity: 0, transform: "translateY(-48px) rotate(-6deg)" }, { opacity: 1, transform: "translateY(5px) rotate(2deg)", offset: 0.75 }, { opacity: 1, transform: "none" }], { duration: 850, fill: "forwards", easing: "cubic-bezier(.3,.7,.4,1)" }).finished; hat.style.opacity = "1";
       await wearOutfit(key); confetti(100);
       say(`Magnifique, ${LEVELS[li].name.toLowerCase()} ${name} ! Cet uniforme te va comme un gant.`);
-      const hint = $(".cer-hint", ov); hint.textContent = "Glisse la tenue pour l'ajuster · touche ailleurs pour terminer";
+      const hint = $(".cer-hint", ov); hint.textContent = "Glisse le chapeau ou le col pour l'ajuster · touche ailleurs pour terminer";
       ov.classList.add("cer-adjusting");
-      const shift = { x: 0, y: 0 }; let drag = null;
+      const shift = outfitPartShift(); let drag = null, ignoreNextClick = false;
+      const hits = (part, e) => {
+        const r = part.im.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX >= r.right || e.clientY < r.top || e.clientY >= r.bottom) return false;
+        const x = Math.floor((e.clientX - r.left) * part.canvas.width / r.width);
+        const y = Math.floor((e.clientY - r.top) * part.canvas.height / r.height);
+        return part.canvas.getContext("2d", { willReadFrequently: true }).getImageData(x, y, 1, 1).data[3] > 24;
+      };
       const move = (e) => {
         if (!drag || e.pointerId !== drag.id) return;
-        const w = portrait.getBoundingClientRect().width || 1;
-        shift.x = Math.round(Math.max(-30, Math.min(30, drag.x + (e.clientX - drag.px) / w * 100)) * 10) / 10;
-        shift.y = Math.round(Math.max(-25, Math.min(25, drag.y + (e.clientY - drag.py) / w * 100)) * 10) / 10;
-        clothes.style.transform = `translate(${shift.x}%, ${shift.y}%)`;
+        const w = portrait.getBoundingClientRect().width || 1, piece = shift[drag.part];
+        piece.x = Math.round(Math.max(-30, Math.min(30, drag.x + (e.clientX - drag.px) / w * 100)) * 10) / 10;
+        piece.y = Math.round(Math.max(-25, Math.min(25, drag.y + (e.clientY - drag.py) / w * 100)) * 10) / 10;
+        drag.image.style.cssText = outfitStyle(drag.canvas.outfitLayout, !!P.cut, f, piece);
       };
-      portrait.addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse" && e.button !== 0) return; drag = { id: e.pointerId, px: e.clientX, py: e.clientY, x: shift.x, y: shift.y }; portrait.setPointerCapture(e.pointerId); e.preventDefault(); });
-      portrait.addEventListener("pointermove", move);
-      const endDrag = (e) => { if (drag?.id === e.pointerId) { move(e); drag = null; } };
-      portrait.addEventListener("pointerup", endDrag); portrait.addEventListener("pointercancel", endDrag);
+      stage.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        const part = hits(hatGear, e) ? "hat" : hits(bodyGear, e) ? "body" : null;
+        if (!part) return;
+        const target = part === "hat" ? hatGear : bodyGear;
+        const current = shift[part];
+        drag = { id: e.pointerId, part, image: target.im, canvas: target.canvas, px: e.clientX, py: e.clientY, x: current.x, y: current.y };
+        ignoreNextClick = true;
+        try { stage.setPointerCapture(e.pointerId); } catch {}
+        e.preventDefault();
+      });
+      stage.addEventListener("pointermove", move);
+      const endDrag = (e) => { if (drag?.id === e.pointerId) { move(e); drag = null; if (e.type === "pointercancel") ignoreNextClick = false; else setTimeout(() => { ignoreNextClick = false; }, 400); } };
+      stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
       await new Promise((resolve) => {
-        const finish = (e) => { if (e?.type === "click" && portrait.contains(e.target)) return; ov.removeEventListener("click", finish); ov.removeEventListener("keydown", onKey); resolve(); };
+        const finish = (e) => {
+          if (e?.type === "click" && ignoreNextClick) { ignoreNextClick = false; return; }
+          if (e?.type === "click" && portrait.contains(e.target)) return;
+          ov.removeEventListener("click", finish); ov.removeEventListener("keydown", onKey); resolve();
+        };
         const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); finish(); } };
         ov.addEventListener("click", finish); ov.addEventListener("keydown", onKey);
       });
@@ -2489,7 +2553,7 @@ let pendingTeamName = "";
 startFlow();
 async function startFlow() {
   if (!PROFILE) PROFILE = await runIntro(BOAT_OPTS); else ensureBoat();
-  if (PROFILE?.outfit && PROFILE.photo && PROFILE.outfitOverlayVersion !== 2) { try { await wearOutfit(PROFILE.outfit); } catch {} } // renouvelle les vêtements sans déplacer la photo
+  if (PROFILE?.outfit && PROFILE.photo && (PROFILE.outfitOverlayVersion !== 3 || !PROFILE.outfitOverlayHat || !PROFILE.outfitOverlayBody)) { try { await wearOutfit(PROFILE.outfit, PROFILE.outfitShift); } catch {} } // migre la tenue en deux pièces sans déplacer la photo
   renderBadge(); refreshUserMarker();
   if (JEU) renderHud();
   if (!JEU) { startGeo(); return; }
