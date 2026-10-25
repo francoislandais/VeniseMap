@@ -1798,24 +1798,32 @@ body.music-star-flight .fly-star{z-index:2601}
 .music-flow-quest.mq-editing [data-music-edit]{touch-action:none;cursor:grab;outline:1px dashed rgba(228,237,242,.6);outline-offset:3px}
 .music-flow-quest.mq-editing [data-music-edit].mq-edit-selected{outline:2px solid #ffe18b;outline-offset:4px}
 
-/* Enquête des Vêpres : accès ajouté sans remplacer les rencontres et écrans existants. */
-#narrative-btn{position:fixed;right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(84px + var(--safe-b));z-index:1600;width:72px;min-height:62px;border:2px solid #fff;border-radius:16px;background:#f3ead7;color:#24394b;box-shadow:0 3px 12px rgba(0,0,0,.3);font-size:27px;line-height:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
-#narrative-btn span{font-size:12px;font-weight:800;letter-spacing:.02em}
-body:not(.jeu) #narrative-btn,body.menu-open #narrative-btn,body.chap-open #narrative-btn,body.corto-talk #narrative-btn,body.intro-open #narrative-btn,body.music-quest-active #narrative-btn,body:has(#sheet:not([hidden])) #narrative-btn,body:has(#modal:not([hidden])) #narrative-btn{display:none}
+/* Enquête des Vêpres : rencontre déclenchée uniquement par le personnage proche. */
 .nv-overlay{position:fixed;inset:0;z-index:2400;display:flex;align-items:center;justify-content:center;padding:calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b));box-sizing:border-box;background:rgba(11,30,42,.68);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
-.nv-card{width:min(100%,500px);max-height:100%;overflow:auto;border:3px solid #25384a;border-radius:20px;background:#fff8e9;color:#172735;box-shadow:0 16px 50px rgba(0,0,0,.4)}
 .nv-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px 8px}
 .nv-head h2{margin:0;font-size:23px;line-height:1.15}
 .nv-close{flex:none;width:38px;height:38px;border:0;border-radius:50%;background:#e4d9c3;color:#172735;font-size:28px;line-height:1;cursor:pointer}
 .nv-body{padding:8px 18px 20px;font-size:18px;line-height:1.4}
-.nv-body p{margin:0 0 16px}
-.nv-speaker{display:flex;align-items:flex-start;gap:12px}
-.nv-speaker img{flex:none;width:70px;height:78px;object-fit:contain}
 .nv-choices{display:grid;gap:9px}
 .nv-choice{width:100%;min-height:46px;border:2px solid #304e65;border-radius:12px;background:#e7f1f8;color:#182b3a;padding:9px 12px;text-align:left;font-size:17px;font-weight:700;line-height:1.25;cursor:pointer}
-.nv-choice:focus-visible,.nv-close:focus-visible,#narrative-btn:focus-visible{outline:3px solid #ffae36;outline-offset:2px}
-.nv-quests{margin:0 0 16px;padding-left:22px}
-.nv-quests li{margin:6px 0}
+.nv-choice:focus-visible,.nv-close:focus-visible{outline:3px solid #ffae36;outline-offset:2px}
+
+/* Rencontre V0 en pleine page sur les aquarelles fournies. */
+.nv-overlay.nv-scene{display:block;overflow-y:auto;padding:0;background:linear-gradient(180deg,#718b9c 0%,#38556c 46%,#122d43 100%);-webkit-backdrop-filter:none;backdrop-filter:none}
+.nv-scene::before{content:"";position:fixed;inset:0;background-image:var(--nv-watercolor,none);background-position:center top;background-size:cover;transform:scale(1.08);transform-origin:top center;pointer-events:none}
+.nv-scene::after{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(8,25,39,.35),rgba(8,25,39,.08) 38%,rgba(5,20,34,.72));pointer-events:none}
+.nv-scene .nv-stage{position:relative;z-index:1;box-sizing:border-box;width:min(100%,620px);min-height:100dvh;margin:0 auto;padding:calc(15px + var(--safe-t)) 18px calc(18px + var(--safe-b));display:flex;flex-direction:column}
+.nv-scene .nv-head{flex:none;padding:0;align-items:flex-start;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.nv-scene .nv-head h2{padding-top:8px;font:700 clamp(23px,6vw,32px)/1.15 Georgia,serif}
+.nv-scene .nv-close{background:rgba(8,31,49,.88);border:1px solid rgba(255,255,255,.55);color:#fff}
+.nv-scene .nv-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;padding:0}
+.nv-portrait-wrap{flex:1 1 auto;min-height:clamp(120px,22dvh,190px);display:flex;align-items:center;justify-content:center}
+.nv-portrait{display:block;width:min(72vw,330px);max-height:min(40dvh,350px);object-fit:contain;filter:drop-shadow(0 8px 16px rgba(0,0,0,.45));animation:nvPortraitIn .35s ease-out both}
+@keyframes nvPortraitIn{from{opacity:.5;transform:scale(.78)}to{opacity:1;transform:scale(1)}}
+.nv-scene .nv-dialogue{flex:none;box-sizing:border-box;max-height:30dvh;overflow-y:auto;margin:0;padding:4px 8px;color:#fff;font:clamp(16px,4.3vw,19px)/1.4 Arial,Helvetica,sans-serif;text-shadow:0 2px 5px rgba(2,13,25,.95),0 0 12px rgba(2,13,25,.7)}
+.nv-scene .nv-choices{flex:none;gap:8px}
+.nv-scene .nv-choice{min-height:48px;border:1px solid rgba(178,216,237,.65);border-radius:999px;background:rgba(8,31,49,.95);color:#fff;text-align:center;box-shadow:0 3px 10px rgba(0,0,0,.22)}
+@media (prefers-reduced-motion:reduce){.nv-portrait{animation:none}}
 
 /* Le fragment à attraper laisse une courte traînée scintillante, sans gêner le toucher. */
 .plan-photo .hid-music-trail{position:absolute;inset:0;z-index:4;overflow:hidden;pointer-events:none}

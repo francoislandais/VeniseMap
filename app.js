@@ -2,7 +2,7 @@ import { loadProfile, saveProfile, clearProfile, runIntro, cortoSays, editProfil
 import { createMap, WC_URL, OSM_URL, OFM_TILEJSON, FONTS, useStamen } from "./mapstyle.js";
 import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
 import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
-import { createNarrative } from "./narrative-engine.mjs";
+import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -342,11 +342,11 @@ function startGeo() {
   }
   const fake = DEV ? QS.get("fake") : null;
   if (DEV) window.__fake = (a, b) => { devPinned = true; onPos(a, b, 10, true); };
+  // Le toucher reste disponible en mode dev même avec une position simulée dans l'URL.
+  if (DEV) map.on("click", (e) => { devPinned = true; onPos(e.lngLat.lat, e.lngLat.lng, 10, true); syncGeoWatch(); });
   if (fake) { geoSimulated = true; const [la, lo] = fake.split(",").map(Number); window.__fake(la, lo); return; }
   const gps = DEV ? QS.get("gps") : null; // position simulée réservée au mode développeur
   if (gps) { geoSimulated = true; const [la, lo] = gps.split(",").map(Number); setTimeout(() => onPos(la, lo, 15), 600); return; }
-  // Mode dev : un tapotement sur la carte déplace le pictogramme (pour tester différentes positions).
-  if (DEV) map.on("click", (e) => { devPinned = true; onPos(e.lngLat.lat, e.lngLat.lng, 10, true); syncGeoWatch(); });
   if (DEV) setTimeout(() => { if (!pos) { const c = map.getCenter(); onPos(c.lat, c.lng, 10); } }, 1500);
   syncGeoWatch();
 }
@@ -538,93 +538,13 @@ function updateWalkScale() { const z = map.getZoom(); $("#map").style.setPropert
 // Chacun parcourt en boucle son itinéraire (JSON de [lat,lon]) en h heures ; position calculée d'après l'heure, donc la même pour tous. Mouvement continu (image par image) à fort zoom, toutes les 5 s sinon.
 updateWalkScale();
 const WALKERS = [
-  { id: "doge", name: "le doge", to: "au doge", de: "du doge", route: "doge-route.json", img: "img/doge-avatar.webp", big: "img/doge-big.webp", bigHappy: "img/doge-big-happy.webp", bigAngry: "img/doge-big-angry.webp", quiz: { q: "Sais-tu qui je suis ?", opts: [{ t: "Le doge, le personnage le plus important de Venise", ok: 1 }, { t: "Emmanuel Macron, président de la République" }, { t: "Michael Jackson" }], good: "Exactement ! Je suis le doge, le chef de Venise. Tu as l'œil, {g} !", bad: "Tu ne sais même pas qui je suis ?!" }, h: 5.5, near: 60, w: 50, msg: "Le doge te salue d'un air solennel… (il aura bientôt quelque chose à te raconter !)" },
+  { id: "doge", name: "le doge", to: "au doge", de: "du doge", route: "doge-route.json", img: "img/doge-avatar.webp", big: "img/doge-big.webp", bigHappy: "img/doge-big-happy.webp", bigAngry: "img/doge-big-angry.webp", quiz: DOGE_QUIZ, h: 5.5, near: DOGE_NEAR, w: 50, msg: "Le doge te salue d'un air solennel… (il aura bientôt quelque chose à te raconter !)" },
   { id: "monteverdi", name: "Monteverdi", to: "à Monteverdi", de: "de Monteverdi", route: "monteverdi-route.json", img: "img/monteverdi-avatar.webp", h: 4, near: 60, w: 40, msg: "Monteverdi, le maître de musique de Saint-Marc, te salue… (il aura bientôt quelque chose à te raconter !)" },
   { id: "stmarc", name: "saint Marc", to: "à saint Marc", de: "de saint Marc", route: "stmarc-route.json", img: "img/stmarc-avatar.webp", h: 4, near: 60, w: 46, msg: "Saint Marc te salue, l'air soucieux… « As-tu vu mon lion ? Je le cherche partout ! » (il aura bientôt autre chose à te raconter)" },
   { id: "gondolier", name: "le gondolier", to: "au gondolier", de: "du gondolier", route: "gondolier-route.json", img: "img/gondolier-avatar.webp", h: 3, near: 60, w: 64, msg: "Le gondolier te salue d'un coup de chapeau… (il aura bientôt quelque chose à te raconter !)" },
   { id: "lion", name: "le lion ailé", to: "au lion ailé", de: "du lion ailé", route: "lion-route.json", farLines: ["Le lion ailé est dans les airs ! Lève les yeux et attends qu'il passe au-dessus de toi pour lui parler.", "Il vole haut, {g}. Bon courage ! Attends qu'il passe au-dessus de toi.", "Lève les yeux, {g} : le lion ailé survole Venise. Attends qu'il passe près de toi.", "Le lion ailé est en plein vol. Lève les yeux et bon courage pour l'attraper, {g} !", "Impossible de lui parler d'ici : il est dans le ciel. Attends qu'il passe au-dessus de toi."], motion: { cruise: 12, ramp: 8, period: 2160, landings: [{ at: 700, dur: 110 }, { at: 1650, dur: 90 }] }, heading: true, img: "img/lion-avatar.webp", rig: { body: "img/lion-body.webp", rear: "img/lion-rear.webp", front: "img/lion-front.webp", wings: "img/lion-wings.webp", ratio: "325/360" }, h: 5, near: 60, w: 50, msg: "Le lion ailé bat doucement des ailes et te regarde d'un air fier… (il aura bientôt quelque chose à te raconter !)" },
 ];
 
-/* ───────── Enquête des Vêpres : parcours ajouté, distinct des rencontres existantes ───────── */
-const NARRATIVE_NAMES = { corto: "Corto Maltese", gondolier: "Le gondolier", doge: "Le Doge", monteverdi: "Monteverdi", stmarc: "Saint Marc", lion: "Le lion ailé" };
-let narrative = null, narrativeData = null, narrativeOverlay = null;
-const narrativeReady = fetch("data/narrative-v0.json")
-  .then((r) => { if (!r.ok) throw new Error("Enquête indisponible"); return r.json(); })
-  .then((data) => {
-    narrativeData = data;
-    narrative = createNarrative(data, {
-      has,
-      set: (key) => award(key, 0, "all"),
-      clear: (key) => {
-        if (key.startsWith("n:item:")) {
-          const objectId = "nv-" + key.slice("n:item:".length);
-          objectAssembly.delete(objectId);
-          if (heldId === objectId) releaseHeld();
-        }
-        unaward(key);
-      },
-      commit: () => { save(); refreshAll(); if (tab === "objects") renderObjects(); }
-    });
-    if (DEV) window.__narrative = {
-      grantExternal: (id) => narrative.grantExternal(id),
-      hasItem: (id) => narrative.hasItem(id),
-      hasFlag: (id) => narrative.hasFlag(id),
-      open: (character) => openNarrative(character)
-    };
-    if (tab === "objects") renderObjects();
-    return narrative;
-  }).catch((error) => { console.warn(error.message); return null; });
-
-function closeNarrative() {
-  narrativeOverlay?.remove(); narrativeOverlay = null;
-  document.removeEventListener("keydown", narrativeEscape);
-}
-function narrativeEscape(event) { if (event.key === "Escape") closeNarrative(); }
-function narrativePanel(title, body) {
-  closeNarrative();
-  const overlay = document.createElement("section");
-  overlay.className = "nv-overlay"; overlay.setAttribute("role", "dialog"); overlay.setAttribute("aria-modal", "true"); overlay.setAttribute("aria-label", title);
-  overlay.innerHTML = `<div class="nv-card"><div class="nv-head"><h2>${esc(title)}</h2><button type="button" class="nv-close" aria-label="Fermer">×</button></div><div class="nv-body">${body}</div></div>`;
-  overlay.addEventListener("click", (event) => { if (event.target === overlay) closeNarrative(); });
-  $(".nv-close", overlay).onclick = closeNarrative;
-  document.body.appendChild(overlay); narrativeOverlay = overlay;
-  document.addEventListener("keydown", narrativeEscape);
-  $(".nv-close", overlay).focus();
-  return overlay;
-}
-async function openNarrativeJournal() {
-  if (!await narrativeReady) { toast("Le carnet d'enquête est indisponible pour le moment."); return; }
-  const quests = narrative.progress();
-  const list = quests.length ? `<ul class="nv-quests">${quests.map((q) => `<li>${q.finished ? "✓" : "○"} ${esc(q.title)}</li>`).join("")}</ul>` : "<p>Parle à Corto pour commencer l'enquête sur les Vêpres.</p>";
-  narrativePanel("Carnet des Vêpres", `${list}<p>Retrouve les personnages sur la carte et touche-les pour leur parler quand ta position est reconnue. Touche le portrait de Corto pour lui parler.</p>`);
-}
-async function openNarrative(character) {
-  if (!await narrativeReady) { toast("L'enquête est indisponible pour le moment."); return; }
-  const id = narrative.entry(character);
-  if (!id) return;
-  showNarrativeScene(character, id);
-}
-function showNarrativeScene(character, id) {
-  const scene = narrative.scene(id);
-  if (!scene) return;
-  const image = character === "corto" ? "img/corto-content.webp" : WALKERS.find((w) => w.id === character)?.img;
-  const body = `<div class="nv-speaker">${image ? `<img src="${image}" alt="">` : ""}<p>${esc(scene.text)}</p></div><div class="nv-choices">${scene.choices.map((choice) => `<button type="button" class="nv-choice" data-choice="${choice.index}">${esc(choice.label)}</button>`).join("")}</div>`;
-  const overlay = narrativePanel(NARRATIVE_NAMES[character], body);
-  $$("[data-choice]", overlay).forEach((button) => (button.onclick = () => {
-    const next = narrative.choose(id, +button.dataset.choice);
-    if (next) showNarrativeScene(character, next);
-  }));
-}
-async function validNarrativePosition() {
-  if (!DEV && !geoReady) { showGeoGate(); return false; }
-  if (!DEV && (!pos || Date.now() - pos.t > 15000 || pos.acc > 100)) await getFix(2500).catch(() => false);
-  if (!pos || !inVenice(pos.lat, pos.lon) || !Number.isFinite(pos.acc) || pos.acc > 100 || (!DEV && Date.now() - pos.t > 15000)) {
-    toast("📍 Attends une position GPS précise à Venise pour parler au personnage.");
-    return false;
-  }
-  return true;
-}
-$("#narrative-btn").onclick = openNarrativeJournal;
 // Doge vexé : il file de HUFF_M mètres en courant (6 s), reste là-bas 20 min, puis revient vite à sa vraie place (état propre à l'appareil).
 const HUFF_M = 110, HUFF_RUN = 6, HUFF_STAY = 1200;
 function huffOff(W, t) {
@@ -749,11 +669,10 @@ function farLine(W) {
   farLast = i; const g = gradeLc(), cap = (t) => t[0].toUpperCase() + t.slice(1);
   return L[i].replace(/\{G\}/g, cap(g)).replace(/\{g\}/g, g).replace(/\{N\}/g, cap(W.name)).replace(/\{n\}/g, W.name).replace(/\{to\}/g, W.to).replace(/\{de\}/g, W.de);
 }
-async function walkerTap(W) {
-  if (!await validNarrativePosition()) return;
+function walkerTap(W) {
   const d = walkerAt(W), m = pos ? dist(pos.lat, pos.lon, d.lat, d.lon) : Infinity;
-  if (m > W.near + Math.min(pos.acc, 40)) { toast(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
-  openNarrative(W.id);
+  if (m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
+  if (W.quiz) openWalkerQuiz(W); else cortoSays(W.msg);
 }
 // Rencontre en grand : le personnage grandit en haut de l'écran et pose sa question ; mauvaise réponse -> il se vexe, rapetisse et s'enfuit en courant.
 function openWalkerQuiz(W) {
@@ -785,7 +704,8 @@ function openWalkerQuiz(W) {
       b.classList.add("wrong"); ov.classList.add("vexed"); if (W.bigAngry) img.src = W.bigAngry;
       img.animate([{ transform: "rotate(0)" }, { transform: "rotate(-7deg) translateX(-8px)" }, { transform: "rotate(7deg) translateX(8px)" }, { transform: "rotate(-6deg) translateX(-6px)" }, { transform: "rotate(6deg) translateX(6px)" }, { transform: "rotate(0)" }], { duration: 700, iterations: 2 });
       setTimeout(() => close(() => {
-        const cur = huffOff(W, Date.now()); W.huff = { t0: Date.now(), from: cur, m: cur + HUFF_M }; // il repart d'où il en était et file encore plus loin try { localStorage.setItem("vq_huff_" + W.id, JSON.stringify(W.huff)); } catch {}
+        const cur = huffOff(W, Date.now()); W.huff = { t0: Date.now(), from: cur, m: cur + HUFF_M }; // Il repart d'où il en était et file encore plus loin.
+        try { localStorage.setItem("vq_huff_" + W.id, JSON.stringify(W.huff)); } catch {}
         el.classList.add("run"); setTimeout(() => el.classList.remove("run"), (HUFF_RUN + 1) * 1000);
       }), 2300);
     }
@@ -938,8 +858,8 @@ function renderTrees(points) {
 map.on("zoom", updateTreeSize);
 fetch("data/arbres.json").then((r) => { if (!r.ok) throw new Error("Repères d’arbres indisponibles"); return r.json(); }).then((data) => renderTrees(data.points || [])).catch((e) => console.warn(e.message));
 $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientRect());
-// Le portrait de Corto ouvre son dialogue lorsque la position du joueur est valide.
-$("#corto-btn").onclick = async () => { if (await validNarrativePosition()) openNarrative("corto"); };
+// Pastille de Corto (en bas à gauche, toujours visible) : un toucher fait parler Corto — pour l'instant il salue seulement ; plus tard il donnera ici ses indices.
+$("#corto-btn").onclick = () => cortoSays("Bonjour matelot, comment ça va ?");
 // Pastille maison (à côté de Corto, toujours visible) : ouvre l'espace de l'enfant (profil, défis, ponts, photos, trophées, réglages).
 $("#home-btn").onclick = () => {
   if (tab !== "map") return;
@@ -2629,10 +2549,7 @@ const OBJECTS = [
   { id: "ruban-soie", name: "Le ruban de soie", img: "ruban-soie.svg", key: "o:ruban-soie" },
   { id: "lanterne", name: "La lanterne secrète", img: "lanterne.svg", key: "o:lanterne" },
 ];
-const objectList = () => [
-  ...OBJECTS,
-  ...Object.entries(narrativeData?.items || {}).map(([id, item]) => ({ id: "nv-" + id, name: item.name, emoji: item.emoji, key: `n:item:${id}` }))
-].map((o) => ({ ...o, img: o.img ? "img/objets/" + o.img : null, found: has(o.key) }));
+const objectList = () => OBJECTS.map((o) => ({ ...o, img: "img/objets/" + o.img, found: has(o.key) }));
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = "vq_held", HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
@@ -2774,9 +2691,7 @@ if (DEV) window.__objects = {
   hold: (id) => { const o = OBJECTS.find((item) => item.id === id); if (!o) return; if (!PREVIEW_OBJECTS && !has(o.key)) window.__objects.find(id); objectAssembly.delete(id); heldId = id; saveHeld(); mountHeld(id); if (tab === "objects") renderObjects(); },
 };
 if (heldId) {
-  // Le catalogue narratif arrive après le chargement initial ; attendre ses données avant de replacer un objet narratif tenu.
-  if (heldId.startsWith("nv-")) narrativeReady.then(() => { if (heldId) mountHeld(heldId); });
-  else setTimeout(() => mountHeld(heldId), 0);
+  setTimeout(() => mountHeld(heldId), 0);
 }
 function syncHeldPosition() {
   if (!heldEl) return;
