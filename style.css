@@ -1303,10 +1303,7 @@ body.corto-talk #map-btn,body.corto-talk #home-btn,body.corto-talk #corto-btn,bo
 #bridge-btn{background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
 #bridge-btn img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))}
 #bridge-btn:active img{transform:scale(.94)}
-#bridge-btn.bridge-loading img{animation:bridge-spin-start 1.5s ease-in 1 forwards,bridge-spin-loop .65s linear 1.5s infinite}
-@keyframes bridge-spin-start{to{transform:rotate(360deg)}}
-@keyframes bridge-spin-loop{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){#bridge-btn.bridge-loading img{animation:none;filter:drop-shadow(0 0 8px var(--gold)) brightness(1.15)}}
+#bridge-btn.bridge-loading img{filter:drop-shadow(0 0 8px var(--gold)) brightness(1.15)}
 
 /* ───────── Espace personnel : le tableau de l'introduction en fond, tout le reste par-dessus ───────── */
 #up-bg{position:fixed;inset:0;z-index:540;background:#f3ead7 url(img/intro/bg.webp) 12% 50%/cover no-repeat}

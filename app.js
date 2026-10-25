@@ -519,11 +519,14 @@ function updatePinScale() {
   el.style.setProperty("--ps", s.toFixed(3));
   el.style.setProperty("--ms", Math.min(1.5, 1 + (s - 1) * 0.35).toFixed(3)); // le personnage grossit un peu aussi, et reste au-dessus des macarons
 }
+const treePoints = [];
+const treeSize = (z) => Math.round(Math.max(32, Math.min(70, 48 + (z - 14) * 5)));
 // Le personnage devient un peu transparent quand il passe sur un macaron.
 function updateOverlap() {
   if (!userMarker || !pos) return;
   const up = map.project([pos.lon, pos.lat]), ps = parseFloat($("#map").style.getPropertyValue("--ps")) || 1;
-  const over = PLACES.some((p) => { const q = map.project([p.lon, p.lat]); return Math.hypot(up.x - q.x, up.y - q.y) < 21 * ps + 12; });
+  const over = PLACES.some((p) => { const q = map.project([p.lon, p.lat]); return Math.hypot(up.x - q.x, up.y - q.y) < 21 * ps + 12; })
+    || treePoints.some(([lng, lat]) => { const q = map.project([lng, lat]), w = treeSize(map.getZoom()); return Math.abs(up.x - q.x) < w / 2 + 12 && up.y - q.y > -w - 12 && up.y - q.y < 18; });
   userMarker.getElement().classList.toggle("over", over);
 }
 map.on("zoom", () => { updatePinScale(); updateOverlap(); updateWalkScale(); }); updatePinScale(); if (DEV) window.__map = map; // (outil de test)
@@ -806,7 +809,8 @@ function renderMap() {
 }
 // Repères botaniques illustrés : indépendants des lieux, des épreuves et de la progression.
 const treeMarkers = new Map();
-const treeSize = (z) => Math.round(Math.max(32, Math.min(70, 48 + (z - 14) * 5)));
+// Rayon de consultation seulement : les points de site ne valident jamais un tronc ni une récolte.
+const treeViewRadius = (tree) => tree.precision === "site_only" ? 250 : 150;
 function updateTreeSize() {
   const size = treeSize(map.getZoom()) + "px";
   for (const marker of treeMarkers.values()) marker.getElement().style.setProperty("--tree-size", size);
@@ -820,13 +824,33 @@ function renderTrees(points) {
     el.type = "button"; el.className = "tree-marker"; el.dataset.treeId = tree.id;
     const img = document.createElement("img"); img.src = tree.iconSmall; img.srcset = `${tree.icon} 2x`; img.alt = ""; img.draggable = false;
     el.appendChild(img);
-    el.addEventListener("pointerdown", (e) => e.stopPropagation());
-    el.addEventListener("click", (e) => { e.stopPropagation(); if (tab === "map") toast(`${tree.name} — ${tree.positionLabel}. ${precision}`, 6000); });
+    const showTree = () => {
+      if (tab !== "map") return;
+      if (!pos) { cortoSays("Je ne sais pas où tu es. Active la localisation pour découvrir cet arbre."); return; }
+      const away = dist(pos.lat, pos.lon, tree.coordinates.lat, tree.coordinates.lng);
+      if (away > treeViewRadius(tree) + Math.min(pos.acc || 0, 30)) {
+        cortoSays("Tu es trop loin pour voir cet arbre, rapproche-toi d’abord.");
+        return;
+      }
+      toast(`${tree.name} — ${tree.positionLabel}. ${precision}`, 6000);
+    };
+    let touchStart = null, lastTouch = 0;
+    el.addEventListener("pointerdown", (e) => { e.stopPropagation(); if (e.pointerType === "touch") touchStart = [e.clientX, e.clientY]; });
+    el.addEventListener("pointerup", (e) => {
+      if (e.pointerType !== "touch" || !touchStart) return;
+      e.stopPropagation();
+      const moved = Math.hypot(e.clientX - touchStart[0], e.clientY - touchStart[1]); touchStart = null;
+      if (moved < 10) { lastTouch = performance.now(); showTree(); }
+    });
+    el.addEventListener("pointercancel", () => { touchStart = null; });
+    el.addEventListener("click", (e) => { e.stopPropagation(); if (performance.now() - lastTouch > 600) showTree(); });
     treeMarkers.set(tree.id, new maplibregl.Marker({ element: el, anchor: "bottom", subpixelPositioning: true }).setLngLat([tree.coordinates.lng, tree.coordinates.lat]).addTo(map));
+    treePoints.push([tree.coordinates.lng, tree.coordinates.lat]);
     // MapLibre attribue « Map marker » à l'ajout ; rétablir le libellé précis ensuite.
     el.setAttribute("aria-label", `${tree.name}. ${tree.positionLabel}. ${precision}`);
   }
   updateTreeSize();
+  updateOverlap();
 }
 map.on("zoom", updateTreeSize);
 fetch("data/arbres.json").then((r) => { if (!r.ok) throw new Error("Repères d’arbres indisponibles"); return r.json(); }).then((data) => renderTrees(data.points || [])).catch((e) => console.warn(e.message));
@@ -1368,16 +1392,37 @@ function openBridgeCeremony(b, intro) {
     else sh.onclick = closeSheet;
   }, 1300);
 }
+function startBridgeLoading(btn) {
+  if (!btn) return () => {};
+  btn.disabled = true; btn.classList.add("bridge-loading"); btn.setAttribute("aria-busy", "true");
+  const icon = $("img", btn);
+  let frame;
+  if (icon && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const startedAt = performance.now();
+    const spin = (now) => {
+      const seconds = (now - startedAt) / 1000;
+      icon.style.transform = `rotate(${(70 * seconds + 30 * seconds * seconds) % 360}deg)`;
+      frame = requestAnimationFrame(spin);
+    };
+    frame = requestAnimationFrame(spin);
+  }
+  return () => {
+    if (frame != null) cancelAnimationFrame(frame);
+    if (icon) icon.style.transform = "";
+    btn.disabled = false; btn.classList.remove("bridge-loading"); btn.removeAttribute("aria-busy");
+  };
+}
 async function tryBridge() {
   if (!DEV && !geoReady) { showGeoGate(); return; }
   if (busy) return; busy = true;
   const btn = $("#bridge-btn");
-  if (btn) { btn.disabled = true; btn.classList.add("bridge-loading"); btn.setAttribute("aria-busy", "true"); }
+  const startedAt = performance.now(), stopLoading = startBridgeLoading(btn);
   try {
     // Position posée à la main (mode dev) ou sans GPS : aucune attente. Avec un vrai GPS : 4 secondes de moyenne des relevés.
     const manual = !fixIsReal();
     const ok = manual ? !!pos : await getFix(4000);
     await Promise.all([bridgesReady, factsReady]);
+    await sleep(Math.max(0, 6000 - (performance.now() - startedAt)));
     if (tab !== "map" || openId) return;
     if (!ok || !pos || !BRIDGES?.length) { cortoSays(say("nogps", null)); return; }
     // On ne retient que le pont le plus proche (sauf égalité à 4 m près, où l'on préfère un pont pas encore validé),
@@ -1392,10 +1437,14 @@ async function tryBridge() {
     } else if (inRange.length) {
       const b = inRange[0][0]; openBridgeCeremony(b, say(b[1] ? "bridgeDone" : "bridgeDoneAnon", null, { bridge: bridgeName(b) }));
     } else cortoSays(say("bridgeNone", null, { bridge: bridgeName(ds[0][0]), dist: ds[0][1] }));
-  } catch (e) { console.error("Pont : localisation impossible", e); cortoSays("Je n’arrive pas à retrouver ce pont pour l’instant. Réessaie dans un moment."); }
+  } catch (e) {
+    console.error("Pont : localisation impossible", e);
+    await sleep(Math.max(0, 6000 - (performance.now() - startedAt)));
+    cortoSays("Je n’arrive pas à retrouver ce pont pour l’instant. Réessaie dans un moment.");
+  }
   finally {
     busy = false;
-    if (btn) { btn.disabled = false; btn.classList.remove("bridge-loading"); btn.removeAttribute("aria-busy"); }
+    stopLoading();
   }
 }
 function bindArrive(p) {
