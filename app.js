@@ -35,7 +35,7 @@ function mergeState(a, b) {
   const cfg = (b.cfgT || 0) > (a.cfgT || 0) ? b : a;
   return { kids: cfg.kids, start: cfg.start, teamName: cfg.teamName || "", onboarded: a.onboarded || b.onboarded, cfgT: Math.max(a.cfgT || 0, b.cfgT || 0), done };
 }
-let syncTimer;
+let syncTimer, syncEpoch = 0;
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
   clearTimeout(syncTimer); syncTimer = setTimeout(sync, 800);
@@ -50,13 +50,16 @@ const slug = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").t
 const apiHeaders = () => ({ "content-type": "application/json", "X-Team": (TEAM && TEAM.team) || "famille", "X-League": (TEAM && TEAM.league) || "" });
 async function sync() {
   if (!JEU) return;
+  const epoch = syncEpoch;
   backfillQuestionWorks();
   try {
     const r = await fetch("api/sync", { method: "POST", headers: apiHeaders(), body: JSON.stringify(S) });
     if (r.status === 403) { syncStatus = "🔒 code de la partie incorrect"; if (tab === "settings") renderSettings(); return; }
     if (!r.ok) throw new Error(r.status);
+    const remote = await r.json();
+    if (epoch !== syncEpoch) return;
     const before = JSON.stringify(S);
-    S = mergeState(S, await r.json());
+    S = mergeState(S, remote);
     backfillQuestionWorks();
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
     syncStatus = "✅ synchronisé " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -76,7 +79,12 @@ try { active = +localStorage.getItem("vq_active") || 0; } catch {}
 const me = () => S.kids[Math.min(active, S.kids.length - 1)];
 const meIdx = () => Math.min(active, S.kids.length - 1);
 const myName = () => me().name || "Joueur " + (meIdx() + 1);
-function setActive(i) { active = i; try { localStorage.setItem("vq_active", i); } catch {} refreshAll(); }
+function setActive(i) {
+  if (typeof viewClose === "function") viewClose();
+  heldId = null; heldEl?.remove(); heldEl = null; saveHeld(); objectAssembly.clear();
+  active = i; try { localStorage.setItem("vq_active", i); } catch {}
+  refreshAll(); renderBadge(); refreshUserMarker(); if (tab === "photos") renderPhotos();
+}
 // Outil de développement : ?niveau=N force le grade affiché (0 = simple touriste) et reste mémorisé ; ?niveau= le retire.
 let devLevel = null;
 try {
@@ -181,10 +189,42 @@ function modal(html, onClose) {
 }
 
 /* ───────── Photos (gardées sur le téléphone, IndexedDB) ───────── */
+const PHOTO_SESSION_KEY = "vq_photo_session_v1";
+// Un espace local de photos par nouvelle partie et par joueur.
+function newPhotoSession() { return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + "-" + Math.random().toString(36).slice(2); }
+function photoSession() {
+  let id = null; try { id = localStorage.getItem(PHOTO_SESSION_KEY); } catch {}
+  if (!id) { id = newPhotoSession(); try { localStorage.setItem(PHOTO_SESSION_KEY, id); } catch {} }
+  return id;
+}
+const photoOwner = () => photoSession() + ":" + meIdx();
 const idb = () => new Promise((res, rej) => { const r = indexedDB.open("vq-photos", 1); r.onupgradeneeded = () => r.result.createObjectStore("p"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
-async function putPhoto(key, rec) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction("p", "readwrite"); t.objectStore("p").put(rec, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
-async function getPhoto(key) { try { const db = await idb(); return await new Promise((res) => { const q = db.transaction("p").objectStore("p").get(key); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); } catch { return null; } }
-async function allPhotos() { try { const db = await idb(); return await new Promise((res) => { const s = db.transaction("p").objectStore("p"), ks = s.getAllKeys(); ks.onsuccess = () => { const v = s.getAll(); v.onsuccess = () => res(ks.result.map((k, i) => [k, v.result[i]])); v.onerror = () => res([]); }; ks.onerror = () => res([]); }); } catch { return []; } }
+async function putPhoto(key, rec, owner = photoOwner()) {
+  if (owner !== photoOwner()) return;
+  const db = await idb();
+  if (owner !== photoOwner()) { db.close(); return; }
+  try { return await new Promise((res, rej) => { const t = db.transaction("p", "readwrite"); t.objectStore("p").put({ ...rec, owner }, owner + ":" + key); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+  finally { db.close(); }
+}
+async function getPhoto(key) {
+  try {
+    const owner = photoOwner(), db = await idb();
+    try { return await new Promise((res) => { const q = db.transaction("p").objectStore("p").get(owner + ":" + key); q.onsuccess = () => res(q.result?.owner === owner && photoOwner() === owner ? q.result : null); q.onerror = () => res(null); }); }
+    finally { db.close(); }
+  } catch { return null; }
+}
+async function allPhotos() {
+  try {
+    const owner = photoOwner(), db = await idb();
+    try { return await new Promise((res) => { const s = db.transaction("p").objectStore("p"), ks = s.getAllKeys(); ks.onsuccess = () => { const v = s.getAll(); v.onsuccess = () => res(ks.result.map((k, i) => [k, v.result[i]]).filter(([, rec]) => rec?.owner === owner)); v.onerror = () => res([]); }; ks.onerror = () => res([]); }); }
+    finally { db.close(); }
+  } catch { return []; }
+}
+async function clearAllPhotos() {
+  const db = await idb();
+  try { await new Promise((res, rej) => { const t = db.transaction("p", "readwrite"); t.objectStore("p").clear(); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+  finally { db.close(); }
+}
 function shrink(file, max = 900) {
   return new Promise((res) => {
     const img = new Image(), u = URL.createObjectURL(file);
@@ -273,6 +313,7 @@ function outfitPartShift(shift) { // ancien décalage commun -> deux décalages 
   return { hat: clamp(shift?.hat || legacy), body: clamp(shift?.body || legacy) };
 }
 function profileHtml() {
+  if (meIdx() !== 0) return me().avatar;
   if (!PROFILE) return "🙂";
   if (PROFILE.photo && PROFILE.outfitOverlayHat && PROFILE.outfitOverlayBody && PROFILE.outfitLayout && PROFILE.outfitOverlayVersion === 3) {
     const shifts = outfitPartShift(PROFILE.outfitShift);
@@ -296,11 +337,11 @@ function profileHtml() {
 function renderBadge() {
   const b = $("#me-badge"); if (!b) return;
   b.hidden = !PROFILE; if (!PROFILE) return;
-  b.innerHTML = `<span class="mb-av">${profileHtml()}</span><span class="mb-name">${esc(PROFILE.name)}</span>`;
+  b.innerHTML = `<span class="mb-av">${profileHtml()}</span><span class="mb-name">${esc(myName())}</span>`;
 }
 function userEl() {
   const el = document.createElement("div"); el.className = "pin mep";
-  el.innerHTML = `<div class="me-ring"></div><div class="me ${PROFILE && PROFILE.photo ? "ph" : "em"}${DEV ? " dev" : ""}">${PROFILE ? profileHtml() : "🙂"}</div>`;
+  el.innerHTML = `<div class="me-ring"></div><div class="me ${PROFILE && PROFILE.photo && meIdx() === 0 ? "ph" : "em"}${DEV ? " dev" : ""}">${PROFILE ? profileHtml() : "🙂"}</div>`;
   // (le personnage n'est plus cliquable : l'espace de l'enfant s'ouvre par la pastille maison, en bas à gauche)
   return el;
 }
@@ -938,17 +979,17 @@ if (LOCAL_DEV && Object.keys(PLACE_ICONS).length) {
 function renderHud() {
   const pts = pointsOf(meIdx()), li = level(pts), cur = LEVELS[li], nx = LEVELS[li + 1];
   renderProfileBar();
-  $("#hud-kids").innerHTML = `<span class="mb-av">${PROFILE ? profileHtml() : me().avatar}</span><small>${esc(myName())}</small>`;
+  $("#hud-kids").innerHTML = `<span class="mb-av">${PROFILE && meIdx() === 0 ? profileHtml() : me().avatar}</span><small>${esc(myName())}</small>`;
   if (!scoreAnim) $("#hud-score").innerHTML = `<span class="sc-n"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.75 5.8 6.35.85-4.65 4.4 1.15 6.3L12 17l-5.6 3.15 1.15-6.3L2.9 9.45l6.35-.85z" fill="#F2B51C" stroke="#F2B51C" stroke-width="1.4" stroke-linejoin="round"/></svg><b>${pts}</b></span>`; // seulement l'étoile et le décompte, sans pastille
 }
 // Toucher sa photo ou son pictogramme permet de les modifier (nouveau pictogramme, nouvelle photo, nouveau nom).
 $("#hud-kids").onclick = () => setTab(lastTab);
 function renderProfileBar() {
   const pts = pointsOf(meIdx()), cur = LEVELS[level(pts)];
-  $("#up-me").innerHTML = `<span class="mb-av${PROFILE?.photo ? " up-avatar-frame" : ""}">${PROFILE?.photo ? `<span class="me ph up-avatar">${profileHtml()}</span>` : PROFILE ? profileHtml() : me().avatar}</span><span class="up-n"><b>${esc(myName())}</b><small>${cur.name}</small></span>`; // photo, nom, grade : rien d'autre (les étoiles sont dans le compteur, toujours visible)
+  $("#up-me").innerHTML = `<span class="mb-av${PROFILE?.photo && meIdx() === 0 ? " up-avatar-frame" : ""}">${meIdx() !== 0 ? me().avatar : PROFILE?.photo ? `<span class="me ph up-avatar">${profileHtml()}</span>` : PROFILE ? profileHtml() : me().avatar}</span><span class="up-n"><b>${esc(myName())}</b><small>${cur.name}</small></span>`; // photo du profil uniquement pour son joueur
 }
 $("#up-me").onclick = async () => {
-  if (!PROFILE) return;
+  if (!PROFILE || meIdx() !== 0) { showPlayers(); return; }
   const p = await editProfile(PROFILE); if (!p) return;
   if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitOverlayHat = PROFILE.outfitOverlayHat; p.outfitOverlayBody = PROFILE.outfitOverlayBody; p.outfitLayout = PROFILE.outfitLayout; p.outfitOverlayVersion = PROFILE.outfitOverlayVersion; p.outfitShift = PROFILE.outfitShift; } // nouvelle photo = plus de tenue
   applyProfile(p);
@@ -958,16 +999,16 @@ function applyProfile(p) {
   S.kids = [{ name: p.name, avatar: p.avatar || (S.kids[0] && S.kids[0].avatar) || "🦁" }]; S.cfgT = Date.now(); save();
   renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
 };
-$("#hud-score").onclick = () => { if (openId || $(".wq") || $(".cer")) return; if (DEV) { devStarMenu(); return; } setTab("trophies"); };
+$("#hud-score").onclick = () => { if (DEV && !openId && !$(".wq") && !$(".cer")) devStarMenu(); };
 // Mode dev : toucher le compteur d'étoiles ouvre un petit menu pour tester chaque cérémonie de grade.
 function devStarMenu() {
   const old = $(".dev-menu"); if (old) { old.remove(); return; }
   const m = document.createElement("div"); m.className = "dev-menu";
-  m.innerHTML = `<b>Mode dev</b>${Object.entries(OUTFIT_LEVELS).map(([li, key]) => `<button data-li="${li}" data-k="${key}">Tester la cérémonie : ${esc(LEVELS[li].name.toLowerCase())}</button>`).join("")}<button data-tro>🏆 Ouvrir les trophées</button>`;
+  m.innerHTML = `<b>Mode dev</b>${Object.entries(OUTFIT_LEVELS).map(([li, key]) => `<button data-li="${li}" data-k="${key}">Tester la cérémonie : ${esc(LEVELS[li].name.toLowerCase())}</button>`).join("")}`;
   document.body.appendChild(m);
   const off = (e) => { if (m.contains(e.target) && e.target.tagName === "BUTTON") return; m.remove(); removeEventListener("pointerdown", off, true); };
   setTimeout(() => addEventListener("pointerdown", off, true), 0);
-  m.onclick = (e) => { const b = e.target.closest("button"); if (!b) return; m.remove(); removeEventListener("pointerdown", off, true); if (b.dataset.tro !== undefined) { setTab("trophies"); return; } if (tab !== "map") setTab("map"); setTimeout(() => ceremony(b.dataset.k, +b.dataset.li), 300); };
+  m.onclick = (e) => { const b = e.target.closest("button"); if (!b) return; m.remove(); removeEventListener("pointerdown", off, true); if (tab !== "map") setTab("map"); setTimeout(() => ceremony(b.dataset.k, +b.dataset.li), 300); };
 }
 function nextTarget() {
   const pool = PLACES.filter((p) => !arrived(p.id) && !(p.final && !finaleOpen()));
@@ -1544,8 +1585,10 @@ function bindTasks(p, sh, after = () => renderSheet(), redraw = () => renderShee
       const accept = () => { delete pendingPhoto[k]; win(); };
       if (f) f.onchange = async () => {
         if (!f.files[0]) return;
+        const owner = photoOwner();
         const blob = await shrink(f.files[0]);
-        await putPhoto(`${p.id}:${i}`, { blob, t: Date.now(), lat: pos?.lat ?? null, lon: pos?.lon ?? null, near: near(p), place: p.id, q: t.q });
+        if (owner !== photoOwner()) return;
+        await putPhoto(`${p.id}:${i}`, { blob, t: Date.now(), lat: pos?.lat ?? null, lon: pos?.lon ?? null, near: near(p), place: p.id, q: t.q }, owner);
         if (near(p)) accept(); else { pendingPhoto[k] = true; redraw(); }
       };
       if (hold) { let h; hold.onpointerdown = () => { h = setTimeout(accept, 2000); }; ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => hold.addEventListener(ev, () => clearTimeout(h))); }
@@ -1572,7 +1615,7 @@ function bindTasks(p, sh, after = () => renderSheet(), redraw = () => renderShee
 function finale() {
   award("finale", POINTS.finale); save(); closeSheet(); closeQuest(); chime(true); confetti(260); setTimeout(() => confetti(200), 600);
   modal(`<div class="em">🗝️🦁</div><h2>Bravo, Gardiens du Lion !</h2>${STORY.finale.map((s) => `<p>${esc(s)}</p>`).join("")}<p><b>+${POINTS.finale} ⭐ — Le trésor de Venise est à vous !</b></p>
-    <button class="btn blue wide" data-close>🏆 Voir mes trophées</button>`, () => setTab("trophies"));
+    <button class="btn blue wide" data-close>Retour à la carte</button>`, () => setTab("map"));
 }
 
 /* ───────── Épreuves en plein écran : une seule chose par écran ───────── */
@@ -1935,16 +1978,17 @@ function returnToMap() {
   if (back && !menuReturnPending) { menuReturnPending = true; history.back(); }
 }
 function setTab(t) {
+  if (t === "trophies") t = "map";
   tab = t; if (t !== "map") lastTab = t;
   if (t !== "map" && !menuOpen) { menuOpen = true; if (!menuReturnPending) { try { history.pushState({ vqMenu: 1 }, ""); } catch {} } } if (t === "map") menuOpen = false;
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   const onTab = $("#up-bar .up-tabs button.on"); if (onTab && onTab.scrollIntoView) setTimeout(() => onTab.scrollIntoView({ inline: "center", block: "nearest" }), 30);
   $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; document.body.classList.toggle("menu-open", t !== "map"); { const ms = $("#menu-say"); if (ms) ms.hidden = t === "map"; } if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
-  ["days", "objects", "bridges", "photos", "works", "music", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
+  ["days", "objects", "bridges", "photos", "works", "music", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
   $("#tab-dev").hidden = t !== "dev";
   $("#bridge-btn").hidden = t !== "map";
-  if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "music") renderMusicCollection(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
+  if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "music") renderMusicCollection(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
   if (t === "map") { setTimeout(() => map.resize(), 50); renderNext(); } else $("#next").hidden = true;
   if (t !== "map") closeSheetKeep();
   scheduleGeoSync();
@@ -2048,8 +2092,10 @@ function renderDoge(v = $("#v-doge"), id = "doge", onDone = null) {
   $("#dg-pick", v).onclick = async () => { const p = await ovalCam(); if (!p) return; dgPhoto = p; dgTf = { x: 0, y: 0, s: 1 }; renderDoge(v, id, onDone); };
   $("#dg-ok", v).onclick = () => { // enregistre le montage dans la galerie « Photos souvenirs »
     $("#dg-ok", v).disabled = true;
+    const owner = photoOwner();
     cv.toBlob(async (b) => {
-      try { await putPhoto(`mont:${Date.now()}`, { blob: b, t: Date.now(), place: id, mont: 1 }); } catch {}
+      if (owner !== photoOwner()) return;
+      try { await putPhoto(`mont:${Date.now()}`, { blob: b, t: Date.now(), place: id, mont: 1 }, owner); } catch {}
       dgPhoto = null;
       const first = id !== "doge" && !has("ph:" + id), pl = place(id);
       if (first) { // première photo de ce lieu : Corto félicite, une dizaine d'étoiles tombent dans l'escarcelle
@@ -2600,7 +2646,7 @@ const OBJECTS = [
   { id: "ruban-soie", name: "Le ruban de soie", img: "ruban-soie.svg", key: "o:ruban-soie" },
   { id: "lanterne", name: "La lanterne secrète", img: "lanterne.svg", key: "o:lanterne" },
 ];
-const objectList = () => OBJECTS.map((o) => ({ ...o, img: "img/objets/" + o.img, found: has(o.key) }));
+const objectList = () => OBJECTS.map((o) => ({ ...o, img: "img/objets/" + o.img, found: has(o.key) && S.done[o.key].w === meIdx() }));
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = "vq_held", HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
@@ -2840,32 +2886,6 @@ function openWorkView(W, id) {
   let open = true; viewClose = () => { if (!open) return; open = false; o.remove(); viewClose = null; };
   $(".wv-back", o).onclick = () => { if (history.state && history.state.vqView) history.back(); else viewClose && viewClose(); };
 }
-function renderTrophies() {
-  const v = $("#v-trophies"), pts = pointsOf(meIdx()), li = level(pts), cur = LEVELS[li], nx = LEVELS[li + 1];
-  menuSay(nx ? `Tu as **${pts}** étoiles, ${cortoAddress()} ! Encore ${nx.min - pts} pour devenir ${nx.name}.` : `Tu as **${pts}** étoiles : tu es au niveau maximum, bravo !`);
-  v.innerHTML = `<h2>🏆 Trophées</h2>
-    <div class="levelcard"><div class="big">${cur.emoji}</div><h3 style="color:#fff;margin:4px 0">${me().avatar} ${esc(myName())} · ${cur.name}</h3><div style="font-size:30px;font-weight:900">⭐ ${pts}</div>
-      <div class="bar"><i style="width:${nx ? ((pts - cur.min) / (nx.min - cur.min)) * 100 : 100}%"></i></div>
-      <div style="font-size:14px;margin-top:6px">${nx ? `Encore ${nx.min - pts} ⭐ pour devenir ${nx.emoji} ${nx.name}` : "Niveau maximum !"}</div></div>
-    <h3>🏁 Classement de la partie</h3><div class="card" id="board"><p class="muted">Chargement…</p></div>
-    <h3>👫 L'équipe</h3><div class="card">${S.kids.map((k, j) => `<div class="row" style="padding:4px 0"><span style="font-size:28px">${k.avatar}</span><span class="grow">${esc(k.name || "Joueur " + (j + 1))}</span><b>⭐ ${pointsOf(j)}</b></div>`).join("")}<div class="row" style="border-top:2px solid var(--line);padding-top:8px;margin-top:4px"><span class="grow"><b>Total de l'équipe</b></span><b>⭐ ${points()}</b></div></div>
-    <p class="muted" style="text-align:center;margin-top:10px">${finaleOpen() ? "🗝️ La Corte Sconta t'attend !" : `Encore ${FINALE_AT - visited()} lieux à explorer pour ouvrir la Corte Sconta.`}</p>
-    <h3>🎒 Album d'autocollants</h3><div class="grid">${PLACES.map((p) => `<div class="sticker pic ${complete(p) ? "got" : arrived(p.id) ? "seen" : "lock"}" style="--img:url(${pic(p.id)})"></div>`).join("")}</div>
-    <h3>📸 Album photo</h3><div class="grid" id="album"><p class="muted">Aucune photo pour l'instant.</p></div><p class="muted">Les photos restent sur ce téléphone.</p>
-    <h3>🌉 Ponts traversés</h3><div class="card"><b>${bridgeCount()} ${bridgeCount() > 1 ? "ponts" : "pont"}</b><div class="muted" id="bridge-list" style="margin-top:6px"></div></div>
-    <h3>🔎 Collections</h3>${COLLECTIONS.map((c) => { const n = collCount(c); return `<div class="card coll"><span class="em">${c.emoji}</span><span class="grow">${esc(c.name)}</span><button class="pm minus" data-c="${c.id}" data-dir="-1" ${n ? "" : "disabled"}>−</button><span class="cnt">${n}/${c.target}</span><button class="pm" data-c="${c.id}" data-dir="1" ${n >= c.target ? "disabled" : ""}>+</button></div>`; }).join("")}
-    <h3>🎒 Mes trésors</h3><div class="grid">${PLACES.filter((q) => q.reward).map((q) => has("tr:" + q.id) ? `<div class="badge got"><b>${q.reward.emoji}</b>${esc(q.reward.name)}</div>` : `<div class="badge lock"><b>❓</b>${esc(q.name)}</div>`).join("")}</div>
-    <h3>🎖️ Médailles</h3><div class="grid">${BADGES.map((b) => `<div class="badge ${b.ok() ? "got" : "lock"}"><b>${b.e}</b>${esc(b.n)}</div>`).join("")}</div>`;
-  bridgesReady.then(() => { const el = $("#bridge-list", v); if (!el || !BRIDGES) return; const byId = new Map(BRIDGES.map((b) => [String(b[0]), b])); el.textContent = bridgeKeys().sort((x, y) => S.done[y].t - S.done[x].t).map((k) => { const b = byId.get(k.slice(2)); return b ? (b[1] || "pont sans nom") : null; }).filter(Boolean).slice(0, 40).join(" · "); });
-  renderBoard();
-  allPhotos().then((ps) => { ps = ps.filter(([k, r]) => !(r && r.mont)); const al = $("#album", v); if (!al || !ps.length) return; al.innerHTML = ""; ps.sort((x, y) => y[1].t - x[1].t).forEach(([k, r]) => { const im = new Image(); im.src = URL.createObjectURL(r.blob); im.className = "ph"; im.onclick = () => modal(`<img class="full" src="${im.src}"><p>${esc(r.q || "")}</p><button class="btn blue wide" data-close>Fermer</button>`); al.appendChild(im); }); });
-  $$("[data-c]", v).forEach((b) => (b.onclick = () => {
-    const c = COLLECTIONS.find((x) => x.id === b.dataset.c), n = collCount(c);
-    if (b.dataset.dir === "1") { award(`c:${c.id}:${n + 1}`, POINTS.coll, meIdx()); chime(); toast(`${c.emoji} +${POINTS.coll} ⭐`); if (n + 1 === c.target) confetti(80); } else unaward(`c:${c.id}:${n}`);
-    save(); refreshAll(); renderTrophies();
-  }));
-}
-
 // Plein écran par défaut : le navigateur l'exige après un geste, donc on l'active au premier toucher (sauf si l'appli est déjà installée en plein écran ou si le joueur l'a désactivé dans les Réglages).
 const fsPref = () => { try { return localStorage.getItem("vq_fs") !== "0"; } catch { return true; } };
 let fsDone = false; // une fois entré en plein écran, on ne force plus (si le joueur en sort, il en sort)
@@ -3085,7 +3105,7 @@ async function renderDev() {
   $("#dev-switch", v).onchange = (e) => { try { localStorage.setItem("vq_dev_enabled_v2", e.target.checked ? "1" : "0"); } catch {} location.reload(); };
   if (!DEV) { menuSay("La localisation est nécessaire pour jouer, matelot."); return; }
   menuSay("Mode test : ici on essaie des choses, matelot.");
-  const switchHtml = v.innerHTML, P = typeof PROFILE !== "undefined" ? PROFILE : null;
+  const switchHtml = v.innerHTML, P = meIdx() === 0 ? PROFILE : null;
   OUTFITS ||= await (await fetch("data/outfits.json")).json();
   const st = (renderDev.st ||= { hs: 1.25, hy: 0, cw: 3.1, cy: 0, src: P && P.photo ? "me" : "doge" });
   const useDoge = st.src === "doge" || !P || !P.photo, photo = useDoge ? "img/outfit/_test-doge-framed.webp" : P.photo, cut = useDoge ? true : !!P.cut, frame = useDoge ? true : P.frame || false;
@@ -3149,14 +3169,28 @@ function renderSettings() {
   const inst = $("#inst", v); if (inst) inst.onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall = null; renderSettings(); };
   $("#syncnow", v).onclick = sync;
   $("#chteam", v).onclick = async () => { try { localStorage.removeItem(TEAMKEY); } catch {} TEAM = null; await joinGame(); await sync(); if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); } refreshAll(); renderSettings(); };
-  $("#intro", v).onclick = async () => { setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE, ...BOAT_OPTS }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
+  $("#intro", v).hidden = meIdx() !== 0;
+  $("#intro", v).onclick = async () => { if (meIdx() !== 0) return; setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE, ...BOAT_OPTS }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
   $("#dev-entry", v).onclick = () => setTab("dev");
   $("#reset", v).onclick = async () => {
-    if (!confirm("Effacer TOUTE la progression et le profil, puis reprendre l'introduction ?")) return;
+    if (!confirm("Effacer toute la progression, le profil et toutes les photos enregistrées dans le jeu sur cet appareil ?")) return;
     if (!confirm("Vraiment tout ? Cette action est définitive.")) return;
+    syncEpoch++; clearTimeout(syncTimer);
+    const previousPhotoSession = photoSession();
+    const nextPhotoSession = newPhotoSession();
+    try { localStorage.setItem(PHOTO_SESSION_KEY, nextPhotoSession); if (localStorage.getItem(PHOTO_SESSION_KEY) !== nextPhotoSession) throw new Error("stockage indisponible"); }
+    catch { toast("Réinitialisation annulée : impossible de protéger les photos du nouveau joueur."); return; }
+    try { await clearAllPhotos(); }
+    catch { try { localStorage.setItem(PHOTO_SESSION_KEY, previousPhotoSession); } catch {} toast("Réinitialisation annulée : impossible d'effacer toutes les photos."); return; }
+    try { localStorage.removeItem("vq_active"); localStorage.removeItem(HELD_KEY); localStorage.removeItem(HELD_POS); localStorage.removeItem("vq_dev_enabled_v2"); } catch {}
+    if (typeof viewClose === "function") viewClose();
+    active = 0; heldId = null; heldEl?.remove(); heldEl = null; objectAssembly.clear(); dgPhoto = null;
+    Object.keys(pendingPhoto).forEach((key) => delete pendingPhoto[key]);
     for (const k of Object.keys(S.done)) unaward(k);
+    S.kids = [{ name: "", avatar: "🦁" }]; S.teamName = ""; S.cfgT = Date.now();
     S.onboarded = false; clearProfile(); PROFILE = null; renderBadge();
-    save(); refreshAll(); setTab("map");
+    save(); clearTimeout(syncTimer); refreshAll(); setTab("map"); await sync();
+    if (DEV) { location.reload(); return; }
     const p = await runIntro(BOAT_OPTS);
     if (p) { applyProfile(p); S.onboarded = true; save(); }
   };
@@ -3239,7 +3273,6 @@ async function renderBoard() {
     }).join("");
   } catch { el.innerHTML = `<p class="muted">Classement indisponible hors-ligne.</p>`; }
 }
-setInterval(() => { if (tab === "trophies" && !document.hidden) renderBoard(); }, 30000);
 
 /* ───────── Joueurs ───────── */
 function showPlayers() {
@@ -3283,7 +3316,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "trophies") renderTrophies(); if (openId) renderSheet();
+  renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");
