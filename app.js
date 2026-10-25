@@ -826,10 +826,10 @@ function renderTrees(points) {
     el.appendChild(img);
     const showTree = () => {
       if (tab !== "map") return;
-      if (!pos) { cortoSays("Je ne sais pas où tu es. Active la localisation pour découvrir cet arbre."); return; }
+      if (!pos) { cortoSays(say("nogps")); return; }
       const away = dist(pos.lat, pos.lon, tree.coordinates.lat, tree.coordinates.lng);
       if (away > treeViewRadius(tree) + Math.min(pos.acc || 0, 30)) {
-        cortoSays("Tu es trop loin pour voir cet arbre, rapproche-toi d’abord.");
+        cortoSays(placeFarLine(tree, away));
         return;
       }
       toast(`${tree.name} — ${tree.positionLabel}. ${precision}`, 6000);
