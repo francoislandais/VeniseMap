@@ -472,7 +472,8 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     // ───── Éditeur de mise en page (aperçu local uniquement) : on glisse les images et les textes, ± pour la taille, « Enregistrer » écrit data/intro-layout.json ─────
     let editing = false, selEl = null, selKey = null;
     const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
-    const canEdit = local; // l'éditeur n'existe que dans l'aperçu local (jamais sur les téléphones)
+    let canEdit = false;
+    try { canEdit = local && localStorage.getItem("vq_dev_enabled_v2") === "1"; } catch {} // éditeur réservé au mode développeur local
     const handle = document.createElement("div"); handle.className = "in2-handle"; handle.hidden = true; root.appendChild(handle);
     const placeHandle = () => { if (!selEl || !editing) { handle.hidden = true; return; } const r = selEl.getBoundingClientRect(); handle.style.left = Math.min(innerWidth - 14, r.right) + "px"; handle.style.top = Math.min(lockedH - 14, r.bottom) + "px"; handle.hidden = false; };
     const select = (k) => { root.querySelectorAll(".in2-sel").forEach((e) => e.classList.remove("in2-sel")); selKey = k; selEl = null; if (k) { const e = elsOf(cur, SCREENS[idx])[k]; if (e) { selEl = e; e.classList.add("in2-sel"); } } placeHandle(); };

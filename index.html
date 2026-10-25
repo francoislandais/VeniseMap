@@ -14,10 +14,12 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="preload" href="fonts/special-elite-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="img/intro/bg.webp" as="image">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="map" aria-label="Carte de Venise"></div>
+<div id="geo-gate" hidden role="alert"><div class="geo-gate-card"><h2>📍 Localisation requise</h2><p id="geo-gate-message">La localisation est nécessaire pour jouer.</p><geolocation id="geo-control" autolocate accuracymode="precise"><button type="button" class="btn blue" id="geo-retry">Autoriser la localisation</button></geolocation> <button type="button" class="btn ghost" id="geo-settings">Réglages du jeu</button></div></div>
 
 <div id="me-badge" class="me-badge" hidden></div>
 <header id="hud">
@@ -50,7 +52,7 @@
 <div id="sheet" class="sheet" hidden></div>
 <div id="quest" class="quest" hidden></div>
 <div id="modal" class="modal" hidden></div>
-<div id="toast" class="toast" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <canvas id="fx"></canvas>
 
 <script src="vendor/maplibre-gl.js"></script>

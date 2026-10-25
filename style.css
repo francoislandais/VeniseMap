@@ -11,6 +11,9 @@ h2,h3,p{margin:0}
 [hidden]{display:none!important}
 
 #map{position:fixed;inset:0;z-index:1;background:#e4e4e4}
+/* Un seul écran à la fois, y compris pendant les retours d'historique rapides. */
+body.menu-open #map,body.menu-open #hud,body.menu-open #me-badge,body.menu-open #bridge-btn,body.menu-open #next,body.menu-open #fx{visibility:hidden!important}
+body:not(.menu-open) #up-bg,body:not(.menu-open) #up-bar,body:not(.menu-open) .view,body:not(.menu-open) #up-dock,body:not(.menu-open) .menu-say{display:none!important}
 .leaflet-tile-pane{filter:none}
 .leaflet-control-attribution{font-size:9px!important;opacity:.7}
 
@@ -351,6 +354,11 @@ img.full{width:100%;border-radius:14px}
 .pin .pin-in.pic{margin:0;width:42px;height:42px}
 .pin.mep{width:44px;height:44px;cursor:default}
 .pin.mep .me{margin:0}
+/* Arbres illustrés : le PNG détouré repose sur son tronc, sans pastille ni fond. */
+.maplibregl-marker.tree-marker{z-index:2;width:var(--tree-size,48px);height:var(--tree-size,48px);padding:0;border:0;background:none;box-shadow:none;cursor:pointer;touch-action:manipulation}
+.tree-marker img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(20,35,26,.35))}
+.tree-marker:focus-visible{outline:2px solid #174e6b;outline-offset:3px;border-radius:4px}
+.maplibregl-marker.pin:not(.mep){z-index:5}
 .maplibregl-ctrl-top-right{top:64px}
 .maplibregl-ctrl-attrib{font-size:10px}
 
@@ -502,7 +510,7 @@ body.jeu .me-badge{display:none}
 .arr .m-bubble b{font-style:normal}
 .arr-bot{position:absolute;left:0;right:0;bottom:0;padding:40px 16px calc(18px + var(--safe-b));display:flex;flex-direction:column;gap:12px}
 .arr-name{text-align:center;color:#fff;font-weight:900;font-size:26px;line-height:1.1;text-shadow:0 2px 10px rgba(0,0,0,.7)}
-.arr-go{pointer-events:auto;align-self:center;width:auto;padding:10px 24px;border-radius:999px;background:linear-gradient(#5aa6e6,#3a84c8);color:#fff;border:1.5px solid rgba(255,255,255,.8);font-weight:800;font-size:16px;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.arr-go{pointer-events:auto;align-self:center;width:auto;padding:10px 24px;border-radius:999px;background:linear-gradient(145deg,#254765,#102d47 55%,#0a2035);color:#f4f8fc;border:1.5px solid rgba(171,210,230,.78);font-weight:800;font-size:16px;box-shadow:0 5px 16px rgba(0,8,23,.55),inset 0 1px rgba(255,255,255,.12)}
 .arr-flash{position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(circle at 50% 45%,#fff 0%,rgba(255,255,255,.55) 40%,rgba(255,255,255,0) 75%)}
 
 .arr-bg{position:absolute;inset:0;z-index:4;background:center 42%/cover;opacity:0}
@@ -1295,6 +1303,10 @@ body.corto-talk #map-btn,body.corto-talk #home-btn,body.corto-talk #corto-btn,bo
 #bridge-btn{background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
 #bridge-btn img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))}
 #bridge-btn:active img{transform:scale(.94)}
+#bridge-btn.bridge-loading img{animation:bridge-spin-start 1.5s ease-in 1 forwards,bridge-spin-loop .65s linear 1.5s infinite}
+@keyframes bridge-spin-start{to{transform:rotate(360deg)}}
+@keyframes bridge-spin-loop{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#bridge-btn.bridge-loading img{animation:none;filter:drop-shadow(0 0 8px var(--gold)) brightness(1.15)}}
 
 /* ───────── Espace personnel : le tableau de l'introduction en fond, tout le reste par-dessus ───────── */
 #up-bg{position:fixed;inset:0;z-index:540;background:#f3ead7 url(img/intro/bg.webp) 12% 50%/cover no-repeat}
@@ -1788,3 +1800,102 @@ body.music-star-flight .fly-star{z-index:2601}
 .mq-edit-status{color:#d6e8ef}
 .music-flow-quest.mq-editing [data-music-edit]{touch-action:none;cursor:grab;outline:1px dashed rgba(228,237,242,.6);outline-offset:3px}
 .music-flow-quest.mq-editing [data-music-edit].mq-edit-selected{outline:2px solid #ffe18b;outline-offset:4px}
+
+/* Le fragment à attraper laisse une courte traînée scintillante, sans gêner le toucher. */
+.plan-photo .hid-music-trail{position:absolute;inset:0;z-index:4;overflow:hidden;pointer-events:none}
+.plan-photo .hid-music-trail i{position:absolute;font-style:normal;font-size:14px;line-height:1;color:#fff2ba;text-shadow:0 0 5px #fff,0 0 11px #ffd76d;animation:musicTrailTwinkle .75s ease-in-out infinite alternate;transform:translate(-50%,-50%)}
+.plan-photo .hid-music-trail i:nth-child(2){font-size:11px;animation-delay:-.3s;opacity:.82}
+.plan-photo .hid-music-trail i:nth-child(3){font-size:12px;animation-delay:-.55s;opacity:.65}
+.plan-photo .hid-music-trail i:nth-child(4){font-size:9px;animation-delay:-.2s;opacity:.5}
+.plan-photo .hid-music-trail i:nth-child(5){font-size:8px;animation-delay:-.65s;opacity:.38}
+@keyframes musicTrailTwinkle{from{scale:.65;filter:brightness(.8)}to{scale:1.2;filter:brightness(1.3)}}
+@media (prefers-reduced-motion:reduce){.plan-photo .hid-music-trail{display:none}}
+
+/* Défi musical : texte et lecteur fixes, réponses entre le lecteur et Corto en bas. */
+.music-flow-quest .mq-listen-center{position:static}
+.music-flow-quest .mq-listen-next{position:absolute;left:50%;top:auto;bottom:4px;transform:translateX(-50%);white-space:nowrap}
+.music-flow-quest .mq-transition{position:absolute;inset:0;z-index:3;background:#02060b;opacity:0;pointer-events:none}
+.music-flow-quest .mq-body.mq-quizzing{overflow:hidden}
+.music-flow-quest .mq-body.mq-quizzing .mq-listen-invitation,.music-flow-quest .mq-body.mq-quizzing .mq-listen-status{visibility:hidden}
+.music-flow-quest .mq-quiz-stage{position:absolute;left:0;right:0;bottom:0;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;min-height:0;padding:2px 4px 54px;overflow-y:auto;scrollbar-width:thin}
+.music-flow-quest .mq-quiz-options{flex:1 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:100%;max-width:420px;margin:0 auto}
+.music-flow-quest .mq-quiz-options.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:center}
+.music-flow-quest .mq-quiz-options button{min-height:39px;width:100%;padding:7px 11px;border:1px solid rgba(202,225,233,.35);border-radius:999px;background:rgba(9,42,63,.9);color:#fff;font:clamp(13px,3.7vw,16px)/1.18 Arial,sans-serif;text-align:center;text-wrap:balance}
+.music-flow-quest .mq-quiz-options button.right{background:#216d50;border-color:#a9dfb4;box-shadow:0 0 0 3px rgba(117,211,140,.22)}
+.music-flow-quest .mq-quiz-options button.wrong{opacity:.42}
+.music-flow-quest .mq-quiz-note{flex:none;min-height:19px;margin:0;color:#f5d9a6;font:13px/1.25 Georgia,serif}
+.music-flow-quest .mq-corto-line{flex:none;display:flex;align-items:flex-end;gap:8px;width:100%;max-width:440px;margin:0 auto}
+.music-flow-quest .mq-corto-face{flex:none;width:70px;height:76px;background:url(img/corto-content.webp) 50% 12%/155% auto no-repeat;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+.music-flow-quest .mq-corto-bubble{flex:1;box-sizing:border-box;min-width:0;padding:4px 0;color:#fff;font:clamp(17px,4.7vw,22px)/1.25 Georgia,serif;text-align:left;text-wrap:balance;text-shadow:0 2px 8px #06131d}
+.music-flow-quest .mq-corto-bubble [hidden]{display:none}
+.music-flow-quest .mq-quiz-foot{position:absolute;z-index:4;left:50%;bottom:calc(8px + var(--safe-b));width:min(calc(100% - 32px),440px);height:44px;display:flex;align-items:center;justify-content:flex-end;transform:translateX(-50%);pointer-events:none}
+.music-flow-quest .mq-quiz-continue{min-height:44px;padding:8px 12px;border:0;background:none;color:#f8edcf;font:700 15px/1.2 Georgia,serif;pointer-events:auto}
+.music-flow-quest .mq-quiz-continue[hidden]{display:none}
+@media (max-height:650px){.music-flow-quest .mq-corto-face{width:56px;height:62px}.music-flow-quest .mq-corto-bubble{font-size:16px}.music-flow-quest .mq-quiz-options button{min-height:36px;padding:5px 8px}}
+
+/* Pont reconnu : la photo remplace le macaron et se fond dans le décor sombre du QCM. */
+#sheet.bridge-ceremony{position:fixed;inset:0;z-index:700;box-sizing:border-box;max-height:none;overflow:hidden;padding:0;background:#081b2b;color:#fff;isolation:isolate}
+body.bridge-open #corto-btn{visibility:hidden!important}
+.bridge-ceremony .bridge-hero{position:absolute;top:calc(125px + var(--safe-t));left:0;width:100%;height:52dvh;object-fit:cover;object-position:center 43%;opacity:0;transition:opacity .9s ease;-webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 14%,#000 48%,transparent 100%);mask-image:linear-gradient(to bottom,transparent 0%,#000 14%,#000 48%,transparent 100%)}
+.bridge-ceremony.bridge-revealed .bridge-hero{opacity:1}
+.bridge-ceremony .bridge-shade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(4,17,29,.2) 0%,rgba(5,21,35,.18) 28%,rgba(7,26,42,.65) 55%,#081b2b 84%);pointer-events:none}
+.bridge-ceremony .bridge-sparks{position:absolute;z-index:2;top:calc(125px + var(--safe-t));left:0;right:0;height:52dvh;opacity:0;pointer-events:none;transition:opacity .8s ease .25s}
+.bridge-ceremony.bridge-revealed .bridge-sparks{opacity:1}
+.bridge-ceremony .bridge-sparks span{position:absolute;color:#ffebae;font:clamp(12px,3.5vw,19px)/1 Georgia,serif;text-shadow:0 0 7px #fff5d0,0 0 15px #f6c96a;animation:bridgeSparkle 2.1s ease-in-out infinite alternate}
+.bridge-ceremony .bridge-sparks span:nth-child(1){top:18%;left:9%}
+.bridge-ceremony .bridge-sparks span:nth-child(2){top:23%;right:11%;animation-delay:-.7s}
+.bridge-ceremony .bridge-sparks span:nth-child(3){top:46%;left:5%;animation-delay:-1.2s}
+.bridge-ceremony .bridge-sparks span:nth-child(4){top:51%;right:7%;animation-delay:-.35s}
+.bridge-ceremony .bridge-sparks span:nth-child(5){top:70%;left:18%;animation-delay:-1.55s}
+.bridge-ceremony .bridge-sparks span:nth-child(6){top:68%;right:20%;animation-delay:-.95s}
+@keyframes bridgeSparkle{from{opacity:.28;transform:scale(.75)}to{opacity:1;transform:scale(1.22)}}
+.bridge-ceremony .bridge-claim{position:absolute;z-index:2;top:calc(60px + var(--safe-t));left:14px;right:14px;margin:0;justify-content:flex-end}
+.bridge-ceremony .bridge-claim .m-bubble{font-size:17px;line-height:1.3;text-shadow:none}
+.bridge-ceremony .bridge-claim .m-av{overflow:hidden}
+.bridge-ceremony .bridge-claim .m-av img{width:100%;height:100%;object-fit:cover}
+.bridge-ceremony .bridge-dots{display:inline-flex;margin-left:5px;letter-spacing:1px}
+.bridge-ceremony .bridge-dots i{font-style:normal;opacity:.15;animation:bridgeThink 1.15s infinite}
+.bridge-ceremony .bridge-dots i:nth-child(2){animation-delay:.2s}
+.bridge-ceremony .bridge-dots i:nth-child(3){animation-delay:.4s}
+.bridge-ceremony.bridge-revealed .bridge-dots{display:none}
+@keyframes bridgeThink{0%,70%,100%{opacity:.15}30%{opacity:1}}
+.bridge-ceremony.bridge-thinking .bridge-name,.bridge-ceremony.bridge-thinking .bridge-stage{opacity:0;pointer-events:none}
+.bridge-ceremony.bridge-revealed .bridge-name,.bridge-ceremony.bridge-revealed .bridge-stage{opacity:1;transition:opacity .55s ease .15s}
+.bridge-ceremony .bridge-name{position:absolute;z-index:2;top:calc(140px + var(--safe-t));left:20px;right:20px;margin:0;color:#fff;font:600 clamp(16px,4.2vw,22px)/1.2 Georgia,serif;text-shadow:0 2px 9px #03111e}
+.bridge-ceremony .bridge-stage{position:absolute;z-index:3;top:clamp(170px,32dvh,280px);bottom:calc(108px + var(--safe-b));left:14px;right:14px;max-width:510px;margin:auto;display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0;overflow:hidden}
+.bridge-ceremony .bridge-answers{grid-row:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:8px 10px;overflow-y:auto;scrollbar-width:thin}
+.bridge-ceremony .bridge-answers[hidden]{display:none!important}
+.bridge-ceremony .bridge-answers button{flex:none;width:min(100%,340px);min-height:44px;padding:10px 16px;border:1px solid rgba(166,213,229,.78);border-radius:999px;background:linear-gradient(135deg,rgba(17,63,87,.97),rgba(7,30,49,.97));color:#fff;font:15px/1.2 Arial,sans-serif;text-align:center;text-wrap:balance;box-shadow:0 3px 12px rgba(0,8,18,.42),inset 0 1px rgba(255,255,255,.12)}
+.bridge-ceremony .bridge-answers button.right{background:#216d50;border-color:#a9dfb4;box-shadow:0 0 0 4px rgba(76,175,106,.35)}
+.bridge-ceremony .bridge-answers button.wrong{opacity:.42}
+.bridge-ceremony .bridge-corto{grid-row:2;display:flex;align-items:flex-end;gap:10px;min-height:74px;width:100%;padding:12px 4px 0;box-sizing:border-box}
+.bridge-ceremony .bridge-words{flex:1;min-width:0;max-height:min(29dvh,205px);overflow-y:auto;scrollbar-width:thin;margin:0 0 8px;color:#fff;font:clamp(17px,min(4.8vw,2.8dvh),22px)/1.3 Arial,sans-serif;text-align:left;text-wrap:balance;text-shadow:0 1px 3px rgba(2,13,25,.88),0 0 10px rgba(2,13,25,.55)}
+.bridge-ceremony .bridge-words b{font-weight:700}
+.bridge-ceremony .bridge-corto img{flex:none;width:clamp(70px,22vw,92px);height:clamp(70px,22vw,92px);object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4))}
+.bridge-ceremony .bridge-next{position:absolute;z-index:4;right:16px;bottom:calc(8px + var(--safe-b));min-height:44px;padding:8px 12px;border:0;background:none;color:#f8edcf;font:700 16px/1.2 Georgia,serif;text-shadow:0 2px 8px #03111e}
+.bridge-ceremony .bridge-next[hidden]{display:none!important}
+@media (max-height:650px){.bridge-ceremony .bridge-answers button{min-height:38px;padding:7px 12px}.bridge-ceremony .bridge-corto img{width:66px;height:66px}.bridge-ceremony .bridge-words{font-size:17px}}
+@media (prefers-reduced-motion:reduce){.bridge-ceremony .bridge-dots i{animation:none;opacity:1}.bridge-ceremony .bridge-sparks span{animation:none;opacity:.8}.bridge-ceremony .bridge-hero,.bridge-ceremony .bridge-sparks,.bridge-ceremony.bridge-revealed .bridge-name,.bridge-ceremony.bridge-revealed .bridge-stage{transition:none}}
+
+/* Accueil d'épreuve après validation GPS : photo plein écran, lancement au centre, Corto en bas. */
+#sheet.arrival-direct{display:block;padding:0;background:#081b2b}
+#sheet.arrival-direct .arrival-photo{position:absolute;inset:0;z-index:2;background:center 42%/cover no-repeat;animation:arrivalPhotoIn .65s ease both}
+#sheet.arrival-direct .arr-g{opacity:1}
+@keyframes arrivalPhotoIn{from{opacity:0}to{opacity:1}}
+#sheet .arr-center{position:absolute;z-index:7;top:43%;left:16px;right:16px;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;pointer-events:none}
+#sheet .arr-center .arr-name{max-width:460px;font-size:clamp(24px,7vw,34px);text-wrap:balance}
+#sheet .arr-center .arr-go{margin:0;pointer-events:auto}
+#sheet .arr-center .arr-dev-finish{pointer-events:auto}
+#sheet .arr-talk{position:absolute;z-index:7;left:0;right:0;bottom:0;display:flex;align-items:flex-end;gap:6px;padding:70px 14px 0 22px;background:linear-gradient(to top,rgba(250,240,222,.97) 0%,rgba(250,240,222,.94) 55%,rgba(250,240,222,0) 100%);pointer-events:none}
+#sheet .arr-talk .dm-txt{flex:1;align-self:flex-end;margin-bottom:calc(100px + var(--safe-b));color:#141822;font:clamp(14px,2.3dvh,17px)/1.4 "Special Elite","Courier New",Courier,monospace;text-shadow:0 0 8px #fffaf0,0 0 3px #fffaf0}
+#sheet .arr-talk .dm-corto{flex:none;width:clamp(118px,38vw,150px);height:clamp(118px,38vw,150px);object-fit:contain;margin-bottom:var(--safe-b);filter:drop-shadow(0 3px 5px rgba(0,0,0,.25))}
+@media (max-height:650px){#sheet .arr-center{top:34%;gap:9px}#sheet .arr-center .arr-name{font-size:23px}#sheet .arr-talk .dm-txt{font-size:14px;line-height:1.3;margin-bottom:calc(90px + var(--safe-b))}#sheet .arr-talk .dm-corto{width:110px;height:110px}}
+
+/* La localisation est requise pour jouer en mode réel. */
+#geo-gate[hidden]{display:none!important}
+#geo-gate{position:fixed;inset:0;z-index:2500;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(5,28,39,.74);pointer-events:auto}
+#geo-gate .geo-gate-card{box-sizing:border-box;width:min(100%,520px);margin:auto;padding:20px;background:#fff7e6;color:#16394a;border:2px solid #0e5a6e;box-shadow:0 6px 24px rgba(0,20,30,.3);text-align:center}
+#geo-gate h2{margin:0 0 8px;font-size:20px}
+#geo-gate p{margin:0 0 12px;font-size:15px;line-height:1.4}
+#geo-control{display:inline-block;vertical-align:middle;margin:0 6px 0 0}
+body.menu-open #geo-gate,body.intro-open #geo-gate{display:none!important}

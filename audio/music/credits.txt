@@ -7,5 +7,5 @@ Les extraits et la version complète restent sous CC BY-SA 3.0.
 
 Défi musical 04 — Claudio Monteverdi, Vespro della Beata Vergine (1610), « Pulchra es ».
 Source : enregistrement transmis pour le projet ; « René Jacobs » figure dans le nom du fichier, attribution exacte à confirmer.
-Extraits : 04-court.mp3 (19,5 s) et 04-long.mp3 (2 min 55,5 s), préparés depuis la même prise ; la version longue sert aussi à l'écoute finale.
+Extraits : 04-court.mp3 (19,5 s), 04-duo-entree.mp3 (26,5 s, départ à 46,55 s dans le fichier source, au retour des deux voix après un passage calme) et 04-long.mp3 (2 min 55,5 s), préparés depuis la même prise ; la version longue sert aussi à l'écoute finale. Le nouvel extrait a un très court fondu d'entrée et un fondu final de 1 s.
 Le responsable du projet a confirmé le 24 octobre 2026 qu'il peut publier cet enregistrement dans l'application et sur GitHub Pages. Aucune licence publique n'a été indiquée.

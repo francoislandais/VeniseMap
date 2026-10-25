@@ -8,6 +8,12 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let scoreAnim = null; // animation du compteur en cours (étoiles qui arrivent)
 const KEY = "vq_state_v1";
+const QS = new URLSearchParams(location.search);
+// Seul l’interrupteur de l’onglet Dév. active les outils de test. L’ancien réglage est ignoré.
+let DEV = false;
+try { DEV = localStorage.getItem("vq_dev_enabled_v2") === "1"; } catch {}
+const LOCAL_PREVIEW = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+const LOCAL_DEV = DEV && LOCAL_PREVIEW;
 const DAY_MS = 86400000;
 
 /* ───────── État (fusionnable : une clé = un fait, dernier écrit gagnant) ───────── */
@@ -63,7 +69,7 @@ const unaward = (k) => { S.done[k] = { t: Date.now(), p: 0, d: 1 }; };
 const points = () => Object.values(S.done).reduce((n, v) => n + (v.d ? 0 : v.p || 0), 0);
 const pointsOf = (i) => Object.values(S.done).reduce((n, v) => n + (!v.d && (v.w == null || v.w === "all" || v.w === i) ? v.p || 0 : 0), 0);
 let active = 0;
-let tab = "map", lastTab = "days", menuOpen = false;
+let tab = "map", lastTab = "days", menuOpen = false, menuReturnPending = false;
 try { active = +localStorage.getItem("vq_active") || 0; } catch {}
 const me = () => S.kids[Math.min(active, S.kids.length - 1)];
 const meIdx = () => Math.min(active, S.kids.length - 1);
@@ -72,9 +78,11 @@ function setActive(i) { active = i; try { localStorage.setItem("vq_active", i); 
 // Outil de développement : ?niveau=N force le grade affiché (0 = jeune mousse) et reste mémorisé ; ?niveau= le retire.
 let devLevel = null;
 try {
-  const q = new URLSearchParams(location.search).get("niveau");
-  if (q !== null) { if (q === "") localStorage.removeItem("vq_dev_level"); else localStorage.setItem("vq_dev_level", q); }
-  const s = localStorage.getItem("vq_dev_level"); if (s !== null) devLevel = Math.max(0, Math.min(LEVELS.length - 1, +s || 0));
+  if (DEV) {
+    const q = QS.get("niveau");
+    if (q !== null) { if (q === "") localStorage.removeItem("vq_dev_level"); else localStorage.setItem("vq_dev_level", q); }
+    const s = localStorage.getItem("vq_dev_level"); if (s !== null) devLevel = Math.max(0, Math.min(LEVELS.length - 1, +s || 0));
+  }
 } catch {}
 const level = (pts = points()) => { if (devLevel !== null) return devLevel; let i = 0; LEVELS.forEach((l, j) => { if (pts >= l.min) i = j; }); return i; };
 
@@ -188,6 +196,37 @@ async function hydrateThumbs(root) {
 
 /* ───────── Géo ───────── */
 let pos = null; // {lat, lon, acc}
+let geoReady = false, geoRequesting = false;
+const MODERN_GEO = typeof HTMLGeolocationElement === "function";
+function showGeoGate(message = "Pour jouer, autorise la localisation avec le bouton ci-dessous.") {
+  const gate = $("#geo-gate"), retry = $("#geo-retry");
+  if (!gate) return;
+  $("#geo-gate-message").textContent = message;
+  gate.hidden = DEV || geoReady;
+  retry.disabled = geoRequesting;
+}
+function acceptGeo(fix) {
+  geoRequesting = false; geoReady = true; showGeoGate();
+  onPos(fix.coords.latitude, fix.coords.longitude, fix.coords.accuracy);
+  syncGeoWatch();
+}
+function rejectGeo(err) {
+  geoRequesting = false; geoReady = false;
+  showGeoGate(err?.code === 1 ? "Ce site n'a pas accès à ta position. Autorise-le dans les réglages du navigateur, puis réessaie." : "Je ne peux pas obtenir ta position. Vérifie la localisation et réessaie.");
+}
+function requestGeo() {
+  if (DEV || geoRequesting) return;
+  if (!navigator.geolocation) { showGeoGate("Ce navigateur ne fournit pas la localisation. Active-la pour jouer."); return; }
+  geoRequesting = true;
+  showGeoGate("Réponds à la demande de localisation du navigateur.");
+  navigator.geolocation.getCurrentPosition(
+    acceptGeo,
+    rejectGeo,
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+  );
+}
+$("#geo-retry").onclick = requestGeo;
+$("#geo-settings").onclick = () => setTab("settings");
 const dist = (a, b, c, d) => {
   const R = 6371000, r = Math.PI / 180, dLat = (c - a) * r, dLon = (d - b) * r;
   const x = Math.sin(dLat / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(dLon / 2) ** 2;
@@ -206,7 +245,7 @@ function heat(m, r) {
 // Le jeu complet (lieux, épreuves, ponts, classement) est mis de côté pour l'instant : seule l'identification et la carte restent.
 // ?jeu=1 le réactive (mémorisé sur l'appareil), ?jeu=0 le désactive.
 let JEU = true;
-try { const q = new URLSearchParams(location.search).get("jeu"); if (q === "1") localStorage.setItem("vq_jeu", "1"); else if (q === "0") localStorage.setItem("vq_jeu", "0"); JEU = localStorage.getItem("vq_jeu") !== "0"; } catch {}
+if (DEV) try { const q = QS.get("jeu"); if (q === "1") localStorage.setItem("vq_jeu", "1"); else if (q === "0") localStorage.setItem("vq_jeu", "0"); JEU = localStorage.getItem("vq_jeu") !== "0"; } catch {}
 document.body.classList.toggle("jeu", JEU);
 let PROFILE = loadProfile();
 const VENICE = { w: 12.24, s: 45.36, e: 12.47, n: 45.55 }; // zone explorable : Venise et ses alentours
@@ -265,31 +304,45 @@ function userEl() {
 }
 function refreshUserMarker() { if (userMarker) { const ll = userMarker.getLngLat(); userMarker.remove(); userMarker = null; if (pos) onPos(pos.lat, pos.lon, pos.acc, true); } }
 let watchId, userMarker, geoStarted = false, geoSimulated = false;
-// Mode développeur : le bateau se déplace au doigt / à la souris. Activé par ?dev (mémorisé), désactivé par ?dev=0, ou par le réglage dans Réglages. ?fake=lat,lon l'active aussi.
-const QS = new URLSearchParams(location.search);
-let DEV = false;
-try {
-  if (QS.has("dev")) { if (QS.get("dev") === "0") localStorage.removeItem("vq_dev"); else localStorage.setItem("vq_dev", "1"); }
-  DEV = localStorage.getItem("vq_dev") !== "0" || QS.has("fake"); // phase de test : actif par défaut, ?dev=0 le coupe
-} catch { DEV = QS.has("fake"); }
-const LOCAL_PREVIEW = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-const LOCAL_DEV = DEV && LOCAL_PREVIEW;
+// En mode développeur, le bateau peut être déplacé pour tester le jeu.
+// Le mode réel reste actif tant que l’interrupteur de l’onglet Dév. est éteint.
 let devPinned = false; // le bateau a été posé à la main : le GPS réel est ignoré
 // Le GPS précis ne sert qu'avec la carte active ; la dernière position reste affichée pendant les autres écrans.
 function syncGeoWatch() {
-  if (!geoStarted || geoSimulated || !navigator.geolocation) return;
+  if (!geoStarted || geoSimulated || (!DEV && !geoReady) || !navigator.geolocation) return;
   const needed = !document.hidden && !devPinned && tab === "map" && $("#quest").hidden && !document.body.classList.contains("chap-open") && !$(".music-found,.music-quest");
   if (!needed && watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  if (needed && watchId == null) watchId = navigator.geolocation.watchPosition((e) => onPos(e.coords.latitude, e.coords.longitude, e.coords.accuracy), () => { if (locateAsked) toast("📍 Je ne te trouve pas… active la localisation !"); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  if (needed && watchId == null) watchId = navigator.geolocation.watchPosition((e) => onPos(e.coords.latitude, e.coords.longitude, e.coords.accuracy), (err) => { if (!DEV && err?.code === 1) { navigator.geolocation.clearWatch(watchId); watchId = null; geoReady = false; pos = null; userMarker?.remove(); userMarker = null; showGeoGate("La localisation a été désactivée. Autorise-la de nouveau pour jouer."); } else if (locateAsked) toast("📍 Je ne te trouve pas… active la localisation !"); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
 }
 const scheduleGeoSync = () => queueMicrotask(syncGeoWatch);
 function startGeo() {
   if (geoStarted) { syncGeoWatch(); return; }
   geoStarted = true;
-  const fake = QS.get("fake");
-  window.__fake = (a, b) => { devPinned = true; onPos(a, b, 10, true); };
+  if (!DEV) {
+    showGeoGate();
+    if (MODERN_GEO) {
+      const control = $("#geo-control");
+      control.addEventListener("location", () => {
+        if (control.position) acceptGeo(control.position);
+        else if (control.error) rejectGeo(control.error);
+      });
+      if (control.position) acceptGeo(control.position);
+      return;
+    }
+    if (navigator.permissions?.query) navigator.permissions.query({ name: "geolocation" }).then((permission) => {
+      if (permission.state === "granted") requestGeo();
+      else if (permission.state === "denied") showGeoGate("Ce site n'a pas accès à ta position. Autorise-le dans les réglages du navigateur, puis réessaie.");
+      permission.onchange = () => {
+        if (permission.state === "granted" && !geoReady) requestGeo();
+        else if (permission.state === "denied") { geoReady = false; pos = null; userMarker?.remove(); userMarker = null; showGeoGate("La localisation de ce site a été désactivée. Autorise-la pour jouer."); }
+      };
+    }).catch(() => {});
+    return;
+  }
+  const fake = DEV ? QS.get("fake") : null;
+  if (DEV) window.__fake = (a, b) => { devPinned = true; onPos(a, b, 10, true); };
   if (fake) { geoSimulated = true; const [la, lo] = fake.split(",").map(Number); window.__fake(la, lo); return; }
-  const gps = QS.get("gps"); // simule un vrai GPS (soumis à la limite de Venise) : ?gps=lat,lon
+  const gps = DEV ? QS.get("gps") : null; // position simulée réservée au mode développeur
   if (gps) { geoSimulated = true; const [la, lo] = gps.split(",").map(Number); setTimeout(() => onPos(la, lo, 15), 600); return; }
   // Mode dev : un tapotement sur la carte déplace le pictogramme (pour tester différentes positions).
   if (DEV) map.on("click", (e) => { devPinned = true; onPos(e.lngLat.lat, e.lngLat.lng, 10, true); syncGeoWatch(); });
@@ -353,17 +406,19 @@ async function arrivalReveal(p) {
   flash.animate([{ opacity: 0.85 }, { opacity: 0 }], { duration: 1100, easing: "ease-out" }).onfinish = () => flash.remove();
   confetti(130);
   await sleep(500);
+  await showArrivalContents(p, done, sh);
+}
+async function showArrivalContents(p, done, sh) {
   const cl = $(".m-close", sh); if (cl) cl.remove(); // pas de croix sur cet écran
   const arr = document.createElement("div"); arr.className = "arr";
-  arr.innerHTML = `<div class="arr-top"><div class="msg fc"><span class="arr-face"></span><div class="m-bubble typing"><i></i><i></i><i></i></div></div></div>
-    <div class="arr-bot"><div class="arr-name">${esc(p.name)}</div><button class="arr-go" id="arr-go">${done === 0 ? "Commencer l'épreuve" : done < p.tasks.length ? "Continuer l'épreuve" : "Revoir le lieu"}</button>${LOCAL_DEV && p.chapters ? '<button type="button" class="arr-dev-finish">🔧 Dev · Aller à la conclusion</button>' : ""}</div>`;
+  arr.innerHTML = `<div class="arr-center"><div class="arr-name">${esc(p.name)}</div><button class="arr-go" id="arr-go">${done === 0 ? "Commencer l'épreuve" : done < p.tasks.length ? "Continuer l'épreuve" : "Revoir le lieu"}</button>${LOCAL_DEV && p.chapters ? '<button type="button" class="arr-dev-finish">🔧 Dev · Aller à la conclusion</button>' : ""}</div><div class="arr-talk"><div class="dm-txt"></div><img class="dm-corto" src="img/corto-content.webp" alt=""></div>`;
   sh.appendChild(arr);
-  $(".arr-top", arr).animate([{ opacity: 0, transform: "translateY(-18px)" }, { opacity: 1, transform: "none" }], { duration: 700, easing: "ease-out" });
-  $(".arr-face", arr).animate([{ opacity: 0, transform: "translateY(-30px) scale(.4)" }, { opacity: 0, offset: .35 }, { opacity: 1, transform: "scale(1.12)", offset: .8 }, { opacity: 1, transform: "none" }], { duration: 1300, easing: "ease-out" });
+  $(".arr-talk", arr).animate([{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 700, easing: "ease-out" });
   const nm = $(".arr-name", arr), go = $("#arr-go", arr);
   nm.style.opacity = go.style.opacity = 0;
-  await sleep(1300);
-  cortoFill($(".msg", arr), `**${first ? "Bravo" : "Te revoilà"}, ${gradeLc()} !** « ${p.clue} »`);
+  await sleep(900);
+  // Le premier accueil n'est plus montré lorsque le GPS est valide : son information sur le lieu accompagne désormais Corto ici.
+  $(".dm-txt", arr).innerHTML = richText(teaser(p));
   await sleep(600);
   nm.animate([{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }], { duration: 700, fill: "forwards", easing: "ease-out" });
   await sleep(500);
@@ -371,6 +426,17 @@ async function arrivalReveal(p) {
   go.onclick = () => { stopMusic(1200); openQuest(p.id); };
   const devFinish = $(".arr-dev-finish", arr);
   if (devFinish) devFinish.onclick = () => devCompleteChapter(p);
+}
+async function showArrivalDirect(p) {
+  const first = !arrived(p.id), done = doneTasks(p);
+  if (first) { award("a:" + p.id, POINTS.arrive); save(); refreshAll(); }
+  if (!p.music) chime(); startMusic(p);
+  introSeen[p.id] = true;
+  openId = p.id; chatSel = "#m-chat"; $("#next").hidden = true; $("#bridge-btn").hidden = true;
+  const sh = $("#sheet"); sh.getAnimations().forEach((animation) => animation.cancel()); sh.style.backgroundColor = "";
+  sh.hidden = false; sh.className = "medal-wrap arrival-direct"; sh.onclick = null;
+  sh.innerHTML = `<div class="arrival-photo" style="background-image:url(${pic(p.id)})"></div><div class="arr-g arr-g-top"></div><div class="arr-g arr-g-bot"></div>`;
+  await showArrivalContents(p, done, sh);
 }
 // Test depuis l'accueil du lieu ou depuis la carte : questions terminées, trésors encore à trouver.
 function devCompleteChapter(p, fromMapButton = false) {
@@ -393,7 +459,7 @@ function doArrive(p, manual) {
 }
 /* ───────── Carte ───────── */
 const map = createMap("map", { center: [12.338, 45.4342], zoom: 14 });
-window.__map = map;
+if (DEV) window.__map = map;
 // Le voilier de Corto, amarré dans la lagune près de l'embarcadère de Santo Spirito : repère de la carte, point de rendez-vous. Il apparaît à la fin de l'introduction et reste ensuite.
 /* Le voilier : parti du même point à la fin de l'introduction (BOAT.lngLat, au milieu du canal de la Giudecca), il fait des tours de lagune à allure régulière, et arrive amarré
    au point de rendez-vous (Santo Spirito) à l'heure dite. Sa position ne dépend que de l'heure : même trajet, même instant, sur tous les téléphones qui ont démarré en même temps.
@@ -442,8 +508,8 @@ function boatTick(ts) {
     const a = map.project(b.ll), c = map.project(boatAt(Date.now() + 8000).ll), dx = c.x - a.x; if (Math.abs(dx) > 0.3) { const left = dx < 0; if (left !== boatLeft) { boatLeft = left; boatMarker.getElement().classList.toggle("left", left); } }
   }
 }
-window.__boat = { at: boatAt, plan: boatPlan, path: BOAT_PATH, T: RENDEZ_VOUS };
-window.__boatOpts = () => BOAT_OPTS; // (outil de test)
+if (DEV) { window.__boat = { at: boatAt, plan: boatPlan, path: BOAT_PATH, T: RENDEZ_VOUS };
+window.__boatOpts = () => BOAT_OPTS; } // (outil de test)
 const BOAT_OPTS = { map, boat: { lngLat: BOAT.lngLat, w: BOAT.w, ensure: () => ensureBoat(true), hide: () => { if (boatMarker) boatMarker.getElement().style.visibility = "hidden"; } } };
 // Taille des macarons selon le zoom : normale de loin, de plus en plus grande à mesure qu'on zoome, tant qu'ils restent séparés les uns des autres.
 const PIN_DMIN = (() => { let m = 1e9; PLACES.forEach((p, i) => PLACES.slice(i + 1).forEach((q) => { m = Math.min(m, Math.hypot((p.lat - q.lat) * 111000, (p.lon - q.lon) * 78000)); })); return Math.max(m, 30); })();
@@ -460,7 +526,7 @@ function updateOverlap() {
   const over = PLACES.some((p) => { const q = map.project([p.lon, p.lat]); return Math.hypot(up.x - q.x, up.y - q.y) < 21 * ps + 12; });
   userMarker.getElement().classList.toggle("over", over);
 }
-map.on("zoom", () => { updatePinScale(); updateOverlap(); updateWalkScale(); }); updatePinScale(); window.__map = map; // (outil de test)
+map.on("zoom", () => { updatePinScale(); updateOverlap(); updateWalkScale(); }); updatePinScale(); if (DEV) window.__map = map; // (outil de test)
 
 // Les personnages grossissent quand on s'approche (à partir du zoom 16 : x1 → x2 au zoom 18,2)
 function updateWalkScale() { const z = map.getZoom(); $("#map").style.setProperty("--ws", Math.min(2, Math.max(1, 1 + (z - 16) * 0.45)).toFixed(2)); }
@@ -681,7 +747,7 @@ function walkTick(ts) {
   requestAnimationFrame(walkTick);
 }
 Promise.all(WALKERS.map(startWalker)).then(() => requestAnimationFrame(walkTick));
-window.__walkTick = walkTick; window.__doge = () => walkerAt(WALKERS[0]); window.__monte = () => walkerAt(WALKERS[1]); window.__walkerAt = (i, t) => walkerAt(WALKERS[i], t); window.__WK = WALKERS; window.__marc = () => walkerAt(WALKERS[2]); window.__lion = () => walkerAt(WALKERS[4]); window.__gond = () => walkerAt(WALKERS[3]);
+if (DEV) { window.__walkTick = walkTick; window.__doge = () => walkerAt(WALKERS[0]); window.__monte = () => walkerAt(WALKERS[1]); window.__walkerAt = (i, t) => walkerAt(WALKERS[i], t); window.__WK = WALKERS; window.__marc = () => walkerAt(WALKERS[2]); window.__lion = () => walkerAt(WALKERS[4]); window.__gond = () => walkerAt(WALKERS[3]); }
 const pinEls = {};
 // Icônes dessinées à la place de la pastille photo (fond transparent) ; w = largeur en px (à régler ici), ratio = largeur/hauteur de l'image.
 const PLACE_ICONS = {
@@ -738,21 +804,49 @@ function renderMap() {
     el.firstChild.className = `pin-in pic${PLACE_ICONS[p.id] ? " icon" : ""} ${complete(p) ? "done" : arrived(p.id) ? "seen" : ""}${p.final ? " final" : ""}`;
   });
 }
+// Repères botaniques illustrés : indépendants des lieux, des épreuves et de la progression.
+const treeMarkers = new Map();
+const treeSize = (z) => Math.round(Math.max(32, Math.min(70, 48 + (z - 14) * 5)));
+function updateTreeSize() {
+  const size = treeSize(map.getZoom()) + "px";
+  for (const marker of treeMarkers.values()) marker.getElement().style.setProperty("--tree-size", size);
+}
+function renderTrees(points) {
+  for (const tree of points) {
+    if (!tree.enabled || treeMarkers.has(tree.id) || !Number.isFinite(tree.coordinates?.lng) || !Number.isFinite(tree.coordinates?.lat)) continue;
+    const siteOnly = tree.precision === "site_only";
+    const precision = siteOnly ? "Position indicative dans ce site, pas celle de l’arbre." : "Emplacement approximatif de l’arbre.";
+    const el = document.createElement("button");
+    el.type = "button"; el.className = "tree-marker"; el.dataset.treeId = tree.id;
+    const img = document.createElement("img"); img.src = tree.iconSmall; img.srcset = `${tree.icon} 2x`; img.alt = ""; img.draggable = false;
+    el.appendChild(img);
+    el.addEventListener("pointerdown", (e) => e.stopPropagation());
+    el.addEventListener("click", (e) => { e.stopPropagation(); if (tab === "map") toast(`${tree.name} — ${tree.positionLabel}. ${precision}`, 6000); });
+    treeMarkers.set(tree.id, new maplibregl.Marker({ element: el, anchor: "bottom", subpixelPositioning: true }).setLngLat([tree.coordinates.lng, tree.coordinates.lat]).addTo(map));
+    // MapLibre attribue « Map marker » à l'ajout ; rétablir le libellé précis ensuite.
+    el.setAttribute("aria-label", `${tree.name}. ${tree.positionLabel}. ${precision}`);
+  }
+  updateTreeSize();
+}
+map.on("zoom", updateTreeSize);
+fetch("data/arbres.json").then((r) => { if (!r.ok) throw new Error("Repères d’arbres indisponibles"); return r.json(); }).then((data) => renderTrees(data.points || [])).catch((e) => console.warn(e.message));
 $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientRect());
 // Pastille de Corto (en bas à gauche, toujours visible) : un toucher fait parler Corto — pour l'instant il salue seulement ; plus tard il donnera ici ses indices.
 $("#corto-btn").onclick = () => cortoSays("Bonjour matelot, comment ça va ?");
 // Pastille maison (à côté de Corto, toujours visible) : ouvre l'espace de l'enfant (profil, défis, ponts, photos, trophées, réglages).
-$("#home-btn").onclick = (e) => {
-  const btn = e.currentTarget, busy = !!quest || !!openId; if (quest) closeQuest(); if (openId === "chap") suspendChap(); else if (openId) closeSheet();
-  const go = () => { if (tab === "map") openMenuFrom(btn); }; busy ? setTimeout(go, 350) : go(); // la fermeture d'une fiche passe par l'historique du navigateur : on laisse finir avant d'ouvrir l'espace
+$("#home-btn").onclick = () => {
+  if (tab !== "map") return;
+  // Suspendre la fiche immédiatement ; son retour d'historique ne doit pas refermer le menu.
+  if (openId === "chap") suspendChap(true);
+  setTab(lastTab);
 };
 // Pastille carte (à gauche) : ramène toujours à la carte, quoi qu'il y ait à l'écran (fiche de lieu, défi, espace de l'enfant).
-$("#map-btn").onclick = () => { if (quest) closeQuest(); if (openId === "chap") suspendChap(); else if (openId) closeSheet(); if (tab !== "map") { if (history.state && history.state.vqMenu) history.back(); else setTab("map"); } };
+$("#map-btn").onclick = () => { if (quest) closeQuest(); if (openId === "chap") suspendChap(); else if (openId) closeSheet(); if (tab !== "map") returnToMap(); };
 
 /* ───────── Éditeur d'icônes de bâtiments (aperçu local uniquement) ─────────
    Bouton « 🏛 Icônes » : on touche une icône pour la choisir, on la glisse pour déplacer son centre (sa position sur la carte), et à chaque niveau de zoom on règle sa taille
    (poignée ronde, − / +, curseur). Chaque réglage devient un repère [zoom → largeur] ; « Enregistrer » écrit data/place-icons.json. */
-if (["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) && Object.keys(PLACE_ICONS).length) {
+if (LOCAL_DEV && Object.keys(PLACE_ICONS).length) {
   const bar = document.createElement("div"); bar.id = "ic-dev";
   bar.innerHTML = '<button type="button" class="ic-tg">🏛 Icônes</button><div class="ic-pn" hidden><div class="ic-hd"><b class="ic-t"></b><span class="ic-z"></span></div><div class="ic-row"><button type="button" class="ic-m">−</button><input type="range" class="ic-r" min="6" max="700" step="1"><button type="button" class="ic-p">+</button><b class="ic-w"></b></div><div class="ic-st"></div><div class="ic-row"><button type="button" class="ic-pin">📍 Repère de position ici</button><label class="ic-lb"><input type="checkbox" class="ic-all"> tous les zooms</label></div><div class="ic-row"><button type="button" class="ic-sv">💾 Enregistrer</button><em class="ic-msg"></em></div><small>Glisse l\'icône : son centre se déplace à CE zoom (la position glisse en douceur d\'un repère à l\'autre). « tous les zooms » : déplace tous les repères ensemble. Zoome, puis règle la taille : chaque réglage est un repère.</small></div>';
   document.body.appendChild(bar);
@@ -840,7 +934,7 @@ function renderNext() {
 /* ───────── Fiche d'un lieu ───────── */
 let openId = null;
 let medalOrigin = null;
-const inZone = (p) => DEV || (!!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX));
+const inZone = (p) => DEV || (geoReady && !!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX));
 // Phrase de Corto citant le lieu (corto-lieux.js) : distance et temps de marche ; pas deux fois la même de suite pour un même niveau.
 const placeFarLast = {};
 function placeFarLine(p, d) {
@@ -856,9 +950,20 @@ function placeFarLine(p, d) {
 }
 // petite emphase : le lieu touché grossit puis rétrécit (transform : la propriété « scale » est verrouillée en !important dans la feuille de style), puis la suite s'ouvre
 function bumpPin(id) { const el = pinEls[id] && pinEls[id].firstChild; if (el) el.animate([{ transform: "scale(1)" }, { transform: "scale(1.4)", offset: 0.35 }, { transform: "scale(0.92)", offset: 0.7 }, { transform: "scale(1)" }], { duration: 440, easing: "ease-in-out" }); }
-function openPlaceBump(id, originRect) { bumpPin(id); setTimeout(() => openPlace(id, originRect), pinEls[id] ? 260 : 0); }
-function openPlace(id, originRect) {
+function openPlaceBump(id, originRect) { const p = place(id); if (p && !arrived(id) && inZone(p)) primeMusic(p); bumpPin(id); setTimeout(() => openPlace(id, originRect), pinEls[id] ? 260 : 0); }
+let placeOpening = 0;
+async function openPlace(id, originRect) {
+  if (tab !== "map") return; // un toucher de macaron peut arriver juste avant l'ouverture du menu
   const p = place(id);
+  if (!p) return;
+  if (!DEV && !geoReady) { showGeoGate(); return; }
+  const request = ++placeOpening;
+  const needsWelcome = !(arrived(p.id) && !complete(p)) && !(p.chapters && complete(p));
+  let gpsValid = false;
+  if (needsWelcome) {
+    gpsValid = LOCAL_DEV && p.chapters ? true : fixIsReal() && !geoSimulated ? await getFix(2500).catch(() => false) : !!pos;
+    if (request !== placeOpening || tab !== "map" || openId === "bridges" || openId === "chap") return;
+  }
   // Trop loin du lieu : plus de pastille agrandie ni de reprise d'épreuve, simplement un message de Corto (phrases near / mid / far avec distance et temps de marche).
   // Sur l'aperçu local, l'entrée de l'épreuve reste accessible pour ses contrôles de test, même si le GPS est loin.
   { const inReal = !!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX);
@@ -873,6 +978,9 @@ function openPlace(id, originRect) {
     openChapters(p, true, true);
     return;
   }
+  // Position confirmée : le premier macaron « J'y suis ! » est superflu.
+  const gpsInPlace = !!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX);
+  if (gpsValid && (gpsInPlace || (LOCAL_DEV && p.chapters))) { showArrivalDirect(p); return; }
   buildMedal({ id, img: pic(id), title: p.name, bubble: `${esc(teaser(p))}<span class="m-q">Es-tu arrivé ?</span>`, label: "J'y suis !", originRect, bind: () => bindArrive(p) });
   if (LOCAL_DEV && p.chapters) {
     const b = document.createElement("button"); b.type = "button"; b.className = "medal-dev-finish"; b.textContent = "🔧 Dev · Aller à la conclusion";
@@ -939,7 +1047,8 @@ function closeSheet() {
   conclusionEditorAbort?.abort(); conclusionEditorAbort = null;
   document.body.classList.remove("chap-open"); suspended = null; stopMusic(500); stopChapAudio(); closeLoc();
   if ((openId === "bridges" || openId === "chap") && history.state && history.state.vqBridge) { destroying = true; history.back(); return; } // popstate rappellera closeSheet
-  openId = null; const sh = $("#sheet"); sh.hidden = true; sh.innerHTML = ""; $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext(); scheduleGeoSync(); }
+  document.body.classList.remove("bridge-open");
+  openId = null; const sh = $("#sheet"); sh.hidden = true; sh.onclick = null; sh.innerHTML = ""; $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext(); scheduleGeoSync(); }
 function closeMedal() {
   const sh = $("#sheet"), medal = $("#medal"); if (!medal || !medalOrigin) { closeSheet(); return; }
   const { dx, dy, s } = medalOrigin; medalOrigin = null;
@@ -950,7 +1059,7 @@ function closeMedal() {
 let holdT;
 const teaser = (p) => p.teaser || (p.story.split(/(?<=[.!?])\s/)[0] || p.story);
 const walk = (m) => Math.max(1, Math.round((m * 1.3) / 75));
-const FAKE = QS.get("fake");
+const FAKE = DEV ? QS.get("fake") : null;
 // Relevé GPS sur 5 s : on moyenne les mesures (pondérées par leur précision) pour que le GPS se stabilise.
 function getFix(ms = 4000) {
   if (FAKE || devPinned) return Promise.resolve(!!pos);
@@ -1072,47 +1181,29 @@ function say(kind, p, extra = {}) {
 }
 /* ───────── Ponts : « Je suis sur un pont ! » ───────── */
 let chatSel = "#m-chat";
-const BRIDGE_ICO = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 26 Q24 8 44 26"/><path d="M4 30h40"/><path d="M12 30v8M24 30v8M36 30v8"/><path d="M5 42q4-3 8 0t8 0 8 0 8 0 6 0" stroke-width="2.2"/></svg>';
 function openBridges() {
+  if (busy || openId || tab !== "map") return;
   if (suspended) closeSheet();
-  // Écran dédié : « Je suis sur un pont ! » en haut (il y reste), le macaron (vide et animé pendant que Corto cherche,
-  // puis rempli), la bulle de Corto dessous, et les boutons de réponse en bas.
-  openId = "bridges"; chatSel = "#b-top"; $("#next").hidden = true; $("#bridge-btn").hidden = true;
-  const sh = $("#sheet"); sh.hidden = false; sh.className = "medal-wrap bridge-wrap"; delete sh.dataset.k;
-  sh.innerHTML = `<div class="m-chat b-chat" id="b-top"></div>
-    <div class="b-win" id="b-win" hidden><div class="b-circle"><div class="b-img"></div><div class="b-corto" hidden><div class="b-face"></div></div></div></div>
-    <div class="m-chat b-talk" id="b-talk"></div>
-    <div class="b-actions" id="b-actions" hidden></div>`;
-  sh.onclick = (e) => { if (e.target === sh || e.target.id === "b-talk" || e.target.id === "b-top") closeSheet(); }; // un clic en dehors du macaron et des messages ferme l'écran
-  try { history.pushState({ vqBridge: 1 }, ""); } catch {} // « page précédente » ferme aussi l'écran
-  sh.animate([{ backgroundColor: "rgba(8,28,38,0)" }, { backgroundColor: "rgba(8,28,38,.86)" }], { duration: 300, fill: "forwards" });
-  setTimeout(() => { if (openId === "bridges") tryBridge(); }, 350);
+  tryBridge();
 }
-addEventListener("popstate", () => { if (viewClose) { viewClose(); return; } if (montClose) { montClose(); return; } if (tab !== "map") { menuOpen = false; setTab("map"); return; } if (openId === "chap" && !destroying) { suspendChap(true); return; } if (openId === "bridges" || openId === "chap") { destroying = false; closeSheet(); } });
-// Le macaron se remplit : photo du pont (ou image générique), nom, et Corto qui dit bravo la première fois.
-function showBridgeInMedal(b, bravo) {
-  return new Promise((res) => {
-    const w = $("#b-win"); if (!w || openId !== "bridges") return res();
-    const url = b[3] ? `img/ponts/${b[0]}.webp` : "img/ponts/_generic.webp";
-    const im = new Image();
-    im.onload = im.onerror = () => {
-      if (openId !== "bridges") return res();
-      $(".b-img", w).style.backgroundImage = `url(${url})`;
-      w.hidden = false;
-      w.animate([{ opacity: 0, transform: "translateY(14px) scale(.94)" }, { opacity: 1, transform: "none" }], { duration: 600, easing: "cubic-bezier(.2,.9,.25,1.12)" });
-      $(".b-corto", w).hidden = !bravo;
-      if (bravo) $(".b-corto", w).animate([{ opacity: 0, transform: "translateY(30px) scale(.5)" }, { opacity: 0, offset: .45 }, { opacity: 1, transform: "none" }], { duration: 900, easing: "cubic-bezier(.2,.9,.25,1.3)" });
-      res();
-    };
-    im.src = url;
-  });
-}
+addEventListener("popstate", () => {
+  if (viewClose) { viewClose(); return; } if (montClose) { montClose(); return; }
+  if (menuReturnPending) {
+    menuReturnPending = false;
+    // Si le joueur a rouvert le menu avant que history.back() se termine,
+    // conserver ce dernier choix et rétablir son entrée d'historique.
+    if (tab !== "map") { try { history.pushState({ vqMenu: 1 }, ""); } catch {} }
+    return;
+  }
+  if (tab !== "map") { menuOpen = false; setTab("map"); return; }
+  if (openId === "chap" && !destroying) { suspendChap(true); return; }
+  if (openId === "bridges" || openId === "chap") { destroying = false; closeSheet(); }
+});
 // Anecdotes vérifiées sur les ponts (data/facts.json) : chaque anecdote a sa devinette (q) et sa réponse (t).
 let FACTS = null;
 const factsReady = fetch("data/facts.json").then((r) => r.json()).then((j) => (FACTS = j)).catch(() => {});
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const gradeLc = () => LEVELS[level(pointsOf(meIdx()))].name.toLowerCase();
-const ASKS_NEXT = ["Question suivante : ", "Une autre : ", "Voyons si tu connais celle-ci : "];
 const shuffle = (arr) => arr.map((x) => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map((p) => p[1]);
 let curLoop = 0; // une seule boucle d'épreuve vivante à la fois (évite les doublons si on touche « J'y suis ! » pendant la reprise automatique)
 const bsleep = async (ms) => { await sleep(ms); if (openId !== "bridges" && openId !== "chap" && !suspended) throw 0; };
@@ -1140,7 +1231,6 @@ function fitChapTalk() {
   $$(".rev-img", sh).forEach(fitRevImg);
 }
 window.addEventListener("resize", () => { if ($("#sheet.chap")) fitChapTalk(); });
-const bToTop = (el) => { const c = $("#b-talk"); if (c && el) c.scrollTo({ top: el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop, behavior: "smooth" }); };
 // Les bulles gardent la hauteur de leur texte. Quand la conversation devient plus longue que la place disponible, elle défile
 // pour que le dernier message descende jusqu'en bas (au-dessus des boutons s'il y en a), avec une petite respiration.
 const SAFE_B = () => { if (SAFE_B.v == null) { const p = document.createElement("div"); p.style.cssText = "position:fixed;left:0;top:0;visibility:hidden;padding-bottom:var(--safe-b)"; document.body.appendChild(p); SAFE_B.v = p.offsetHeight; p.remove(); } return SAFE_B.v; };
@@ -1158,22 +1248,12 @@ const bFill = (el, pad) => {
   const cr = c.getBoundingClientRect(), bottom = el.getBoundingClientRect().bottom - cr.top + c.scrollTop;
   c.scrollTo({ top: Math.max(0, bottom - (c.clientHeight - reserve - 12)), behavior: "smooth" });
 };
-const bKeepVisible = (el) => { const c = $("#b-talk"); if (!c || !el) return; const over = el.getBoundingClientRect().bottom - c.getBoundingClientRect().bottom; if (over > 0) c.scrollBy({ top: over + 8, behavior: "smooth" }); };
-function bridgeActions(btns) {
-  return new Promise((res) => {
-    const bar = $("#b-actions"); if (!bar) return;
-    bar.innerHTML = btns.map((x) => `<button class="b-btn ${x.cls || ""}" data-k="${x.k}">${x.t}</button>`).join("");
-    bar.classList.toggle("stack", btns.length > 2); bar.hidden = false; $("#sheet").dataset.k = btns.length > 2 ? "bar" : "one"; if (btns.length > 2) $("#sheet").style.setProperty("--bar", bar.offsetHeight + "px");
-    bar.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 320, easing: "cubic-bezier(.2,.9,.25,1.1)" });
-    $$("button", bar).forEach((x) => (x.onclick = () => { const k = x.dataset.k; bar.hidden = true; bar.innerHTML = ""; delete $("#sheet").dataset.k; res(k); }));
-  });
-}
 // Choix multiples : une mauvaise réponse fait « bzzt » et se grise, l'enfant en essaie une autre. Pas d'étoiles s'il s'est trompé avant.
 // Bonne réponse du premier coup : les étoiles gagnées sortent du bouton, tournoient, puis quittent l'écran par le haut.
 // Étoiles gagnées : elles jaillissent puis filent vers le compteur du coin ; chaque arrivée fait vibrer et briller l'étoile du compteur, et le nombre s'incrémente en direct.
 // counted = true si le compteur affiche déjà ces points (on le remet d'abord en arrière pour le refaire grimper).
 const STAR_SVG = '<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M12 2.8l2.75 5.8 6.35.85-4.65 4.4 1.15 6.3L12 17l-5.6 3.15 1.15-6.3L2.9 9.45l6.35-.85z" fill="#F2B51C" stroke="#F2B51C" stroke-width="1.4" stroke-linejoin="round"/></svg>';
-window.__stars = (n) => starsToCounter(innerWidth / 2, innerHeight * 0.6, n, false);
+if (DEV) window.__stars = (n) => starsToCounter(innerWidth / 2, innerHeight * 0.6, n, false);
 function starBurst(el, n, counted = false) { const r = el.getBoundingClientRect(); starsToCounter(r.left + r.width / 2, r.top + r.height / 2, n, counted); }
 function starsToCounter(cx, cy, n, counted = false) {
   const box = $("#hud-score"), sc = $(".sc-n", box), num = $("b", sc), svg = $("svg", sc); if (!sc) return;
@@ -1222,19 +1302,6 @@ function bridgeChoose(ch, stars = 0, centerFrom = null) {
     }));
   });
 }
-// Après la bonne réponse : « Revenir à la carte » à gauche, « Prochain défi » à droite (seul le retour s'il n'y a plus rien à suivre).
-function nextBar(more, label) {
-  return new Promise((res) => {
-    const bar = $("#b-actions"); if (!bar) return; skipEnd = () => res("skip");
-    bar.className = "b-actions two";
-    const inChap = $("#sheet").classList.contains("chap");
-    bar.innerHTML = `${inChap ? "" : '<button class="b-btn ghost small" data-k="map">Revenir à la carte</button>'}${more ? `<button class="b-btn go-next" data-k="next">${label}</button>` : ""}`;
-    bar.classList.toggle("end", inChap);
-    bar.hidden = false; const sh = $("#sheet"); sh.dataset.k = "one";
-    bar.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 320, easing: "cubic-bezier(.2,.9,.25,1.1)" });
-    $$("button", bar).forEach((b) => (b.onclick = () => { const k = b.dataset.k; bar.hidden = true; bar.innerHTML = ""; bar.style.top = bar.style.bottom = ""; delete sh.dataset.k; res(k); }));
-  });
-}
 // Le prochain défi remet la conversation à zéro.
 async function clearTalk() {
   const c = $("#b-talk"); if (!c) return;
@@ -1243,58 +1310,76 @@ async function clearTalk() {
   await Promise.all([...c.children].map((m) => m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: "forwards" }).finished));
   c.innerHTML = ""; c.scrollTop = 0;
 }
-async function bUser(text) { const m = chatAdd(`<div class="m-bubble mine">${esc(text)}</div><span class="m-av">${profileHtml()}</span>`, "mine"); await bsleep(60); bFill(m, "one"); await bsleep(600); return m; }
-const backToMap = async () => { await bridgeActions([{ k: "b", t: "Revenir à la carte", cls: "ghost small" }]); closeSheet(); };
-// Pont reconnu : le macaron se remplit, la bulle d'attente de Corto devient sa réponse, puis les questions s'enchaînent.
-async function bridgeSuccess(b, intro, bravo, t) {
-  try {
-    await factsReady;
-    const list = (FACTS && FACTS.bridges[String(b[0])]) || [];
-    // Le message d'attente de Corto disparaît, la photo apparaît à sa place, puis Corto répond dessous.
-    await t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: "forwards" }).finished; t.remove();
-    await showBridgeInMedal(b, bravo);
-    await bsleep(bravo ? 1500 : 900);
-    chatSel = "#b-talk";
-    t = chatAdd(typingHtml, "fc");
-    // Questions déjà répondues (juste ou faux) : on ne les repose pas. Chaque bonne réponse rapporte des points.
-    const order = shuffle(list.map((_, i) => i).filter((i) => !has(`z:${b[0]}:${i}`)));
-        const say1 = async (el, text, pad) => { cortoType(el); await bsleep(1000); cortoFill(el, text.replace(/\{g\}/g, gradeLc())); bFill(el, pad); await bsleep(450); };
-    if (!list.length) await say1(t, intro, "one");
-    else if (!order.length) await say1(t, intro + " " + FACTS.summary[String(b[0])], "one");
-    if (!list.length || !order.length) { await backToMap(); return; }
-    let lead = intro, el = t;
-    for (let n = 0; n < order.length; n++) {
-      const f = list[order[n]];
-      const ch = shuffle(f.c.map((x, i) => ({ t: x, ok: i === 0 })));
-      if (n) { await clearTalk(); el = chatAdd(typingHtml, "fc"); lead = ""; }
-      await say1(el, (lead ? lead + " " : "") + (n ? pick(ASKS_NEXT) : "") + f.q, barHeight(ch.map((c) => c.t)));
-      const r = await bridgeChoose(ch, POINTS.quiz);
-      award(`z:${b[0]}:${order[n]}`, r.first ? POINTS.quiz : 0, meIdx()); save(); if (r.first) confetti(30); refreshAll();
-      await bUser(r.t);
-      await say1(chatAdd(typingHtml, "fc"), (r.first ? `**Bravo !** ` : "**C'est la bonne réponse !** ") + f.t, "one");
-      if ((await nextBar(n < order.length - 1, "Question suivante ›")) === "map") { closeSheet(); return; }
-    }
-  } catch (e) { if (e !== 0) throw e; }
+// Le panneau des ponts n'est créé qu'après une correspondance GPS. Le décor reste net en haut,
+// puis se fond dans le lavis sombre du QCM, comme dans une épreuve de lieu.
+function openBridgeCeremony(b, intro) {
+  const sh = $("#sheet"), list = (FACTS && FACTS.bridges[String(b[0])]) || [];
+  const order = shuffle(list.map((_, i) => i).filter((i) => !has(`z:${b[0]}:${i}`)));
+  const genericImage = !b[1] || !b[3];
+  const image = genericImage ? "img/ponts/_generic.webp" : `img/ponts/${b[0]}.webp`;
+  openId = "bridges"; $("#next").hidden = true; $("#bridge-btn").hidden = true; document.body.classList.add("bridge-open");
+  sh.getAnimations().forEach((animation) => animation.cancel()); sh.style.backgroundColor = "";
+  sh.hidden = false; sh.className = "bridge-ceremony bridge-thinking"; sh.onclick = null;
+  sh.innerHTML = `<img class="bridge-hero" src="${image}" alt="${esc(genericImage ? "Illustration d’un pont de Venise" : `Photo de ${b[1]}`)}"><div class="bridge-shade"></div><div class="bridge-sparks" aria-hidden="true"><span>✦</span><span>✧</span><span>✦</span><span>✧</span><span>✦</span><span>✧</span></div><div class="bridge-claim msg mine"><div class="m-bubble mine">Je suis sur un pont !<span class="bridge-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></div><span class="m-av">${profileHtml()}</span></div><h2 class="bridge-name">${esc(b[1] || "Pont sans nom")}</h2><div class="bridge-stage"><div class="bridge-answers" hidden></div><div class="bridge-corto"><p class="bridge-words" aria-live="polite"></p><img src="img/corto-content.webp" alt="" aria-hidden="true"></div></div><button type="button" class="bridge-next" hidden></button>`;
+  const hero = $(".bridge-hero", sh), claim = $(".bridge-claim", sh), answers = $(".bridge-answers", sh), words = $(".bridge-words", sh), next = $(".bridge-next", sh);
+  hero.onerror = () => {
+    if (!hero.src.endsWith("/_generic.webp")) hero.src = "img/ponts/_generic.webp";
+    else { hero.remove(); $(".bridge-sparks", sh)?.remove(); }
+  };
+  try { history.pushState({ vqBridge: 1 }, ""); } catch {}
+  const alive = () => openId === "bridges" && !sh.hidden && sh.contains(claim);
+  let cursor = 0, serial = 0;
+  const showQuestion = () => {
+    if (!alive()) return;
+    sh.onclick = null;
+    const current = ++serial, index = order[cursor], fact = list[index];
+    answers.hidden = false; next.hidden = true;
+    words.textContent = fact.q;
+    const choices = shuffle(fact.c.map((text, i) => ({ text, correct: i === 0 })));
+    answers.innerHTML = choices.map((choice, i) => `<button type="button" data-choice="${i}">${esc(choice.text)}</button>`).join("");
+    let answered = false;
+    $$("button", answers).forEach((button) => button.onclick = () => {
+      if (answered) return;
+      const choice = choices[Number(button.dataset.choice)];
+      if (!choice.correct) { button.disabled = true; button.classList.add("wrong"); buzz(); return; }
+      const first = !$(".bridge-answers .wrong", sh);
+      answered = true; $$("button", answers).forEach((item) => item.disabled = true);
+      award(`z:${b[0]}:${index}`, first ? POINTS.quiz : 0, meIdx()); save(); refreshAll();
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      setTimeout(() => { if (!alive() || serial !== current) return; button.classList.add("right"); if (first) { starBurst(button, POINTS.quiz, true); confetti(30); } }, reduced ? 0 : 380);
+      setTimeout(() => { if (!alive() || serial !== current) return; words.innerHTML = richText(fact.t); }, reduced ? 0 : 900);
+      setTimeout(() => {
+        if (!alive() || serial !== current) return;
+        if (cursor < order.length - 1) {
+          next.textContent = "Question suivante"; next.hidden = false;
+          next.onclick = () => { cursor++; showQuestion(); };
+        } else sh.onclick = closeSheet;
+      }, reduced ? 0 : 1500);
+    });
+  };
+  words.innerHTML = richText(intro);
+  const summary = FACTS?.summary?.[String(b[0])];
+  if (!order.length && summary) words.innerHTML += " " + richText(summary);
+  const readingDelay = Math.min(7000, Math.max(4400, intro.length * 52));
+  setTimeout(() => {
+    if (!alive()) return;
+    sh.classList.remove("bridge-thinking"); sh.classList.add("bridge-revealed");
+    if (order.length) setTimeout(showQuestion, readingDelay);
+    else sh.onclick = closeSheet;
+  }, 1300);
 }
-function bridgeFail(t, text) { cortoFill(t, text); }
-const WAIT_LINES = ["Attends, je regarde", "Attends, je sors ma longue-vue", "Ah, je regarde", "Un instant, je regarde autour de toi", "Laisse-moi regarder"];
-// Message d'attente : trois petits points qui bougent montrent que Corto est en train de chercher.
-function cortoWaiting(el, text) { const b = el && $(".m-bubble", el); if (b) { b.classList.remove("typing"); b.innerHTML = esc(text) + '<span class="wdots"><i></i><i></i><i></i></span>'; } }
 async function tryBridge() {
+  if (!DEV && !geoReady) { showGeoGate(); return; }
   if (busy) return; busy = true;
-  const btn = $("#arrive"); if (btn) btn.disabled = true;
+  const btn = $("#bridge-btn");
+  if (btn) { btn.disabled = true; btn.classList.add("bridge-loading"); btn.setAttribute("aria-busy", "true"); }
   try {
-    chatSel = "#b-top";
-    chatAdd(`<div class="m-bubble mine">Je suis sur un pont !</div><span class="m-av">${profileHtml()}</span>`, "mine");
-    chatSel = "#b-talk";
     // Position posée à la main (mode dev) ou sans GPS : aucune attente. Avec un vrai GPS : 4 secondes de moyenne des relevés.
     const manual = !fixIsReal();
-    await bsleep(manual ? 150 : 500);
-    const t = chatAdd(typingHtml, "fc");
-    await bsleep(manual ? 150 : 600); cortoWaiting(t, pick(WAIT_LINES));
-    const [ok] = await Promise.all([manual ? Promise.resolve(!!pos) : getFix(4000), sleep(manual ? 350 : 0)]);
-    await bridgesReady; if (!manual) await bsleep(200);
-    if (!ok || !pos || !BRIDGES) { bridgeFail(t, say("nogps", null)); await backToMap(); return; }
+    const ok = manual ? !!pos : await getFix(4000);
+    await Promise.all([bridgesReady, factsReady]);
+    if (tab !== "map" || openId) return;
+    if (!ok || !pos || !BRIDGES?.length) { cortoSays(say("nogps", null)); return; }
     // On ne retient que le pont le plus proche (sauf égalité à 4 m près, où l'on préfère un pont pas encore validé),
     // s'il est à moins de 10 m + la précision du GPS (15 m au plus).
     const thr = 10 + Math.min(pos.acc || 0, 15);
@@ -1303,15 +1388,19 @@ async function tryBridge() {
     const inRange = best[1] <= thr ? [best] : [], fresh = inRange.length && !has("b:" + best[0][0]) ? best : null;
     if (fresh) {
       const b = fresh[0]; award("b:" + b[0], POINTS.bridge, meIdx()); save(); chime(); confetti(50); refreshAll();
-      busy = false; await bridgeSuccess(b, say(b[1] ? "bridgeNew" : "bridgeNewAnon", null, { bridge: bridgeName(b), n: bridgeCount() }), true, t);
-    } else if (inRange.length) { busy = false; await bridgeSuccess(inRange[0][0], say(inRange[0][0][1] ? "bridgeDone" : "bridgeDoneAnon", null, { bridge: bridgeName(inRange[0][0]) }), false, t); }
-    else { bridgeFail(t, say("bridgeNone", null, { bridge: bridgeName(ds[0][0]), dist: ds[0][1] })); await backToMap(); }
-  } catch (e) { if (e !== 0) throw e; }
-  finally { busy = false; if (btn) btn.disabled = false; }
+      openBridgeCeremony(b, say(b[1] ? "bridgeNew" : "bridgeNewAnon", null, { bridge: bridgeName(b), n: bridgeCount() }));
+    } else if (inRange.length) {
+      const b = inRange[0][0]; openBridgeCeremony(b, say(b[1] ? "bridgeDone" : "bridgeDoneAnon", null, { bridge: bridgeName(b) }));
+    } else cortoSays(say("bridgeNone", null, { bridge: bridgeName(ds[0][0]), dist: ds[0][1] }));
+  } catch (e) { console.error("Pont : localisation impossible", e); cortoSays("Je n’arrive pas à retrouver ce pont pour l’instant. Réessaie dans un moment."); }
+  finally {
+    busy = false;
+    if (btn) { btn.disabled = false; btn.classList.remove("bridge-loading"); btn.removeAttribute("aria-busy"); }
+  }
 }
 function bindArrive(p) {
   const btn = $("#arrive"); let h, fired = false;
-  btn.onpointerdown = () => { fired = false; btn.classList.add("holding"); h = setTimeout(() => { fired = true; btn.classList.remove("holding"); tryArrive(p, true); }, 2000); };
+  if (DEV) btn.onpointerdown = () => { fired = false; btn.classList.add("holding"); h = setTimeout(() => { fired = true; btn.classList.remove("holding"); tryArrive(p, true); }, 2000); };
   const cancel = () => { clearTimeout(h); btn.classList.remove("holding"); };
   ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => btn.addEventListener(ev, cancel));
   btn.onclick = () => { if (fired) { fired = false; return; } tryArrive(p, false); };
@@ -1327,7 +1416,7 @@ async function tryArrive(p, forced) {
   await slideUp(old, mine);
   const t = chatAdd(typingHtml, "fc");
   if (DEV && !forced) { await sleep(500); cortoFill(t, say("success", p)); await sleep(700); busy = false; await (inProgress(p) ? resumeQuest(p) : arrivalReveal(p)); return; } // mode dev : « J'y suis ! » marche toujours, sans test GPS
-  if (forced) { await sleep(900); cortoFill(t, say("forced", p)); await sleep(900); busy = false; await (inProgress(p) ? resumeQuest(p) : arrivalReveal(p)); return; }
+  if (forced && DEV) { await sleep(900); cortoFill(t, say("forced", p)); await sleep(900); busy = false; await (inProgress(p) ? resumeQuest(p) : arrivalReveal(p)); return; }
   let ok = true;
   if (fixIsReal()) { await sleep(700); cortoFill(t, say("wait", p)); ok = await getFix(); cortoType(t); await sleep(700); }
   else { await sleep(700); }
@@ -1662,7 +1751,7 @@ async function runChapters(p, replay = false) {
     const chainBar = (qs, from) => qs.slice(from).reduce((m, x) => Math.max(m, barHeight(x.opts)), 0);
     // Place l'image de révélation sous la bulle de Corto, et la fait finir (fondue) avant les boutons ou les pastilles.
     const placeImg = () => {};
-    window.__fitRev = () => $$(".rev-img").forEach(fitRevImg); // l'image de révélation occupe la partie haute de l'écran (voir la feuille de style : .chap .rev-img), au-dessus de la bande de Corto
+    if (DEV) window.__fitRev = () => $$(".rev-img").forEach(fitRevImg); // l'image de révélation occupe la partie haute de l'écran (voir la feuille de style : .chap .rev-img), au-dessus de la bande de Corto
     outer: for (let k = 0; k < todo.length; k++) {
       const s = todo[k], qs = chainOf(s);
       let j = replay ? 0 : qs.findIndex((x) => !taskDone(p.id, x.idx)), rv = null, im = null;
@@ -1758,34 +1847,29 @@ function menuDock() {
   let d = $("#up-dock"); if (d) return d;
   d = document.createElement("div"); d.id = "up-dock"; d.className = "dock up-dock";
   d.innerHTML = `<button type="button" class="dk dk-exit" aria-label="Revenir à la carte de Venise">${EXIT_SVG}</button>`;
-  $(".dk-exit", d).onclick = () => { if (history.state && history.state.vqMenu) history.back(); else setTab("map"); };
+  $(".dk-exit", d).onclick = returnToMap;
   document.body.appendChild(d); return d;
+}
+function returnToMap() {
+  if (tab === "map") return;
+  const back = !!(history.state && history.state.vqMenu);
+  setTab("map"); // l'écran change dans ce tour d'événement, sans attendre popstate
+  if (back && !menuReturnPending) { menuReturnPending = true; history.back(); }
 }
 function setTab(t) {
   tab = t; if (t !== "map") lastTab = t;
-  if (t !== "map" && !menuOpen) { menuOpen = true; try { history.pushState({ vqMenu: 1 }, ""); } catch {} } if (t === "map") menuOpen = false;
+  if (t !== "map" && !menuOpen) { menuOpen = true; if (!menuReturnPending) { try { history.pushState({ vqMenu: 1 }, ""); } catch {} } } if (t === "map") menuOpen = false;
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   const onTab = $("#up-bar .up-tabs button.on"); if (onTab && onTab.scrollIntoView) setTimeout(() => onTab.scrollIntoView({ inline: "center", block: "nearest" }), 30);
   $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; document.body.classList.toggle("menu-open", t !== "map"); { const ms = $("#menu-say"); if (ms) ms.hidden = t === "map"; } if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
   ["days", "objects", "bridges", "photos", "works", "music", "trophies", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
-  $("#tab-dev").hidden = !DEV;
+  $("#tab-dev").hidden = t !== "dev";
   $("#bridge-btn").hidden = t !== "map";
   if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "music") renderMusicCollection(); if (t === "trophies") renderTrophies(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
   if (t === "map") { setTimeout(() => map.resize(), 50); renderNext(); } else $("#next").hidden = true;
   if (t !== "map") closeSheetKeep();
   scheduleGeoSync();
-}
-// Ouverture du menu depuis sa propre image : le panneau est déjà là, visible seulement dans un disque qui part du pictogramme et grandit jusqu'à remplir l'écran.
-function openMenuFrom(me) {
-  const r = me.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-  const R = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)) + 20;
-  setTab(lastTab);
-  for (const el of [$("#up-bar"), $(".view:not([hidden])")]) {
-    if (!el) continue;
-    const b = el.getBoundingClientRect(), at = `${cx - b.left}px ${cy - b.top}px`;
-    el.animate([{ clipPath: `circle(14px at ${at})` }, { clipPath: `circle(${R}px at ${at})` }], { duration: 520, easing: "cubic-bezier(.45,0,.25,1)" });
-  }
 }
 // Tirer vers le bas dans un écran du menu (profil) recharge l'appli : le service worker va chercher la dernière version.
 (() => {
@@ -1959,21 +2043,36 @@ function solemn(p) {
     o.onclick = close;
   });
 }
-// Le vrai fragment flotte doucement dans la partie visible de la photo et rebondit sur ses bords.
+// Le vrai fragment traverse la photo et rebondit sur ses bords, suivi d'une petite traînée d'étoiles.
 function floatMusicFragment(photo, im, fragment, start) {
-  let x = start[0], y = start[1], vx = 29, vy = 21, frame = 0, last = 0;
+  let x = start[0], y = start[1], vx = 51, vy = 36, frame = 0, last = 0;
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const trail = reducedMotion ? null : document.createElement("div");
+  if (trail) { trail.className = "hid-music-trail"; trail.setAttribute("aria-hidden", "true"); trail.innerHTML = Array.from({ length: 5 }, () => "<i>✦</i>").join(""); photo.appendChild(trail); }
+  const sparks = trail ? [...trail.children] : [];
+  let halfW = fragment.offsetWidth / 2, halfH = fragment.offsetHeight / 2;
   const bounds = () => {
     const r = im.getBoundingClientRect(), pr = photo.getBoundingClientRect();
     const scale = Math.min(r.width / im.naturalWidth, r.height / im.naturalHeight);
     const w = im.naturalWidth * scale, h = im.naturalHeight * scale;
     const left = r.left - pr.left + (r.width - w) / 2, top = r.top - pr.top + (r.height - h) / 2;
-    const halfW = fragment.offsetWidth / 2, halfH = fragment.offsetHeight / 2;
+    halfW = fragment.offsetWidth / 2; halfH = fragment.offsetHeight / 2;
     return { minX: left + halfW + 8, maxX: left + w - halfW - 8, minY: top + halfH + 8, maxY: top + h - halfH - 8 };
   };
-  const position = () => { fragment.style.left = x + "px"; fragment.style.top = y + "px"; };
+  const position = () => {
+    fragment.style.left = x + "px"; fragment.style.top = y + "px";
+    if (!trail) return;
+    const speed = Math.hypot(vx, vy), dx = vx / speed, dy = vy / speed;
+    const edge = Math.min(halfW / Math.max(Math.abs(dx), .01), halfH / Math.max(Math.abs(dy), .01));
+    sparks.forEach((star, i) => {
+      const distance = edge + 9 + i * 17, side = (i % 2 ? 1 : -1) * (5 + i * 2);
+      star.style.left = x - dx * distance - dy * side + "px";
+      star.style.top = y - dy * distance + dx * side + "px";
+    });
+  };
   const fit = () => { const b = bounds(); x = Math.max(b.minX, Math.min(b.maxX, x)); y = Math.max(b.minY, Math.min(b.maxY, y)); position(); };
   const tick = (now) => {
-    if (!fragment.isConnected) return;
+    if (!fragment.isConnected) { trail?.remove(); return; }
     const dt = Math.min((now - (last || now)) / 1000, .05); last = now;
     const b = bounds();
     x += vx * dt; y += vy * dt;
@@ -1982,8 +2081,8 @@ function floatMusicFragment(photo, im, fragment, start) {
     position(); frame = requestAnimationFrame(tick);
   };
   fit();
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) frame = requestAnimationFrame(tick);
-  return () => cancelAnimationFrame(frame);
+  if (!reducedMotion) frame = requestAnimationFrame(tick);
+  return () => { cancelAnimationFrame(frame); trail?.remove(); };
 }
 // Trésors cachés sur les photos (une fois le mot de Corto entendu) : étoiles à tapoter et, sur la photo du saint, l'objet magique.
 function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {}, preview = false } = {}) {
@@ -2073,8 +2172,15 @@ function startMusicWalk(entry) {
   $("button", player).onclick = () => { $("audio", player).pause(); player.remove(); };
   const play = $("audio", player).play(); if (play?.catch) play.catch(() => toast("Appuie sur lecture pour lancer la musique."));
 }
-function musicListeningEditor(overlay, p, elements, defaults) {
-  const layout = (MUSIC_LAYOUT[p.id] ||= {}), controller = new AbortController();
+function musicListeningEditor(overlay, p, elements, defaults, phase = "opening") {
+  const placeLayout = (MUSIC_LAYOUT[p.id] ||= {});
+  // La seconde pause d'écoute reprend exactement les réglages géométriques de la première,
+  // puis peut être ajustée séparément sans recopier son texte personnalisé.
+  const layout = phase === "duo" ? (placeLayout.duo ||= Object.fromEntries(["lead", "invitation", "player"].map((key) => {
+    const { x = 0, y = 0, s = 1 } = placeLayout[key] || {};
+    return [key, { x, y, s }];
+  }))) : placeLayout;
+  const controller = new AbortController();
   const apply = (key) => {
     const el = elements[key], c = layout[key] || {}, size = Math.max(.5, Math.min(2, Number(c.s) || 1));
     el.style.translate = `${Number(c.x) || 0}vw ${Number(c.y) || 0}vh`;
@@ -2149,16 +2255,17 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
   if (!entry) { musicOpening = false; toast("Ce fragment musical est introuvable."); return; }
   const overlay = document.createElement("section"); overlay.className = "music-quest music-flow-quest"; overlay.setAttribute("aria-label", "Défi musical");
   overlay.style.setProperty("--music-flow-bg", `url("${pic(p.id)}")`);
-  overlay.innerHTML = `<button type="button" class="mq-exit" aria-label="Quitter le défi musical">←</button><img class="mq-fragment" src="${esc(entry.fragment)}" alt="Morceau de la partition des Vêpres"><div class="mq-body"></div>`;
+  overlay.innerHTML = `<button type="button" class="mq-exit" aria-label="Quitter le défi musical">←</button><img class="mq-fragment" src="${esc(entry.fragment)}" alt="Morceau de la partition des Vêpres"><div class="mq-body"></div><div class="mq-transition" aria-hidden="true"></div>`;
   document.body.appendChild(overlay); document.body.classList.add("music-quest-active"); musicOpening = false; scheduleGeoSync();
   const body = $(".mq-body", overlay);
-  let clip = null, stopMusicEditor = () => {};
-  const stopClip = () => { if (clip) { clip.pause(); clip = null; } };
-  const close = () => { stopMusicEditor(); stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); scheduleGeoSync(); };
+  let clip = null, stopMusicEditor = () => {}, stopQuestionLayout = () => {}, transitioning = false;
+  const stopClip = () => { if (clip) { clip.ontimeupdate = clip.onended = null; clip.pause(); clip = null; } };
+  const close = () => { stopQuestionLayout(); stopMusicEditor(); stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); scheduleGeoSync(); };
   $(".mq-exit", overlay).onclick = close;
   const credit = `<p class="mq-credit">${esc(entry.credit.text)}${entry.credit.source ? ` <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a>` : ""}${entry.credit.license ? ` · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">Licence</a>` : ""}</p>`;
+  const questionKey = (question, index) => `music:${id}:q:${question.key ?? index}`;
   const victory = () => {
-    stopClip();
+    stopQuestionLayout(); stopMusicEditor(); stopClip();
     if (!has(`music:${id}:won`)) { award(`music:${id}:won`, 20, meIdx()); save(); refreshAll(); confetti(100); onWon(); }
     body.className = "mq-body mq-victory";
     body.innerHTML = `<span class="mq-kicker">Fragment gagné</span><h2>Bravo, ${esc(gradeLc())} !</h2><p>Ce morceau de partition rejoint ton livre. Écoute maintenant le mouvement entier en te promenant autour de l'église.</p><button type="button" class="mq-main" data-walk>▶ Écouter en déambulant</button><button type="button" class="mq-later" data-later>Je l'écouterai plus tard</button>${credit}`;
@@ -2166,54 +2273,98 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     $("[data-walk]", body).onclick = () => { startMusicWalk(entry); close(); if (tab !== "map") setTab("map"); if (openId) closeSheet(); };
   };
   const showQuestion = (index) => {
-    stopMusicEditor(); stopClip();
     if (index >= entry.questions.length) { victory(); return; }
+    stopQuestionLayout(); stopMusicEditor();
     const q = entry.questions[index];
-    body.className = "mq-body";
-    body.innerHTML = `<p class="mq-question">${esc(q.question)}</p><button type="button" class="mq-listen">▶ Écouter ${q.audio === "long" ? "le passage long" : "l'extrait court"}</button><div class="mq-options">${q.options.map((answer, j) => `<button type="button" data-answer="${j}">${esc(answer)}</button>`).join("")}</div><div class="mq-feedback" aria-live="polite"></div>${credit}`;
-    const listen = $(".mq-listen", body);
-    listen.onclick = () => {
-      if (clip && !clip.paused) { clip.pause(); listen.textContent = "▶ Reprendre l'écoute"; return; }
-      if (!clip) { clip = new Audio(entry[q.audio]); clip.onended = () => { listen.textContent = "▶ Réécouter"; }; }
-      clip.play().then(() => { listen.textContent = "❚❚ Pause"; }).catch(() => { listen.textContent = "Lecture impossible"; });
+    body.classList.add("mq-quizzing");
+    $(".mq-listen-next", body).hidden = true;
+    $(".mq-quiz-stage", body)?.remove();
+    const stage = document.createElement("div"); stage.className = "mq-quiz-stage";
+    const grid = q.options.length === 4 && q.options.every((option) => option.length <= 22);
+    stage.innerHTML = `<div class="mq-quiz-options${grid ? " grid" : ""}">${q.options.map((answer, j) => `<button type="button" data-answer="${j}">${esc(answer)}</button>`).join("")}</div><p class="mq-quiz-note" aria-live="polite"></p><div class="mq-corto-line"><div class="mq-corto-bubble"><span class="mq-corto-question">${esc(q.question)}</span><span class="mq-corto-explanation" hidden>${esc(q.explanation)}</span></div><span class="mq-corto-face" aria-hidden="true"></span></div>`;
+    body.appendChild(stage);
+    const footer = document.createElement("div"); footer.className = "mq-quiz-foot";
+    footer.innerHTML = `<button type="button" class="mq-quiz-continue" hidden>${index + 1 === entry.questions.length ? "Terminer" : "Continuer"} →</button>`;
+    overlay.appendChild(footer);
+    const placeQuestion = () => {
+      if (!stage.isConnected) return;
+      const player = $(".mq-listen-player", body), box = body.getBoundingClientRect();
+      stage.style.top = Math.max(0, Math.ceil(player.getBoundingClientRect().bottom - box.top + 10)) + "px";
     };
-    $$("[data-answer]", body).forEach((button) => button.onclick = () => {
-      if (+button.dataset.answer !== q.answer) { button.disabled = true; button.classList.add("wrong"); $(".mq-feedback", body).textContent = "Essaie encore, écoute bien !"; return; }
-      stopClip(); button.classList.add("right"); $$("[data-answer]", body).forEach((other) => other.disabled = true);
-      if (!has(`music:${id}:q:${index}`)) { award(`music:${id}:q:${index}`, 10, meIdx()); save(); refreshAll(); }
-      body.classList.add("mq-answered");
-      const feedback = $(".mq-feedback", body); feedback.textContent = q.explanation;
-      const next = document.createElement("button"); next.type = "button"; next.className = "mq-main"; next.textContent = index + 1 === entry.questions.length ? "Recevoir le fragment" : "Question suivante";
-      next.onclick = () => showQuestion(index + 1); feedback.appendChild(next);
+    placeQuestion(); requestAnimationFrame(placeQuestion);
+    window.addEventListener("resize", placeQuestion);
+    stopQuestionLayout = () => { window.removeEventListener("resize", placeQuestion); footer.remove(); };
+    const choices = $$("[data-answer]", stage), note = $(".mq-quiz-note", stage), bubble = $(".mq-corto-bubble", stage), question = $(".mq-corto-question", stage), explanation = $(".mq-corto-explanation", stage), next = $(".mq-quiz-continue", footer);
+    let wrong = 0, answered = false, advanced = false;
+    const advance = () => {
+      if (advanced) return; advanced = true; footer.remove();
+      if (index === 1 && entry.duo) transitionToDuo(); else showQuestion(index + 1);
+    };
+    choices.forEach((button) => button.onclick = () => {
+      if (answered) return;
+      if (+button.dataset.answer !== q.answer) { wrong++; buzz(); button.disabled = true; button.classList.add("wrong"); note.textContent = "Essaie encore, écoute bien !"; return; }
+      answered = true; choices.forEach((other) => other.disabled = true); note.textContent = "";
+      bubble.style.minHeight = Math.ceil(bubble.getBoundingClientRect().height) + "px";
+      const doneKey = questionKey(q, index), fresh = !has(doneKey);
+      const points = q.key === "duo" && has(`music:${id}:q:${index}`) ? 0 : 10;
+      if (fresh) { award(doneKey, points, meIdx()); save(); refreshAll(); }
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      setTimeout(() => { if (!stage.isConnected) return; button.classList.add("right"); if (fresh && !wrong && points) starBurst(button, points, true); }, reduced ? 0 : 380);
+      setTimeout(() => { if (!stage.isConnected) return; question.hidden = true; explanation.hidden = false; }, reduced ? 0 : 900);
+      setTimeout(() => { if (!stage.isConnected) return; next.hidden = false; next.onclick = (event) => { event.stopPropagation(); advance(); }; stage.onclick = advance; }, reduced ? 0 : 1500);
     });
   };
-  const showListening = () => {
-    stopMusicEditor(); stopClip();
+  const showListening = (phase = "opening", resumeIndex = null) => {
+    stopQuestionLayout(); stopMusicEditor(); stopClip();
+    const isDuo = phase === "duo";
     body.className = "mq-body mq-listening";
-    const heights = Array.isArray(entry.waveform) && entry.waveform.length ? entry.waveform : Array.from({ length: 56 }, (_, i) => 30 + 45 * Math.abs(Math.sin(i * .7)));
+    const shape = isDuo ? entry.duoWaveform : entry.waveform;
+    const heights = Array.isArray(shape) && shape.length ? shape : Array.from({ length: 56 }, (_, i) => 30 + 45 * Math.abs(Math.sin(i * .7)));
     const bars = heights.map((height) => `<i style="height:${Math.max(9, Math.min(100, Number(height) || 9))}%"></i>`).join("");
-    const defaults = { lead: "Les quelques notes dessinées sur cette portée font naître une mélodie unique et mystérieuse, qui a traversé les siècles jusqu’à toi…", invitation: "Ouvre grand tes oreilles et écoute !" };
-    body.innerHTML = `<div class="mq-listen-center"><p class="mq-listen-lead" data-music-edit="lead">${esc(defaults.lead)}</p><p class="mq-listen-invitation" data-music-edit="invitation">${esc(defaults.invitation)}</p><div class="mq-listen-player" data-music-edit="player"><button type="button" class="mq-play-toggle" aria-label="Lire l’extrait">▶</button><div class="mq-wave-track" role="progressbar" aria-label="Avancement de l’écoute" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="--progress:0%"><div class="mq-wave-bars">${bars}</div><div class="mq-wave-bars mq-wave-filled">${bars}</div></div></div><p class="mq-listen-status" aria-live="polite"></p><button type="button" class="mq-listen-next" hidden>Continuer <span aria-hidden="true">→</span></button></div>${credit}`;
-    stopMusicEditor = musicListeningEditor(overlay, p, { lead: $(".mq-listen-lead", body), invitation: $(".mq-listen-invitation", body), player: $(".mq-listen-player", body) }, defaults);
+    const defaults = isDuo
+      ? { lead: "Plus loin dans la musique, une seconde voix rejoint la première…", invitation: "Écoute-les se répondre, se croiser, puis chanter ensemble." }
+      : { lead: "Les quelques notes dessinées sur cette portée font naître une mélodie unique et mystérieuse, qui a traversé les siècles jusqu’à toi…", invitation: "Ouvre grand tes oreilles et écoute !" };
+    body.innerHTML = `<div class="mq-listen-center"><p class="mq-listen-lead" data-music-edit="lead">${esc(defaults.lead)}</p><p class="mq-listen-invitation" data-music-edit="invitation">${esc(defaults.invitation)}</p><div class="mq-listen-player" data-music-edit="player"><button type="button" class="mq-play-toggle" aria-label="Lire l’extrait">▶</button><div class="mq-wave-track" role="progressbar" aria-label="Avancement de l’écoute" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="--progress:0%"><div class="mq-wave-bars">${bars}</div><div class="mq-wave-bars mq-wave-filled">${bars}</div></div></div><p class="mq-listen-status" aria-live="polite"></p><button type="button" class="mq-listen-next" hidden>${isDuo ? "Suivant" : "Continuer"} <span aria-hidden="true">→</span></button></div>${credit}`;
+    stopMusicEditor = musicListeningEditor(overlay, p, { lead: $(".mq-listen-lead", body), invitation: $(".mq-listen-invitation", body), player: $(".mq-listen-player", body) }, defaults, phase);
     const listen = $(".mq-play-toggle", body), wave = $(".mq-wave-track", body), next = $(".mq-listen-next", body), status = $(".mq-listen-status", body);
-    clip = new Audio(entry.short);
+    if (DEV) next.hidden = false; // mode développeur : passer l'écoute sans attendre la fin
+    clip = new Audio(isDuo ? entry.duo : entry.short);
     let finished = false;
     const progress = () => { const amount = Number.isFinite(clip.duration) && clip.duration > 0 ? Math.min(100, clip.currentTime / clip.duration * 100) : 0; wave.style.setProperty("--progress", amount + "%"); wave.setAttribute("aria-valuenow", String(Math.round(amount))); };
     clip.ontimeupdate = progress;
-    clip.onended = () => { finished = true; progress(); listen.textContent = "↻"; listen.setAttribute("aria-label", "Réécouter l’extrait"); next.hidden = false; body.classList.add("mq-listen-finished"); };
-    const advance = () => { if (!finished) return; overlay.removeEventListener("click", onScreenTap); showQuestion(0); };
+    clip.onended = () => { finished = true; progress(); listen.textContent = "↻"; listen.setAttribute("aria-label", "Réécouter l’extrait"); if (!body.classList.contains("mq-quizzing")) next.hidden = false; body.classList.add("mq-listen-finished"); };
+    const advance = () => { if (!finished && !DEV) return; overlay.removeEventListener("click", onScreenTap); showQuestion(isDuo ? 2 : 0); };
     const onScreenTap = (event) => { if (!finished || overlay.classList.contains("mq-editing") || event.target.closest(".mq-listen-player,.mq-exit,.mq-edit-bar")) return; advance(); };
-    overlay.addEventListener("click", onScreenTap);
+    if (!isDuo && resumeIndex === null) overlay.addEventListener("click", onScreenTap);
     listen.onclick = (event) => {
       event.stopPropagation();
       if (!clip.paused) { clip.pause(); listen.textContent = "▶"; listen.setAttribute("aria-label", "Reprendre l’écoute"); return; }
       if (clip.ended) clip.currentTime = 0;
-      clip.play().then(() => { listen.textContent = "❚❚"; listen.setAttribute("aria-label", "Mettre en pause"); status.textContent = ""; }).catch(() => { status.textContent = "La lecture est impossible pour l’instant."; finished = true; next.hidden = false; });
+      clip.play().then(() => { listen.textContent = "❚❚"; listen.setAttribute("aria-label", "Mettre en pause"); status.textContent = ""; }).catch(() => { status.textContent = "La lecture est impossible pour l’instant."; finished = true; if (!body.classList.contains("mq-quizzing")) next.hidden = false; });
     };
     next.onclick = (event) => { event.stopPropagation(); advance(); };
+    if (resumeIndex !== null) showQuestion(resumeIndex);
   };
-  const first = replay ? 0 : entry.questions.findIndex((_, index) => !has(`music:${id}:q:${index}`));
-  if (first < 0) victory(); else if (first === 0) showListening(); else showQuestion(first);
+  const transitionToDuo = async () => {
+    if (transitioning) return; transitioning = true;
+    const veil = $(".mq-transition", overlay), reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduced) {
+      veil.style.pointerEvents = "auto";
+      const fadeIn = veil.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, fill: "forwards", easing: "ease-in-out" });
+      await fadeIn.finished.catch(() => {});
+      if (!overlay.isConnected) return;
+      veil.style.opacity = "1"; fadeIn.cancel();
+    }
+    showListening("duo");
+    if (!reduced) {
+      const fadeOut = veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 850, fill: "forwards", easing: "ease-in-out" });
+      await fadeOut.finished.catch(() => {});
+      veil.style.opacity = "0"; fadeOut.cancel(); veil.style.pointerEvents = "none";
+    }
+    transitioning = false;
+  };
+  const first = replay ? 0 : entry.questions.findIndex((question, index) => !has(questionKey(question, index)));
+  if (first < 0) victory(); else if (first < 2) showListening("opening", first || null); else showListening("duo", first);
 }
 async function renderMusicCollection() {
   const v = $("#v-music"); menuSay("Chaque fragment de partition a sa musique. Retrouve-les ici, matelot.");
@@ -2279,7 +2430,7 @@ const BADGES = [
 /* ───────── Objets de poche : les trois trésors du parcours et douze futurs objets à collectionner. ─────────
    PREVIEW_OBJECTS présente le catalogue entier sans attribuer les objets au joueur ni les synchroniser.
    Les trésors existants gardent leur clé tr:<lieu> ; les nouveaux utiliseront o:<id> quand une épreuve les remettra. */
-const PREVIEW_OBJECTS = true;
+const PREVIEW_OBJECTS = DEV;
 const OBJECTS = [
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
   { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
@@ -2432,7 +2583,7 @@ function renderObjects() {
   $$(".ob", v).forEach(bindObjectDrag);
   renderObjectAssembly();
 }
-window.__objects = {
+if (DEV) window.__objects = {
   list: objectList,
   find: (id) => { const o = OBJECTS.find((item) => item.id === id); if (o && !has(o.key)) { award(o.key, 0, meIdx()); save(); refreshAll(); if (tab === "objects") renderObjects(); } },
   reset: () => { OBJECTS.filter((o) => has(o.key)).forEach((o) => unaward(o.key)); objectAssembly.clear(); heldId = null; saveHeld(); if (heldEl) { heldEl.remove(); heldEl = null; } save(); refreshAll(); if (tab === "objects") renderObjects(); },
@@ -2505,7 +2656,7 @@ async function claimQuestionWork(id) {
   rainWorkStars();
   return w;
 }
-window.__works = { find: findWork, load: loadWorks, all: async () => (await loadWorks()).oeuvres.map((w) => w.id), reset: async () => { (await loadWorks()).oeuvres.forEach((w) => { if (workFound(w.id)) unaward("w:" + w.id); }); save(); renderHud(); if (tab === "works") renderWorks(); } };
+if (DEV) window.__works = { find: findWork, load: loadWorks, all: async () => (await loadWorks()).oeuvres.map((w) => w.id), reset: async () => { (await loadWorks()).oeuvres.forEach((w) => { if (workFound(w.id)) unaward("w:" + w.id); }); save(); renderHud(); if (tab === "works") renderWorks(); } };
 const WORKS_MSG = "Collectionne les toiles de maîtres : elles s'afficheront ici en hommage à ta ténacité et te rapporteront un max d'étoiles !";
 // Mosaïque justifiée (mêmes règles que les ponts : rangées de hauteurs variées jusqu'au bord, photos légèrement espacées, dernière rangée incomplète à sa taille naturelle)
 function mosaicHtml(items, W, cls) {
@@ -2748,8 +2899,8 @@ function checkCeremony() {
   if (hit !== null) ceremony(OUTFIT_LEVELS[hit], hit);
 }
 setInterval(checkCeremony, 2500);
-window.__ceremony = (key, li) => ceremony(key, li);
-window.__compose = (...a) => composeOutfit(...a); window.__metrics = (i, c) => headMetrics(i, c);
+if (DEV) { window.__ceremony = (key, li) => ceremony(key, li);
+window.__compose = (...a) => composeOutfit(...a); window.__metrics = (i, c) => headMetrics(i, c); }
 // Remet les lieux choisis dans l'état « jamais visités », sans toucher au profil ni aux ponts.
 async function resetPlaceProgress(places) {
   const ids = new Set(places.map((p) => p.id));
@@ -2774,15 +2925,20 @@ async function resetPlaceProgress(places) {
   return { keys: keys.length, photos: photos.length };
 }
 async function renderDev() {
+  const v = $("#v-dev");
+  v.innerHTML = `<h2>🔧 Développement</h2><div class="card"><label class="chk"><input type="checkbox" id="dev-switch" ${DEV ? "checked" : ""}> <span>Activer le mode développeur</span></label><p class="muted">${DEV ? "Les outils de test sont actifs." : "Mode jeu réel : les lieux et les ponts exigent la localisation."}</p></div>`;
+  $("#dev-switch", v).onchange = (e) => { try { localStorage.setItem("vq_dev_enabled_v2", e.target.checked ? "1" : "0"); } catch {} location.reload(); };
+  if (!DEV) { menuSay("La localisation est nécessaire pour jouer, matelot."); return; }
   menuSay("Mode test : ici on essaie des choses, matelot.");
-  const v = $("#v-dev"), P = typeof PROFILE !== "undefined" ? PROFILE : null;
+  const switchHtml = v.innerHTML, P = typeof PROFILE !== "undefined" ? PROFILE : null;
   OUTFITS ||= await (await fetch("data/outfits.json")).json();
   const st = (renderDev.st ||= { hs: 1.25, hy: 0, cw: 3.1, cy: 0, src: P && P.photo ? "me" : "doge" });
   const useDoge = st.src === "doge" || !P || !P.photo, photo = useDoge ? "img/outfit/_test-doge-framed.webp" : P.photo, cut = useDoge ? true : !!P.cut, frame = useDoge ? true : P.frame || false;
   const slider = (k, lab, min, max, step) => `<label class="dv-s"><span>${lab} <b>${st[k].toFixed(2)}</b></span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${st[k]}"></label>`;
-  v.innerHTML = `<h2>🛠️ Tenues de grade</h2><p class="muted">${useDoge ? "Tête d'essai : le doge, cadré dans l'ovale." : "Ta tête enregistrée" + (frame ? " (cadrée dans l'ovale)" : cut ? " (détourée, ancien cadrage : réglages approximatifs)" : " (photo ronde)")}. Les réglages valent pour tous les grades.</p>
+  v.innerHTML = switchHtml + `<h2>🛠️ Tenues de grade</h2><p class="muted">${useDoge ? "Tête d'essai : le doge, cadré dans l'ovale." : "Ta tête enregistrée" + (frame ? " (cadrée dans l'ovale)" : cut ? " (détourée, ancien cadrage : réglages approximatifs)" : " (photo ronde)")}. Les réglages valent pour tous les grades.</p>
     <div class="card dv-ctl"><div class="dv-src"><button class="btn ghost${useDoge ? "" : " on"}" data-src="me"${P && P.photo ? "" : " disabled"}>Ma tête</button><button class="btn ghost${useDoge ? " on" : ""}" data-src="doge">Tête du doge (essai)</button></div>${slider("hs", "Taille du chapeau", 0.8, 1.8, 0.01)}${slider("hy", "Hauteur du chapeau", -0.3, 0.5, 0.01)}${slider("cw", "Largeur du col", 1.4, 4.2, 0.01)}${slider("cy", "Hauteur du col", -0.4, 0.4, 0.01)}<label class="dv-s"><span><input type="checkbox" id="dv-oval"> Afficher l'ovale de la prise de photo</span></label><button class="btn ghost" id="dv-copy">Copier les réglages</button></div>
     <div class="dv-grid">${LEVELS.filter((l) => GRADE_KEYS[l.name]).map((l) => { const k = GRADE_KEYS[l.name]; return `<div class="dv-tile" data-k="${k || ""}"><div class="dv-pic">${k && OUTFITS[k] ? "…" : '<span class="muted">en attente du dessin</span>'}</div><small>${l.emoji} ${esc(l.name)}</small>${k && OUTFITS[k] ? `<div class="dv-act"><button class="btn ghost" data-wear="${k}">Porter</button><button class="btn ghost" data-cer="${k}" data-li="${LEVELS.indexOf(l)}">Cérémonie</button></div>` : ""}</div>`; }).join("")}</div>${P && P.photo ? `<button class="btn ghost" id="dv-off">Retirer la tenue portée${P.outfit ? " (" + esc(P.outfit) + ")" : ""}</button>` : ""}`;
+  $("#dev-switch", v).onchange = (e) => { try { localStorage.setItem("vq_dev_enabled_v2", e.target.checked ? "1" : "0"); } catch {} location.reload(); };
   const paint = async () => { for (const t of $$(".dv-tile", v)) { const k = t.dataset.k; if (!k || !OUTFITS[k]) continue; try { const c = await composeOutfit(photo, cut, k, { ...st, oval: st.oval }, frame); c.className = "dv-cv"; $(".dv-pic", t).replaceChildren(c); } catch { $(".dv-pic", t).textContent = "erreur"; } } };
   const ov = $("#dv-oval", v); ov.checked = !!st.oval; ov.onchange = () => { st.oval = ov.checked; paint(); };
   $$("[data-src]", v).forEach((b) => (b.onclick = () => { st.src = b.dataset.src; renderDev(); }));
@@ -2791,9 +2947,9 @@ async function renderDev() {
   $$("[data-wear]", v).forEach((b) => (b.onclick = async () => { await wearOutfit(b.dataset.wear); toast("Tenue portée : " + b.dataset.wear); renderDev(); }));
   $$("[data-cer]", v).forEach((b) => (b.onclick = () => { setTab("map"); setTimeout(() => ceremony(b.dataset.cer, +b.dataset.li), 350); }));
   const off = $("#dv-off", v); if (off) off.onclick = async () => { await wearOutfit(null); toast("Tenue retirée"); renderDev(); };
-  v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🖼️ Œuvres de maîtres (test)</h2><p class="muted">Simule la découverte des toiles (le vrai déclenchement viendra avec les épreuves).</p><div class="dv-src"><button class="btn ghost" data-wk="one">Trouver une toile</button><button class="btn ghost" data-wk="all">Tout débloquer</button><button class="btn ghost" data-wk="reset">Tout verrouiller</button></div></div>`);
-  v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🐚 Objets trouvés (test)</h2><div class="dv-src"><button class="btn ghost" data-ob="one">Trouver un objet</button><button class="btn ghost" data-ob="all">Tout trouver</button><button class="btn ghost" data-ob="reset">Tout retirer</button></div></div>`);
-  v.insertAdjacentHTML("afterbegin", `<div class="card dv-ctl"><h2>🧩 Épreuves (test)</h2><p class="muted">Remet les lieux dans l'état « jamais visités » : arrivée, questions, plan, trésors, œuvres gagnées, photos du lieu et défi musical. Le profil et les ponts restent.</p><div class="dv-src"><button class="btn ghost" id="reset-miracoli">↺ Réinitialiser l'église-bijou</button><button class="btn ghost" id="reset-trials">↺ Réinitialiser toutes les épreuves</button></div></div>`);
+  v.insertAdjacentHTML("beforeend", `<div class="card dv-ctl"><h2>🖼️ Œuvres de maîtres (test)</h2><p class="muted">Simule la découverte des toiles (le vrai déclenchement viendra avec les épreuves).</p><div class="dv-src"><button class="btn ghost" data-wk="one">Trouver une toile</button><button class="btn ghost" data-wk="all">Tout débloquer</button><button class="btn ghost" data-wk="reset">Tout verrouiller</button></div></div>`);
+  v.insertAdjacentHTML("beforeend", `<div class="card dv-ctl"><h2>🐚 Objets trouvés (test)</h2><div class="dv-src"><button class="btn ghost" data-ob="one">Trouver un objet</button><button class="btn ghost" data-ob="all">Tout trouver</button><button class="btn ghost" data-ob="reset">Tout retirer</button></div></div>`);
+  v.insertAdjacentHTML("beforeend", `<div class="card dv-ctl"><h2>🧩 Épreuves (test)</h2><p class="muted">Remet les lieux dans l'état « jamais visités » : arrivée, questions, plan, trésors, œuvres gagnées, photos du lieu et défi musical. Le profil et les ponts restent.</p><div class="dv-src"><button class="btn ghost" id="reset-miracoli">↺ Réinitialiser l'église-bijou</button><button class="btn ghost" id="reset-trials">↺ Réinitialiser toutes les épreuves</button></div></div>`);
   const resetDevPlaces = async (places) => {
     try {
       await resetPlaceProgress(places);
@@ -2821,7 +2977,7 @@ function renderSettings() {
     <h3>📲 Installer l'appli</h3><div class="card">${installHtml()}</div>
     <h3>📷 Crédits photos</h3><details class="card"><summary>Photos de Wikimedia Commons</summary><div id="credits" class="muted" style="margin-top:8px"></div></details>
     <h3>🎼 Crédits musicaux</h3><details class="card"><summary>Défi musical : Pulchra es</summary><p class="muted">Enregistrement fourni pour le projet et autorisé à la publication par son responsable. « René Jacobs » figure dans le nom du fichier ; attribution exacte à confirmer. Extraits et transcodages locaux.</p></details>
-    <h3>🔧 Parents</h3><div class="card"><button class="btn ghost" id="intro">📖 Revoir l'histoire</button> <button class="btn ghost" id="reset" style="margin-top:6px">🗑️ Tout recommencer</button><label class="chk" style="margin-top:8px"><input type="checkbox" id="devtog" ${DEV && !QS.has("fake") ? "checked" : ""}> <span>Mode développeur : déplacer le bateau</span></label></div>
+    <h3>🔧 Parents</h3><div class="card"><button class="btn ghost" id="intro">📖 Revoir l'histoire</button> <button class="btn ghost" id="reset" style="margin-top:6px">🗑️ Tout recommencer</button><button class="btn ghost" id="dev-entry" style="margin-top:6px">Options avancées</button></div>
     <p class="muted" style="text-align:center;margin-top:16px">Le Livre du Lion · V1 · Carte : aquarelle Stamen Design (CC BY 4.0), Stadia Maps, OpenFreeMap, OpenMapTiles · données © contributeurs OpenStreetMap</p>`;
   { const eb = $("#eco", v); if (eb) { const lab = () => (eb.textContent = ecoOn() ? "Mode éco : activé (toucher pour désactiver)" : "Mode éco : désactivé (toucher pour activer)"); lab(); eb.onclick = () => { try { localStorage.setItem("vq_eco", ecoOn() ? "0" : "1"); } catch {} lab(); toast(ecoOn() ? "Mode éco activé" : "Mode éco désactivé"); }; } }
   { const fb = $("#fs", v); if (fb) { const de = document.documentElement;
@@ -2839,7 +2995,7 @@ function renderSettings() {
   $("#syncnow", v).onclick = sync;
   $("#chteam", v).onclick = async () => { try { localStorage.removeItem(TEAMKEY); } catch {} TEAM = null; await joinGame(); await sync(); if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); } refreshAll(); renderSettings(); };
   $("#intro", v).onclick = async () => { setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE, ...BOAT_OPTS }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
-  $("#devtog", v).onchange = (e) => { try { if (e.target.checked) localStorage.setItem("vq_dev", "1"); else localStorage.removeItem("vq_dev"); } catch {} location.reload(); };
+  $("#dev-entry", v).onclick = () => setTab("dev");
   $("#reset", v).onclick = async () => {
     if (!confirm("Effacer TOUTE la progression et le profil, puis reprendre l'introduction ?")) return;
     if (!confirm("Vraiment tout ? Cette action est définitive.")) return;
@@ -2965,10 +3121,10 @@ function refreshAll() { renderHud(); renderMap(); renderNext(); if (tab === "day
 refreshAll();
 setTab("map");
 {
-  const help = $("#dev-chap-help"); help.hidden = false;
+  const help = $("#dev-chap-help"); help.hidden = !DEV;
   help.textContent = "🔧 Réinitialiser l'église-bijou et ouvrir sa conclusion";
   help.onclick = async () => {
-    if (tab !== "map" || !$("#sheet").hidden || help.disabled) return;
+    if (!DEV || tab !== "map" || !$("#sheet").hidden || help.disabled) return;
     help.disabled = true;
     try { const p = place("miracoli"); await resetPlaceProgress([p]); devCompleteChapter(p, true); }
     catch { toast("Impossible de préparer la conclusion de l'église-bijou."); }
@@ -2979,6 +3135,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
 let pendingTeamName = "";
 startFlow();
 async function startFlow() {
+  if (!DEV) startGeo(); // demande la localisation dès l’ouverture, avant toute étape de jeu
   if (!PROFILE) PROFILE = await runIntro(BOAT_OPTS); else ensureBoat();
   if (PROFILE?.outfit && PROFILE.photo && (PROFILE.outfitOverlayVersion !== 3 || !PROFILE.outfitOverlayHat || !PROFILE.outfitOverlayBody)) { try { await wearOutfit(PROFILE.outfit, PROFILE.outfitShift); } catch {} } // migre la tenue en deux pièces sans déplacer la photo
   renderBadge(); refreshUserMarker();

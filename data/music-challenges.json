@@ -7,6 +7,7 @@
     "fragment": "img/music/04-parchemin.png",
     "score": "img/music/04-facsimile.png",
     "short": "audio/music/04-court.mp3",
+    "duo": "audio/music/04-duo-entree.mp3",
     "long": "audio/music/04-long.mp3",
     "complete": "audio/music/04-long.mp3",
     "waveform": [
@@ -67,6 +68,12 @@
       35,
       14
     ],
+    "duoWaveform": [
+      15, 67, 100, 99, 85, 88, 91, 80, 83, 26, 15, 33, 100, 100,
+      89, 66, 59, 79, 74, 84, 72, 67, 92, 67, 50, 63, 59, 58,
+      69, 70, 66, 53, 56, 57, 85, 88, 51, 32, 28, 49, 57, 59,
+      64, 62, 61, 51, 39, 54, 56, 60, 63, 58, 40, 16, 15, 15
+    ],
     "credit": {
       "text": "Enregistrement transmis pour le projet et autorisé à la publication par son responsable. « René Jacobs » figure dans le nom du fichier ; attribution exacte à confirmer. Extraits préparés localement.",
       "source": null,
@@ -83,7 +90,7 @@
           "Un ténor"
         ],
         "answer": 0,
-        "explanation": "Une soprano est une chanteuse à la voix aiguë.",
+        "explanation": "Bravo ! La soprano est la voix féminine la plus aiguë. La mezzo-soprano chante généralement un peu plus bas, et la contralto encore plus bas.",
         "audio": "long"
       },
       {
@@ -96,20 +103,22 @@
           "Tu es prête"
         ],
         "answer": 0,
-        "explanation": "« Pulchra es » signifie « Tu es belle ».",
+        "explanation": "« Pulchra es » veut dire « Tu es belle ». En latin, « pulchra » signifie « belle » et « es » signifie « tu es ».",
         "audio": "short"
       },
       {
-        "type": "lecture",
-        "question": "Le fragment de partition montre-t-il les deux voix du duo ?",
+        "type": "écoute",
+        "key": "duo",
+        "question": "Tu as entendu deux voix se répondre. Comment appelle-t-on un morceau chanté à deux ?",
         "options": [
-          "Oui, les deux voix sont écrites ici",
-          "Non, il montre seulement la première ligne de chant",
-          "Non, il montre seulement les instruments"
+          "Un duo",
+          "Un trio",
+          "Un canon",
+          "Un solo"
         ],
-        "answer": 1,
-        "explanation": "Le parchemin montre la ligne de Cantus I, la première voix du duo.",
-        "audio": "short"
+        "answer": 0,
+        "explanation": "Un duo réunit deux voix. Ici, les deux sopranos se répondent, puis chantent ensemble : chacune suit sa propre ligne mélodique.",
+        "audio": "duo"
       }
     ]
   }

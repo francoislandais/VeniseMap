@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "notes": "Coordinate points marked site_only are site-centre markers; NOT individual tree positions. The two approx_tree points are near the reported trees but not GPS-survey certified. Do not trigger precise tree-discovery gameplay without verification.",
+  "points": [
+    {
+      "id": "olivier_torcello",
+      "name": "Olivier de Torcello",
+      "coordinates": {
+        "lat": 45.498415,
+        "lng": 12.418338
+      },
+      "precision": "approx_tree",
+      "positionLabel": "Torcello — près du trône dit d’Attila",
+      "icon": "img/arbres/olivier_torcello_512.png",
+      "iconSmall": "img/arbres/olivier_torcello_256.png",
+      "collectible": "olives",
+      "verifiedExactTrunk": false,
+      "enabled": true
+    },
+    {
+      "id": "palmier_san_servolo",
+      "name": "Palmier de San Servolo",
+      "coordinates": {
+        "lat": 45.419726,
+        "lng": 12.355279
+      },
+      "precision": "approx_tree",
+      "positionLabel": "Île de San Servolo — près du débarcadère",
+      "icon": "img/arbres/palmier_san_servolo_512.png",
+      "iconSmall": "img/arbres/palmier_san_servolo_256.png",
+      "collectible": "petites dattes",
+      "verifiedExactTrunk": false,
+      "enabled": true
+    },
+    {
+      "id": "fevier_giardini_reali",
+      "name": "Févier des Jardins royaux",
+      "coordinates": {
+        "lat": 45.433183,
+        "lng": 12.338204
+      },
+      "precision": "site_only",
+      "positionLabel": "Giardini Reali — repère du jardin",
+      "icon": "img/arbres/fevier_giardini_reali_512.png",
+      "iconSmall": "img/arbres/fevier_giardini_reali_256.png",
+      "collectible": "gousses de févier",
+      "verifiedExactTrunk": false,
+      "enabled": true
+    },
+    {
+      "id": "micocoulier_piazzale_roma",
+      "name": "Micocoulier de Piazzale Roma",
+      "coordinates": {
+        "lat": 45.43799,
+        "lng": 12.31876
+      },
+      "precision": "site_only",
+      "positionLabel": "Piazzale Roma — repère de la place",
+      "icon": "img/arbres/micocoulier_piazzale_roma_512.png",
+      "iconSmall": "img/arbres/micocoulier_piazzale_roma_256.png",
+      "collectible": "micocoules",
+      "verifiedExactTrunk": false,
+      "enabled": true
+    }
+  ]
+}
