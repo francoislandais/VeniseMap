@@ -1963,3 +1963,18 @@ body.music-victory-active #home-btn{z-index:2300;pointer-events:none}
 .music-flow-quest .mq-body.mq-victory .mq-victory-title{max-width:95%;margin:0;padding:8px 0;font:700 clamp(34px,9vw,54px)/1.12 Georgia,serif;text-wrap:balance;color:#ffe8a3;background:linear-gradient(105deg,#e8a936 8%,#fff7d2 32%,#f2c665 52%,#fff9df 69%,#dc9828 92%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 7px rgba(255,203,90,.8));animation:mqGoldShimmer 2.3s linear infinite}
 @keyframes mqGoldShimmer{to{background-position:-220% 0}}
 @media (prefers-reduced-motion:reduce){.music-flow-quest .mq-victory-rain{display:none}.music-flow-quest .mq-body.mq-victory .mq-victory-title{animation:none}}
+
+/* Après la victoire : découverte sobre, puis écoute libre et photo souvenir. */
+.music-flow-quest .mq-body.mq-fragment-found{justify-content:center;overflow:hidden}
+.mq-fragment-found-text{margin:auto 10px;color:#fff4d4;font:clamp(27px,7.5vw,39px)/1.2 Georgia,serif;text-shadow:0 2px 12px #071723;text-wrap:balance}
+.mq-fragment-next{align-self:flex-end;flex:none;min-height:44px;margin:0 10px 4px auto;padding:8px 12px;border:0;background:none;color:#fff0c7;font:700 19px/1.2 Georgia,serif;text-shadow:0 2px 9px #06131d;cursor:pointer}
+.mq-fragment-next:focus-visible,.mq-photo-button:focus-visible{outline:2px solid #fff0c7;outline-offset:3px}
+.music-flow-quest .mq-body.mq-final{justify-content:space-between;gap:12px;padding:6px 10px 16px}
+.mq-final-listen,.mq-final-ending{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.mq-final-listen p:first-child,.mq-final-ending p{max-width:410px;margin:0;color:#f8efe0;font:clamp(21px,5.5vw,27px)/1.27 Georgia,serif;text-shadow:0 2px 9px #06131d;text-wrap:balance}
+.mq-final-listen .mq-listen-player{flex:none;margin:0 auto}
+.mq-final-listen .mq-listen-status{min-height:1.3em;margin:0}
+.mq-final-ending{gap:24px}
+.mq-final-ending .mq-photo-button{flex:none;width:52px;height:52px;display:grid;place-items:center;padding:0;border:1px solid rgba(255,235,180,.75);border-radius:50%;background:rgba(12,51,69,.8);box-shadow:0 0 14px rgba(255,221,146,.25);cursor:pointer}
+.mq-final-ending .mq-photo-button svg{width:24px;height:24px}
+@media (max-height:650px){.music-flow-quest .mq-body.mq-final{gap:4px}.mq-final-listen,.mq-final-ending{gap:9px}.mq-final-listen p:first-child,.mq-final-ending p{font-size:20px}.mq-final-ending .mq-photo-button{width:46px;height:46px}}

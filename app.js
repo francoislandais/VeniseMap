@@ -508,15 +508,19 @@ function meetCortoAtBoat(event) {
   event.stopPropagation();
   openCortoRendezvous();
 }
+function centerBoatPreview(b) {
+  if (LOCAL_PREVIEW && QS.get("bateau") === "quai") map.jumpTo({ center: b.ll, zoom: Math.max(map.getZoom(), 16) });
+}
 function ensureBoat(fresh) { // fresh : fin de l'intro → le voilier repart du point de départ (toujours le même, quelle que soit l'heure)
   try { if (fresh || !localStorage.getItem(BOAT_T0)) localStorage.setItem(BOAT_T0, String(Date.now())); } catch {}
-  if (boatMarker) { boatMarker.getElement().style.visibility = ""; const b = boatAt(); boatMarker.setLngLat(b.ll); updateBoatInteraction(b); return; }
+  if (boatMarker) { boatMarker.getElement().style.visibility = ""; const b = boatAt(); boatMarker.setLngLat(b.ll); updateBoatInteraction(b); centerBoatPreview(b); return; }
   const el = document.createElement("div"); el.className = "lagoon-boat"; el.innerHTML = '<div class="lb-flip"><img src="img/intro/e5.webp" alt=""></div>';
   el.addEventListener("click", meetCortoAtBoat);
   el.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); meetCortoAtBoat(event); } });
   const b = boatAt();
   boatMarker = new maplibregl.Marker({ element: el, anchor: "center", offset: [0, -0.28 * BOAT.w] }).setLngLat(b.ll).addTo(map); // la coque (78 % de la hauteur) est posée sur le point
   updateBoatInteraction(b);
+  centerBoatPreview(b);
   requestAnimationFrame(boatTick);
 }
 let boatLast = 0;
@@ -1977,6 +1981,7 @@ $$("#up-bar .up-tabs button").forEach((b) => (b.onclick = () => setTab(b.dataset
 // Un tableau d'époque par lieu : l'ovale (cx, cy, rx, ry, rot) marque le visage à remplacer, en pixels de l'image.
 const MONTAGES = {
   doge: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Ici, on t'habille en <b>doge</b> ! Prends-toi en photo : ta tête prendra la place de la sienne. Tu peux la déplacer et l'agrandir.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
+  miracoli: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Pour garder un souvenir de cette épreuve musicale, prends ta place dans ce portrait de doge. Tu peux déplacer et agrandir ta photo.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
   frari: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Aux Frari reposent de grands doges. Prête ta tête à celui-ci : tu peux la déplacer et l'agrandir.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
   basilique: { src: "img/montage/loredan.webp", W: 900, H: 1262, cx: 390, cy: 437, rx: 90, ry: 130, rot: -0.05, intro: "Bravo pour Saint-Marc ! Voici le doge Leonardo Loredan, peint par Giovanni Bellini : mets ta tête à la place de la sienne.", credit: "Portrait du doge Leonardo Loredan par Giovanni Bellini (National Gallery, Londres), domaine public." },
   cadoro: { src: "img/montage/gritti.webp", W: 900, H: 1164, cx: 439, cy: 330, rx: 93, ry: 121, rot: 0.1, intro: "La maison d'or, c'est pour un doge en habit d'or ! Voici Andrea Gritti, peint par Titien : mets ta tête à la place de la sienne.", credit: "Portrait du doge Andrea Gritti par Titien (National Gallery of Art, Washington), CC0." },
@@ -2344,15 +2349,39 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
   $(".mq-exit", overlay).onclick = close;
   const credit = `<p class="mq-credit">${esc(entry.credit.text)}${entry.credit.source ? ` <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a>` : ""}${entry.credit.license ? ` · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">Licence</a>` : ""}</p>`;
   const questionKey = (question, index) => `music:${id}:q:${question.key ?? index}`;
+  const showMusicFinal = () => {
+    stopClip();
+    body.className = "mq-body mq-final";
+    const shape = entry.waveform;
+    const heights = Array.isArray(shape) && shape.length ? shape : Array.from({ length: 56 }, (_, i) => 30 + 45 * Math.abs(Math.sin(i * .7)));
+    const bars = heights.map((height) => `<i style="height:${Math.max(9, Math.min(100, Number(height) || 9))}%"></i>`).join("");
+    body.innerHTML = `<div class="mq-final-listen"><p>Si tu le souhaites, écoute le morceau en entier.</p><div class="mq-listen-player"><button type="button" class="mq-play-toggle" aria-label="Lire le morceau en entier">▶</button><div class="mq-wave-track" role="progressbar" aria-label="Avancement de l’écoute" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="--progress:0%"><div class="mq-wave-bars">${bars}</div><div class="mq-wave-bars mq-wave-filled">${bars}</div></div></div><p class="mq-listen-status" aria-live="polite"></p></div><div class="mq-final-ending"><p>L’épreuve est terminée. Avant de partir, souhaites-tu faire une petite photo souvenir ?</p><button type="button" class="mq-photo-button" aria-label="Faire une photo souvenir">${CAM_SVG}</button></div>`;
+    const listen = $(".mq-play-toggle", body), wave = $(".mq-wave-track", body), status = $(".mq-listen-status", body);
+    clip = new Audio(entry.complete);
+    const progress = () => { const amount = Number.isFinite(clip.duration) && clip.duration > 0 ? Math.min(100, clip.currentTime / clip.duration * 100) : 0; wave.style.setProperty("--progress", amount + "%"); wave.setAttribute("aria-valuenow", String(Math.round(amount))); };
+    clip.ontimeupdate = progress;
+    clip.onended = () => { progress(); listen.textContent = "↻"; listen.setAttribute("aria-label", "Réécouter le morceau en entier"); };
+    listen.onclick = () => {
+      if (!clip.paused) { clip.pause(); listen.textContent = "▶"; listen.setAttribute("aria-label", "Reprendre l’écoute"); return; }
+      if (clip.ended) clip.currentTime = 0;
+      clip.play().then(() => { listen.textContent = "❚❚"; listen.setAttribute("aria-label", "Mettre en pause"); status.textContent = ""; }).catch(() => { status.textContent = "La lecture est impossible pour l’instant."; });
+    };
+    $(".mq-photo-button", body).onclick = () => { close(); openMontage(p.id); };
+  };
+  const showFragmentFound = () => {
+    victoryRain?.remove(); victoryRain = null;
+    document.body.classList.remove("music-victory-active", "music-star-flight");
+    body.className = "mq-body mq-fragment-found";
+    body.innerHTML = `<p class="mq-fragment-found-text">Tu as retrouvé un fragment</p><button type="button" class="mq-fragment-next">Suite</button>`;
+    $(".mq-fragment-next", body).onclick = showMusicFinal;
+  };
   const victory = async () => {
     stopQuestionLayout(); stopMusicEditor(); stopClip();
     const firstWin = !has(`music:${id}:won`);
     if (firstWin) { award(`music:${id}:won`, 100, meIdx()); save(); refreshAll(); onWon(); }
     body.className = "mq-body mq-victory";
-    body.innerHTML = `<h2 class="mq-victory-title" aria-live="polite">Félicitations, ${esc(gradeLc())} !</h2><button type="button" class="mq-main" data-walk ${firstWin ? "hidden" : ""}>▶ Écouter en déambulant</button><button type="button" class="mq-later" data-later ${firstWin ? "hidden" : ""}>Je l'écouterai plus tard</button>`;
-    $("[data-later]", body).onclick = close;
-    $("[data-walk]", body).onclick = () => { startMusicWalk(entry); close(); if (tab !== "map") setTab("map"); if (openId) closeSheet(); };
-    if (!firstWin) return;
+    body.innerHTML = `<h2 class="mq-victory-title" aria-live="polite">Félicitations, ${esc(gradeLc())} !</h2>`;
+    if (!firstWin) { overlay.classList.add("mq-victory-active"); showFragmentFound(); return; }
     const fragment = $(".mq-fragment", overlay);
     await Promise.race([fragment.decode().catch(() => {}), sleep(1000)]);
     if (!overlay.isConnected) return;
@@ -2363,7 +2392,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced || !target) {
       if (!reduced) starsToCounter(innerWidth / 2, innerHeight * .42, 100, true);
-      $("[data-walk]", body).hidden = $("[data-later]", body).hidden = false;
+      showFragmentFound();
       return;
     }
     victoryRain = document.createElement("div"); victoryRain.className = "mq-victory-rain"; victoryRain.setAttribute("aria-hidden", "true");
@@ -2392,7 +2421,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     if (!overlay.isConnected) return;
     victoryFlight.remove(); victoryFlight = null; victoryAnimation = null;
     book.animate([{ transform: "scale(1)", filter: "brightness(1)" }, { transform: "scale(1.35)", filter: "brightness(1.8) drop-shadow(0 0 12px #ffd56a)", offset: .45 }, { transform: "scale(1)", filter: "brightness(1)" }], { duration: 750 });
-    $("[data-walk]", body).hidden = $("[data-later]", body).hidden = false;
+    showFragmentFound();
     document.body.classList.remove("music-star-flight");
   };
   const showQuestion = (index) => {
