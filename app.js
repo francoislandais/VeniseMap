@@ -75,7 +75,7 @@ const me = () => S.kids[Math.min(active, S.kids.length - 1)];
 const meIdx = () => Math.min(active, S.kids.length - 1);
 const myName = () => me().name || "Joueur " + (meIdx() + 1);
 function setActive(i) { active = i; try { localStorage.setItem("vq_active", i); } catch {} refreshAll(); }
-// Outil de développement : ?niveau=N force le grade affiché (0 = jeune mousse) et reste mémorisé ; ?niveau= le retire.
+// Outil de développement : ?niveau=N force le grade affiché (0 = simple touriste) et reste mémorisé ; ?niveau= le retire.
 let devLevel = null;
 try {
   if (DEV) {
@@ -1141,7 +1141,7 @@ function cortoFill(el, text) { const b = el && $(".m-bubble", el); if (b) { b.cl
 let busy = false;
 function enterPlace(p) { if (arrived(p.id)) { closeSheet(); openQuest(p.id); } else doArrive(p); }
 // Répliques de Corto : plusieurs variantes par situation, qui tiennent compte du grade du joueur.
-// {g} = grade, {dist} = distance, {min} = durée de marche, {place} = nom du lieu. lo/hi : bornes de rang (0 = jeune mousse).
+// {g} = grade, {dist} = distance, {min} = durée de marche, {place} = nom du lieu. lo/hi : bornes de rang (0 = simple touriste).
 const LINES = {
   wait: [
     "Attends quelques secondes, {g}, je vérifie où tu es…", "Ne bouge pas, {g} : je te repère…", "Un instant, je regarde par la longue-vue…", "Deux secondes… je cherche ta position exacte.",
@@ -2813,7 +2813,7 @@ async function composeOutfit(photo, cut, key, o = {}, frame = false) {
 /* ───────── Cérémonie de changement de grade ───────── */
 const OUTFIT_LEVELS = { 1: "mousse", 2: "marin", 3: "capitaine", 4: "amiral" }; // index de grade (LEVELS) -> tenue
 const CER_TEXT = {
-  mousse: "Tu n'es plus un jeune mousse : te voilà MOUSSE ! Le capitaine compte sur toi.",
+  mousse: "Tu n'es plus un simple touriste : te voilà MOUSSE ! Le capitaine compte sur toi.",
   marin: "Hissez haut ! Tu deviens MARIN, un vrai loup de mer.",
   capitaine: "Capitaine à bord ! Tu commandes désormais ton propre navire.",
   amiral: "Amiral ! Toute la flotte de Venise est à tes ordres.",
@@ -2940,8 +2940,9 @@ async function ceremony(key, li) {
 // Un nouveau grade à tenue a-t-il été atteint ? (au plus une cérémonie à la fois, jamais pendant une épreuve ou une animation)
 function checkCeremony() {
   if (!PROFILE || ceremonyBusy || openId || tab !== "map" || scoreAnim || $(".wq, .finale, .corto-say, .cam, .pf, .intro")) return;
-  const k = "vq_cer2_" + (PROFILE.name || ""), li = level(pointsOf(meIdx())); let last = null; try { last = localStorage.getItem(k); } catch {}
+  const k = "vq_cer3_" + (PROFILE.name || ""), li = level(pointsOf(meIdx())); let last = null; try { last = localStorage.getItem(k); } catch {}
   if (last === null) { try { localStorage.setItem(k, String(li)); } catch {} return; } // première fois : pas de cérémonie rétroactive
+  if (li < +last) { try { localStorage.setItem(k, String(li)); } catch {} return; }
   if (li <= +last) return;
   try { localStorage.setItem(k, String(li)); } catch {}
   let hit = null; for (let j = +last + 1; j <= li; j++) if (OUTFIT_LEVELS[j]) hit = j;
@@ -3166,7 +3167,19 @@ function onboarding() {
 }
 
 /* ───────── Boot ───────── */
-function refreshAll() { renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "trophies") renderTrophies(); if (openId) renderSheet(); }
+let gradeSynced = false;
+function removeUnearnedOutfit() {
+  if (!gradeSynced || DEV || !PROFILE?.outfit) return false;
+  const rank = Number(Object.entries(OUTFIT_LEVELS).find(([, key]) => key === PROFILE.outfit)?.[0]);
+  if (!rank || rank <= level(pointsOf(meIdx()))) return false;
+  for (const field of ["outfit", "outfitPhoto", "outfitOverlay", "outfitOverlayHat", "outfitOverlayBody", "outfitLayout", "outfitOverlayVersion", "outfitShift"]) delete PROFILE[field];
+  saveProfile(PROFILE);
+  return true;
+}
+function refreshAll() {
+  if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
+  renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "trophies") renderTrophies(); if (openId) renderSheet();
+}
 refreshAll();
 setTab("map");
 {
@@ -3196,6 +3209,8 @@ async function startFlow() {
   if (qs.get("team")) { TEAM = { team: slug(qs.get("team")), league: qs.get("league") || "" }; try { localStorage.setItem(TEAMKEY, JSON.stringify(TEAM)); } catch {} }
   if (!TEAM) await joinGame();
   await sync();
+  gradeSynced = true;
+  if (removeUnearnedOutfit()) { renderBadge(); renderHud(); refreshUserMarker(); }
   if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); }
   if (S.onboarded && S.kids.length > 1 || S.kids[0].name !== PROFILE.name) S.onboarded = false;
   if (!S.onboarded) { S.kids = [{ name: PROFILE.name, avatar: PROFILE.avatar || "🦁" }]; S.teamName = S.teamName || PROFILE.name; S.onboarded = true; S.cfgT = Date.now(); save(); renderHud(); renderMap(); startGeo(); }
