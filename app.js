@@ -362,7 +362,7 @@ function onPos(lat, lon, acc, manual = false) {
   }
   outside = false;
   const first = !pos;
-  pos = { lat, lon, acc };
+  pos = { lat, lon, acc, t: Date.now() };
   if (!userMarker) {
     userMarker = new maplibregl.Marker({ element: userEl(), anchor: "center", draggable: false }).setLngLat([lon, lat]).addTo(map); // jamais cliquable : un toucher va toujours au macaron dessous
     if (DEV) userMarker.on("dragend", () => { const p = userMarker.getLngLat(); devPinned = true; onPos(p.lat, p.lng, 10, true); });
@@ -596,8 +596,7 @@ async function openNarrativeJournal() {
   if (!await narrativeReady) { toast("Le carnet d'enquête est indisponible pour le moment."); return; }
   const quests = narrative.progress();
   const list = quests.length ? `<ul class="nv-quests">${quests.map((q) => `<li>${q.finished ? "✓" : "○"} ${esc(q.title)}</li>`).join("")}</ul>` : "<p>Parle à Corto pour commencer l'enquête sur les Vêpres.</p>";
-  const overlay = narrativePanel("Carnet des Vêpres", `${list}<p>Retrouve les personnages sur la carte et touche le petit parchemin près d'eux pour parler de l'enquête.</p><button type="button" class="nv-choice" data-corto>Parler à Corto</button>`);
-  $("[data-corto]", overlay).onclick = () => openNarrative("corto");
+  narrativePanel("Carnet des Vêpres", `${list}<p>Retrouve les personnages sur la carte et touche-les pour leur parler quand ta position est reconnue. Touche le portrait de Corto pour lui parler.</p>`);
 }
 async function openNarrative(character) {
   if (!await narrativeReady) { toast("L'enquête est indisponible pour le moment."); return; }
@@ -616,10 +615,14 @@ function showNarrativeScene(character, id) {
     if (next) showNarrativeScene(character, next);
   }));
 }
-function openWalkerNarrative(W) {
-  const d = walkerAt(W), m = pos ? dist(pos.lat, pos.lon, d.lat, d.lon) : Infinity;
-  if (m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
-  openNarrative(W.id);
+async function validNarrativePosition() {
+  if (!DEV && !geoReady) { showGeoGate(); return false; }
+  if (!DEV && (!pos || Date.now() - pos.t > 15000 || pos.acc > 100)) await getFix(2500).catch(() => false);
+  if (!pos || !inVenice(pos.lat, pos.lon) || !Number.isFinite(pos.acc) || pos.acc > 100 || (!DEV && Date.now() - pos.t > 15000)) {
+    toast("📍 Attends une position GPS précise à Venise pour parler au personnage.");
+    return false;
+  }
+  return true;
 }
 $("#narrative-btn").onclick = openNarrativeJournal;
 // Doge vexé : il file de HUFF_M mètres en courant (6 s), reste là-bas 20 min, puis revient vite à sa vraie place (état propre à l'appareil).
@@ -746,10 +749,11 @@ function farLine(W) {
   farLast = i; const g = gradeLc(), cap = (t) => t[0].toUpperCase() + t.slice(1);
   return L[i].replace(/\{G\}/g, cap(g)).replace(/\{g\}/g, g).replace(/\{N\}/g, cap(W.name)).replace(/\{n\}/g, W.name).replace(/\{to\}/g, W.to).replace(/\{de\}/g, W.de);
 }
-function walkerTap(W) {
+async function walkerTap(W) {
+  if (!await validNarrativePosition()) return;
   const d = walkerAt(W), m = pos ? dist(pos.lat, pos.lon, d.lat, d.lon) : Infinity;
-  if (m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
-  if (W.quiz) openWalkerQuiz(W); else cortoSays(W.msg);
+  if (m > W.near + Math.min(pos.acc, 40)) { toast(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
+  openNarrative(W.id);
 }
 // Rencontre en grand : le personnage grandit en haut de l'écran et pose sa question ; mauvaise réponse -> il se vexe, rapetisse et s'enfuit en courant.
 function openWalkerQuiz(W) {
@@ -797,9 +801,8 @@ async function startWalker(W) {
   } catch { return; }
   const el = document.createElement("div"); el.className = "pin doge"; el.style.width = W.w + "px";
   const av = W.rig ? `<div class="doge-av lion-rig" style="width:${W.w}px;aspect-ratio:${W.rig.ratio}"><img class="lr-body" src="${W.rig.body}" alt="${W.name}"><img class="lr-rear" src="${W.rig.rear}" alt=""><img class="lr-front" src="${W.rig.front}" alt=""><img class="lr-wings" src="${W.rig.wings}" alt=""></div>` : `<img class="doge-av" style="width:${W.w}px" src="${W.img}" alt="${W.name}">`;
-  el.innerHTML = `<div class="doge-sc">${W.heading ? `<div class="wk-turn"><div class="wk-flip">${av}</div></div>` : av}<span class="doge-zap">⚡</span></div><button type="button" class="nv-pin" aria-label="Parler de l'enquête avec ${esc(W.name)}" title="Enquête des Vêpres">📜</button>`;
+  el.innerHTML = `<div class="doge-sc">${W.heading ? `<div class="wk-turn"><div class="wk-flip">${av}</div></div>` : av}<span class="doge-zap">⚡</span></div>`;
   if (W.heading) { W.turnEl = $(".wk-turn", el); W.flipEl = $(".wk-flip", el); W.ang = 0; W.left = false; }
-  $(".nv-pin", el).onclick = (event) => { event.stopPropagation(); openWalkerNarrative(W); };
   el.addEventListener("click", (e) => { e.stopPropagation(); walkerTap(W); });
   const d = walkerAt(W);
   W.marker = new maplibregl.Marker({ element: el, anchor: "bottom", subpixelPositioning: true }).setLngLat([d.lon, d.lat]).addTo(map);
@@ -935,8 +938,8 @@ function renderTrees(points) {
 map.on("zoom", updateTreeSize);
 fetch("data/arbres.json").then((r) => { if (!r.ok) throw new Error("Repères d’arbres indisponibles"); return r.json(); }).then((data) => renderTrees(data.points || [])).catch((e) => console.warn(e.message));
 $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientRect());
-// Pastille de Corto (en bas à gauche, toujours visible) : un toucher fait parler Corto — pour l'instant il salue seulement ; plus tard il donnera ici ses indices.
-$("#corto-btn").onclick = () => cortoSays("Bonjour matelot, comment ça va ?");
+// Le portrait de Corto ouvre son dialogue lorsque la position du joueur est valide.
+$("#corto-btn").onclick = async () => { if (await validNarrativePosition()) openNarrative("corto"); };
 // Pastille maison (à côté de Corto, toujours visible) : ouvre l'espace de l'enfant (profil, défis, ponts, photos, trophées, réglages).
 $("#home-btn").onclick = () => {
   if (tab !== "map") return;
@@ -2408,12 +2411,16 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     $("[data-later]", body).onclick = close;
     $("[data-walk]", body).onclick = () => { startMusicWalk(entry); close(); if (tab !== "map") setTab("map"); if (openId) closeSheet(); };
     if (!firstWin) return;
+    const fragment = $(".mq-fragment", overlay);
+    await Promise.race([fragment.decode().catch(() => {}), sleep(1000)]);
+    if (!overlay.isConnected) return;
     overlay.classList.add("mq-victory-active"); document.body.classList.add("music-victory-active");
-    const fragment = $(".mq-fragment", overlay), source = fragment.getBoundingClientRect();
+    const rect = fragment.getBoundingClientRect(), height = rect.height || Math.min(rect.width / 3, innerHeight * .22);
+    const source = { left: rect.left, top: rect.top - (height - rect.height) / 2, width: rect.width, height };
     const book = $("#home-btn"), target = book?.getBoundingClientRect();
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced || !target) {
-      starsToCounter(innerWidth / 2, innerHeight * .42, 100, true);
+      if (!reduced) starsToCounter(innerWidth / 2, innerHeight * .42, 100, true);
       $("[data-walk]", body).hidden = $("[data-later]", body).hidden = false;
       return;
     }

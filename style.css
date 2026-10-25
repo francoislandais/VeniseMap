@@ -1802,7 +1802,6 @@ body.music-star-flight .fly-star{z-index:2601}
 #narrative-btn{position:fixed;right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(84px + var(--safe-b));z-index:1600;width:72px;min-height:62px;border:2px solid #fff;border-radius:16px;background:#f3ead7;color:#24394b;box-shadow:0 3px 12px rgba(0,0,0,.3);font-size:27px;line-height:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 #narrative-btn span{font-size:12px;font-weight:800;letter-spacing:.02em}
 body:not(.jeu) #narrative-btn,body.menu-open #narrative-btn,body.chap-open #narrative-btn,body.corto-talk #narrative-btn,body.intro-open #narrative-btn,body.music-quest-active #narrative-btn,body:has(#sheet:not([hidden])) #narrative-btn,body:has(#modal:not([hidden])) #narrative-btn{display:none}
-.pin.doge .nv-pin{position:absolute;top:-20px;right:-17px;z-index:5;width:31px;height:31px;display:grid;place-items:center;border:2px solid #fff;border-radius:50%;padding:0;background:#f3ead7;box-shadow:0 2px 6px rgba(0,0,0,.4);font-size:16px;cursor:pointer;touch-action:manipulation}
 .nv-overlay{position:fixed;inset:0;z-index:2400;display:flex;align-items:center;justify-content:center;padding:calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b));box-sizing:border-box;background:rgba(11,30,42,.68);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .nv-card{width:min(100%,500px);max-height:100%;overflow:auto;border:3px solid #25384a;border-radius:20px;background:#fff8e9;color:#172735;box-shadow:0 16px 50px rgba(0,0,0,.4)}
 .nv-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px 8px}
@@ -1814,7 +1813,7 @@ body:not(.jeu) #narrative-btn,body.menu-open #narrative-btn,body.chap-open #narr
 .nv-speaker img{flex:none;width:70px;height:78px;object-fit:contain}
 .nv-choices{display:grid;gap:9px}
 .nv-choice{width:100%;min-height:46px;border:2px solid #304e65;border-radius:12px;background:#e7f1f8;color:#182b3a;padding:9px 12px;text-align:left;font-size:17px;font-weight:700;line-height:1.25;cursor:pointer}
-.nv-choice:focus-visible,.nv-close:focus-visible,#narrative-btn:focus-visible,.nv-pin:focus-visible{outline:3px solid #ffae36;outline-offset:2px}
+.nv-choice:focus-visible,.nv-close:focus-visible,#narrative-btn:focus-visible{outline:3px solid #ffae36;outline-offset:2px}
 .nv-quests{margin:0 0 16px;padding-left:22px}
 .nv-quests li{margin:6px 0}
 
