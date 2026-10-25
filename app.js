@@ -2,6 +2,7 @@ import { loadProfile, saveProfile, clearProfile, runIntro, cortoSays, editProfil
 import { createMap, WC_URL, OSM_URL, OFM_TILEJSON, FONTS, useStamen } from "./mapstyle.js";
 import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
 import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
+import { createNarrative } from "./narrative-engine.mjs";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -543,6 +544,84 @@ const WALKERS = [
   { id: "gondolier", name: "le gondolier", to: "au gondolier", de: "du gondolier", route: "gondolier-route.json", img: "img/gondolier-avatar.webp", h: 3, near: 60, w: 64, msg: "Le gondolier te salue d'un coup de chapeau… (il aura bientôt quelque chose à te raconter !)" },
   { id: "lion", name: "le lion ailé", to: "au lion ailé", de: "du lion ailé", route: "lion-route.json", farLines: ["Le lion ailé est dans les airs ! Lève les yeux et attends qu'il passe au-dessus de toi pour lui parler.", "Il vole haut, {g}. Bon courage ! Attends qu'il passe au-dessus de toi.", "Lève les yeux, {g} : le lion ailé survole Venise. Attends qu'il passe près de toi.", "Le lion ailé est en plein vol. Lève les yeux et bon courage pour l'attraper, {g} !", "Impossible de lui parler d'ici : il est dans le ciel. Attends qu'il passe au-dessus de toi."], motion: { cruise: 12, ramp: 8, period: 2160, landings: [{ at: 700, dur: 110 }, { at: 1650, dur: 90 }] }, heading: true, img: "img/lion-avatar.webp", rig: { body: "img/lion-body.webp", rear: "img/lion-rear.webp", front: "img/lion-front.webp", wings: "img/lion-wings.webp", ratio: "325/360" }, h: 5, near: 60, w: 50, msg: "Le lion ailé bat doucement des ailes et te regarde d'un air fier… (il aura bientôt quelque chose à te raconter !)" },
 ];
+
+/* ───────── Enquête des Vêpres : parcours ajouté, distinct des rencontres existantes ───────── */
+const NARRATIVE_NAMES = { corto: "Corto Maltese", gondolier: "Le gondolier", doge: "Le Doge", monteverdi: "Monteverdi", stmarc: "Saint Marc", lion: "Le lion ailé" };
+let narrative = null, narrativeData = null, narrativeOverlay = null;
+const narrativeReady = fetch("data/narrative-v0.json")
+  .then((r) => { if (!r.ok) throw new Error("Enquête indisponible"); return r.json(); })
+  .then((data) => {
+    narrativeData = data;
+    narrative = createNarrative(data, {
+      has,
+      set: (key) => award(key, 0, "all"),
+      clear: (key) => {
+        if (key.startsWith("n:item:")) {
+          const objectId = "nv-" + key.slice("n:item:".length);
+          objectAssembly.delete(objectId);
+          if (heldId === objectId) releaseHeld();
+        }
+        unaward(key);
+      },
+      commit: () => { save(); refreshAll(); if (tab === "objects") renderObjects(); }
+    });
+    if (DEV) window.__narrative = {
+      grantExternal: (id) => narrative.grantExternal(id),
+      hasItem: (id) => narrative.hasItem(id),
+      hasFlag: (id) => narrative.hasFlag(id),
+      open: (character) => openNarrative(character)
+    };
+    if (tab === "objects") renderObjects();
+    return narrative;
+  }).catch((error) => { console.warn(error.message); return null; });
+
+function closeNarrative() {
+  narrativeOverlay?.remove(); narrativeOverlay = null;
+  document.removeEventListener("keydown", narrativeEscape);
+}
+function narrativeEscape(event) { if (event.key === "Escape") closeNarrative(); }
+function narrativePanel(title, body) {
+  closeNarrative();
+  const overlay = document.createElement("section");
+  overlay.className = "nv-overlay"; overlay.setAttribute("role", "dialog"); overlay.setAttribute("aria-modal", "true"); overlay.setAttribute("aria-label", title);
+  overlay.innerHTML = `<div class="nv-card"><div class="nv-head"><h2>${esc(title)}</h2><button type="button" class="nv-close" aria-label="Fermer">×</button></div><div class="nv-body">${body}</div></div>`;
+  overlay.addEventListener("click", (event) => { if (event.target === overlay) closeNarrative(); });
+  $(".nv-close", overlay).onclick = closeNarrative;
+  document.body.appendChild(overlay); narrativeOverlay = overlay;
+  document.addEventListener("keydown", narrativeEscape);
+  $(".nv-close", overlay).focus();
+  return overlay;
+}
+async function openNarrativeJournal() {
+  if (!await narrativeReady) { toast("Le carnet d'enquête est indisponible pour le moment."); return; }
+  const quests = narrative.progress();
+  const list = quests.length ? `<ul class="nv-quests">${quests.map((q) => `<li>${q.finished ? "✓" : "○"} ${esc(q.title)}</li>`).join("")}</ul>` : "<p>Parle à Corto pour commencer l'enquête sur les Vêpres.</p>";
+  const overlay = narrativePanel("Carnet des Vêpres", `${list}<p>Retrouve les personnages sur la carte et touche le petit parchemin près d'eux pour parler de l'enquête.</p><button type="button" class="nv-choice" data-corto>Parler à Corto</button>`);
+  $("[data-corto]", overlay).onclick = () => openNarrative("corto");
+}
+async function openNarrative(character) {
+  if (!await narrativeReady) { toast("L'enquête est indisponible pour le moment."); return; }
+  const id = narrative.entry(character);
+  if (!id) return;
+  showNarrativeScene(character, id);
+}
+function showNarrativeScene(character, id) {
+  const scene = narrative.scene(id);
+  if (!scene) return;
+  const image = character === "corto" ? "img/corto-content.webp" : WALKERS.find((w) => w.id === character)?.img;
+  const body = `<div class="nv-speaker">${image ? `<img src="${image}" alt="">` : ""}<p>${esc(scene.text)}</p></div><div class="nv-choices">${scene.choices.map((choice) => `<button type="button" class="nv-choice" data-choice="${choice.index}">${esc(choice.label)}</button>`).join("")}</div>`;
+  const overlay = narrativePanel(NARRATIVE_NAMES[character], body);
+  $$("[data-choice]", overlay).forEach((button) => (button.onclick = () => {
+    const next = narrative.choose(id, +button.dataset.choice);
+    if (next) showNarrativeScene(character, next);
+  }));
+}
+function openWalkerNarrative(W) {
+  const d = walkerAt(W), m = pos ? dist(pos.lat, pos.lon, d.lat, d.lon) : Infinity;
+  if (m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
+  openNarrative(W.id);
+}
+$("#narrative-btn").onclick = openNarrativeJournal;
 // Doge vexé : il file de HUFF_M mètres en courant (6 s), reste là-bas 20 min, puis revient vite à sa vraie place (état propre à l'appareil).
 const HUFF_M = 110, HUFF_RUN = 6, HUFF_STAY = 1200;
 function huffOff(W, t) {
@@ -718,8 +797,9 @@ async function startWalker(W) {
   } catch { return; }
   const el = document.createElement("div"); el.className = "pin doge"; el.style.width = W.w + "px";
   const av = W.rig ? `<div class="doge-av lion-rig" style="width:${W.w}px;aspect-ratio:${W.rig.ratio}"><img class="lr-body" src="${W.rig.body}" alt="${W.name}"><img class="lr-rear" src="${W.rig.rear}" alt=""><img class="lr-front" src="${W.rig.front}" alt=""><img class="lr-wings" src="${W.rig.wings}" alt=""></div>` : `<img class="doge-av" style="width:${W.w}px" src="${W.img}" alt="${W.name}">`;
-  el.innerHTML = `<div class="doge-sc">${W.heading ? `<div class="wk-turn"><div class="wk-flip">${av}</div></div>` : av}<span class="doge-zap">⚡</span></div>`;
+  el.innerHTML = `<div class="doge-sc">${W.heading ? `<div class="wk-turn"><div class="wk-flip">${av}</div></div>` : av}<span class="doge-zap">⚡</span></div><button type="button" class="nv-pin" aria-label="Parler de l'enquête avec ${esc(W.name)}" title="Enquête des Vêpres">📜</button>`;
   if (W.heading) { W.turnEl = $(".wk-turn", el); W.flipEl = $(".wk-flip", el); W.ang = 0; W.left = false; }
+  $(".nv-pin", el).onclick = (event) => { event.stopPropagation(); openWalkerNarrative(W); };
   el.addEventListener("click", (e) => { e.stopPropagation(); walkerTap(W); });
   const d = walkerAt(W);
   W.marker = new maplibregl.Marker({ element: el, anchor: "bottom", subpixelPositioning: true }).setLngLat([d.lon, d.lat]).addTo(map);
@@ -2308,18 +2388,63 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
   document.body.appendChild(overlay); document.body.classList.add("music-quest-active"); musicOpening = false; scheduleGeoSync();
   const body = $(".mq-body", overlay);
   let clip = null, stopMusicEditor = () => {}, stopQuestionLayout = () => {}, transitioning = false;
+  let victoryFlight = null, victoryAnimation = null, victoryRain = null, victoryScoreTimer = null;
+  const clearVictory = () => {
+    clearTimeout(victoryScoreTimer);
+    victoryAnimation?.cancel(); victoryFlight?.remove(); victoryRain?.remove();
+    document.body.classList.remove("music-victory-active", "music-star-flight");
+  };
   const stopClip = () => { if (clip) { clip.ontimeupdate = clip.onended = null; clip.pause(); clip = null; } };
-  const close = () => { stopQuestionLayout(); stopMusicEditor(); stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); scheduleGeoSync(); };
+  const close = () => { clearVictory(); stopQuestionLayout(); stopMusicEditor(); stopClip(); overlay.remove(); document.body.classList.remove("music-quest-active"); scheduleGeoSync(); };
   $(".mq-exit", overlay).onclick = close;
   const credit = `<p class="mq-credit">${esc(entry.credit.text)}${entry.credit.source ? ` <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a>` : ""}${entry.credit.license ? ` · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">Licence</a>` : ""}</p>`;
   const questionKey = (question, index) => `music:${id}:q:${question.key ?? index}`;
-  const victory = () => {
+  const victory = async () => {
     stopQuestionLayout(); stopMusicEditor(); stopClip();
-    if (!has(`music:${id}:won`)) { award(`music:${id}:won`, 20, meIdx()); save(); refreshAll(); confetti(100); onWon(); }
+    const firstWin = !has(`music:${id}:won`);
+    if (firstWin) { award(`music:${id}:won`, 100, meIdx()); save(); refreshAll(); onWon(); }
     body.className = "mq-body mq-victory";
-    body.innerHTML = `<span class="mq-kicker">Fragment gagné</span><h2>Bravo, ${esc(gradeLc())} !</h2><p>Ce morceau de partition rejoint ton livre. Écoute maintenant le mouvement entier en te promenant autour de l'église.</p><button type="button" class="mq-main" data-walk>▶ Écouter en déambulant</button><button type="button" class="mq-later" data-later>Je l'écouterai plus tard</button>${credit}`;
+    body.innerHTML = `<h2 class="mq-victory-title" aria-live="polite">Félicitations, ${esc(gradeLc())} !</h2><button type="button" class="mq-main" data-walk ${firstWin ? "hidden" : ""}>▶ Écouter en déambulant</button><button type="button" class="mq-later" data-later ${firstWin ? "hidden" : ""}>Je l'écouterai plus tard</button>`;
     $("[data-later]", body).onclick = close;
     $("[data-walk]", body).onclick = () => { startMusicWalk(entry); close(); if (tab !== "map") setTab("map"); if (openId) closeSheet(); };
+    if (!firstWin) return;
+    overlay.classList.add("mq-victory-active"); document.body.classList.add("music-victory-active");
+    const fragment = $(".mq-fragment", overlay), source = fragment.getBoundingClientRect();
+    const book = $("#home-btn"), target = book?.getBoundingClientRect();
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced || !target) {
+      starsToCounter(innerWidth / 2, innerHeight * .42, 100, true);
+      $("[data-walk]", body).hidden = $("[data-later]", body).hidden = false;
+      return;
+    }
+    victoryRain = document.createElement("div"); victoryRain.className = "mq-victory-rain"; victoryRain.setAttribute("aria-hidden", "true");
+    const shower = document.createDocumentFragment();
+    for (let i = 0; i < 100; i++) {
+      const star = document.createElement("i"); star.textContent = i % 4 ? "✦" : "✧";
+      star.style.cssText = `left:${Math.random() * 100}%;--drift:${Math.round((Math.random() - .5) * 160)}px;--size:${Math.round(8 + Math.random() * 15)}px;--delay:${Math.round(Math.random() * 1250)}ms;--duration:${Math.round(1800 + Math.random() * 1600)}ms`;
+      shower.appendChild(star);
+    }
+    victoryRain.appendChild(shower); overlay.appendChild(victoryRain);
+    victoryFlight = document.createElement("img"); victoryFlight.className = "mq-victory-flight"; victoryFlight.src = entry.fragment; victoryFlight.alt = "";
+    victoryFlight.style.cssText = `left:${source.left}px;top:${source.top}px;width:${source.width}px;height:${source.height}px`;
+    document.body.appendChild(victoryFlight); document.body.classList.add("music-star-flight");
+    victoryScoreTimer = setTimeout(() => { if (overlay.isConnected) starsToCounter(innerWidth / 2, innerHeight * .42, 100, true); }, 900);
+    const cx = source.left + source.width / 2, cy = source.top + source.height / 2;
+    const mx = innerWidth / 2 - cx, my = innerHeight * .48 - cy;
+    const tx = target.left + target.width / 2 - cx, ty = target.top + target.height / 2 - cy;
+    victoryAnimation = victoryFlight.animate([
+      { transform: "translate(0,0) rotate(-8deg) scale(1)", opacity: 1 },
+      { transform: `translate(${mx - 45}px,${my - 45}px) rotate(200deg) scale(1.2)`, opacity: 1, offset: .24 },
+      { transform: `translate(${mx + 42}px,${my + 25}px) rotate(620deg) scale(1.55)`, opacity: 1, offset: .53 },
+      { transform: `translate(${mx - 22}px,${my - 10}px) rotate(940deg) scale(1.12)`, opacity: 1, offset: .74 },
+      { transform: `translate(${tx}px,${ty}px) rotate(1260deg) scale(.06)`, opacity: .9 },
+    ], { duration: 3900, easing: "cubic-bezier(.35,0,.32,1)", fill: "forwards" });
+    await victoryAnimation.finished.catch(() => {});
+    if (!overlay.isConnected) return;
+    victoryFlight.remove(); victoryFlight = null; victoryAnimation = null;
+    book.animate([{ transform: "scale(1)", filter: "brightness(1)" }, { transform: "scale(1.35)", filter: "brightness(1.8) drop-shadow(0 0 12px #ffd56a)", offset: .45 }, { transform: "scale(1)", filter: "brightness(1)" }], { duration: 750 });
+    $("[data-walk]", body).hidden = $("[data-later]", body).hidden = false;
+    document.body.classList.remove("music-star-flight");
   };
   const showQuestion = (index) => {
     if (index >= entry.questions.length) { victory(); return; }
@@ -2497,7 +2622,10 @@ const OBJECTS = [
   { id: "ruban-soie", name: "Le ruban de soie", img: "ruban-soie.svg", key: "o:ruban-soie" },
   { id: "lanterne", name: "La lanterne secrète", img: "lanterne.svg", key: "o:lanterne" },
 ];
-const objectList = () => OBJECTS.map((o) => ({ ...o, img: "img/objets/" + o.img, found: has(o.key) }));
+const objectList = () => [
+  ...OBJECTS,
+  ...Object.entries(narrativeData?.items || {}).map(([id, item]) => ({ id: "nv-" + id, name: item.name, emoji: item.emoji, key: `n:item:${id}` }))
+].map((o) => ({ ...o, img: o.img ? "img/objets/" + o.img : null, found: has(o.key) }));
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = "vq_held", HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
@@ -2585,7 +2713,7 @@ function renderObjectAssembly() {
   objectAssembly.forEach((point, id) => {
     const object = objectList().find((o) => o.id === id); if (!object) return;
     const piece = document.createElement("button"); piece.type = "button"; piece.className = "ob-piece";
-    piece.setAttribute("aria-label", `Remettre ${object.name} dans les objets`); piece.title = object.name; piece.innerHTML = `<img src="${object.img}" alt="">`;
+    piece.setAttribute("aria-label", `Remettre ${object.name} dans les objets`); piece.title = object.name; piece.innerHTML = object.img ? `<img src="${object.img}" alt="">` : `<span class="ob-em">${esc(object.emoji || "📜")}</span>`;
     board.appendChild(piece); assemblyPlace(piece, board, point);
     let start = null;
     piece.onpointerdown = (e) => { e.preventDefault(); start = { x: e.clientX, y: e.clientY, moved: false }; try { piece.setPointerCapture(e.pointerId); } catch {} };
@@ -2628,7 +2756,7 @@ function renderObjects() {
   const v = $("#v-objects"), objects = objectList();
   const shown = PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found);
   menuSay(shown.length ? "Collectionne ces objets ici et vois ce que tu peux faire avec." : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
-  v.innerHTML = shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}"><img src="${o.img}" alt=""></button>`).join("")}</div><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Combine tes objets ici</span></div>` : "";
+  v.innerHTML = shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${esc(o.emoji || "📜")}</span>`}</button>`).join("")}</div><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Combine tes objets ici</span></div>` : "";
   $$(".ob", v).forEach(bindObjectDrag);
   renderObjectAssembly();
 }
@@ -2638,7 +2766,11 @@ if (DEV) window.__objects = {
   reset: () => { OBJECTS.filter((o) => has(o.key)).forEach((o) => unaward(o.key)); objectAssembly.clear(); heldId = null; saveHeld(); if (heldEl) { heldEl.remove(); heldEl = null; } save(); refreshAll(); if (tab === "objects") renderObjects(); },
   hold: (id) => { const o = OBJECTS.find((item) => item.id === id); if (!o) return; if (!PREVIEW_OBJECTS && !has(o.key)) window.__objects.find(id); objectAssembly.delete(id); heldId = id; saveHeld(); mountHeld(id); if (tab === "objects") renderObjects(); },
 };
-if (heldId) setTimeout(() => mountHeld(heldId), 0); // objet pris avant un rechargement : il est toujours là
+if (heldId) {
+  // Le catalogue narratif arrive après le chargement initial ; attendre ses données avant de replacer un objet narratif tenu.
+  if (heldId.startsWith("nv-")) narrativeReady.then(() => { if (heldId) mountHeld(heldId); });
+  else setTimeout(() => mountHeld(heldId), 0);
+}
 function syncHeldPosition() {
   if (!heldEl) return;
   const p = heldSpot(); heldEl.style.left = p.left + "px"; heldEl.style.top = p.top + "px";

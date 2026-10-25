@@ -1,0 +1,607 @@
+{
+  "version": 0.1,
+  "title": "L'enquête des Vêpres",
+  "quests": {
+    "retrouver_fragments": "Retrouver les fragments des Vêpres",
+    "viole": "Retrouver la viole de Monteverdi",
+    "lion": "Appeler le lion ailé de Saint Marc"
+  },
+  "items": {
+    "doge_hat": {
+      "name": "Le chapeau de cérémonie du Doge",
+      "emoji": "🎩",
+      "source": "external_church_hat"
+    },
+    "pearl": {
+      "name": "Une perle pour le gondolier",
+      "emoji": "🦪",
+      "source": "external_church_pearl"
+    },
+    "shimmering_key": {
+      "name": "La clé scintillante",
+      "emoji": "🗝️",
+      "source": "gondolier_trade"
+    },
+    "viola": {
+      "name": "La viole de Monteverdi",
+      "emoji": "🎻",
+      "source": "doge_chest"
+    },
+    "vespers_fragment_monteverdi": {
+      "name": "Un fragment des Vêpres",
+      "emoji": "🎼",
+      "source": "monteverdi_viola_return"
+    },
+    "lion_dish": {
+      "name": "Le plat du lion ailé",
+      "emoji": "🍽️",
+      "source": "external_lion_recipe",
+      "requires_flags": [
+        "lion_recipe_known"
+      ]
+    }
+  },
+  "entries": {
+    "corto": [
+      {
+        "unless_flags": [
+          "corto_intro_done"
+        ],
+        "scene": "corto_intro"
+      },
+      {
+        "scene": "corto_progress"
+      }
+    ],
+    "gondolier": [
+      {
+        "unless_flags": [
+          "gondolier_met"
+        ],
+        "scene": "gondolier_intro"
+      },
+      {
+        "flags": [
+          "gondolier_trade_done"
+        ],
+        "scene": "gondolier_after"
+      },
+      {
+        "items": [
+          "pearl"
+        ],
+        "scene": "gondolier_trade"
+      },
+      {
+        "scene": "gondolier_wait"
+      }
+    ],
+    "doge": [
+      {
+        "unless_flags": [
+          "doge_quiz_done"
+        ],
+        "scene": "doge_intro"
+      },
+      {
+        "items": [
+          "doge_hat"
+        ],
+        "scene": "doge_hat_return"
+      },
+      {
+        "unless_flags": [
+          "doge_hat_returned"
+        ],
+        "scene": "doge_wait_hat"
+      },
+      {
+        "flags": [
+          "chest_opened"
+        ],
+        "scene": "doge_after"
+      },
+      {
+        "items": [
+          "shimmering_key"
+        ],
+        "scene": "doge_chest"
+      },
+      {
+        "scene": "doge_wait_key"
+      }
+    ],
+    "monteverdi": [
+      {
+        "unless_flags": [
+          "monteverdi_viola_request_known"
+        ],
+        "scene": "monteverdi_intro"
+      },
+      {
+        "flags": [
+          "viola_returned"
+        ],
+        "scene": "monteverdi_after"
+      },
+      {
+        "items": [
+          "viola"
+        ],
+        "scene": "monteverdi_return"
+      },
+      {
+        "scene": "monteverdi_wait"
+      }
+    ],
+    "stmarc": [
+      {
+        "unless_flags": [
+          "saint_mark_met"
+        ],
+        "scene": "stmarc_intro"
+      },
+      {
+        "scene": "stmarc_wait"
+      }
+    ],
+    "lion": [
+      {
+        "flags": [
+          "lion_summoned"
+        ],
+        "scene": "lion_after"
+      },
+      {
+        "items": [
+          "lion_dish"
+        ],
+        "scene": "lion_summon"
+      },
+      {
+        "scene": "lion_wait"
+      }
+    ]
+  },
+  "scenes": {
+    "corto_intro": {
+      "text": "Écoute-moi bien, jeune matelot. Il y a deux jours, une étrange tempête a traversé le palais des Doges et dispersé des fragments de la partition des Vêpres de Monteverdi. Le concert approche. Le Doge m'a appelé à Venise et j'ai besoin de ton aide. Personne ne sait d'où venait cette tempête. Le gondolier connaît les canaux ; commence par lui. Tu peux aussi parler au Doge, mais il est bourru. Quant au fantôme qui ressemble à Monteverdi, reste prudent.",
+      "choices": [
+        {
+          "label": "Je pars enquêter !",
+          "effects": {
+            "flags": [
+              "corto_intro_done"
+            ],
+            "quests": [
+              "retrouver_fragments"
+            ]
+          },
+          "next": "corto_progress"
+        }
+      ]
+    },
+    "corto_progress": {
+      "text": "Qu'as-tu découvert, matelot ? Nous pouvons reprendre chaque piste à notre rythme.",
+      "choices": [
+        {
+          "label": "Le gondolier",
+          "next": "corto_gondolier"
+        },
+        {
+          "label": "Le Doge",
+          "next": "corto_doge"
+        },
+        {
+          "label": "Monteverdi",
+          "next": "corto_monteverdi"
+        },
+        {
+          "label": "Le lion ailé",
+          "next": "corto_lion"
+        }
+      ]
+    },
+    "corto_gondolier": {
+      "text": "Le gondolier connaît les canaux. Demande-lui ce qu'il a vu pendant la tempête.",
+      "choices": [
+        {
+          "label": "Retour aux pistes",
+          "next": "corto_progress"
+        }
+      ]
+    },
+    "corto_doge": {
+      "text": "Le Doge est bourru, mais il connaît le palais et ses secrets. Parle-lui avec patience.",
+      "choices": [
+        {
+          "label": "Retour aux pistes",
+          "next": "corto_progress"
+        }
+      ]
+    },
+    "corto_monteverdi": {
+      "text": "Le fantôme parle durement de sa musique. Écoute-le, mais ne te laisse pas intimider.",
+      "choices": [
+        {
+          "label": "Retour aux pistes",
+          "next": "corto_progress"
+        }
+      ]
+    },
+    "corto_lion": {
+      "text": "Saint Marc peut t'expliquer comment appeler son lion ailé. Il faudra observer les arbres de Venise.",
+      "choices": [
+        {
+          "label": "Retour aux pistes",
+          "next": "corto_progress"
+        }
+      ]
+    },
+    "gondolier_intro": {
+      "text": "Cette nuit-là, ma gondole tanguait dans un canal. J'ai aperçu une lueur sous l'eau et saisi cette clé scintillante. Je ne sais pas ce qu'elle ouvre, mais je la garde. Tu la voudrais ? Apporte-moi quelque chose de précieux qui me plaise, et nous ferons peut-être un échange.",
+      "enter": {
+        "flags": [
+          "gondolier_met",
+          "gondolier_trade_known"
+        ]
+      },
+      "choices": [
+        {
+          "label": "Je reviendrai avec une perle.",
+          "next": "gondolier_wait"
+        }
+      ]
+    },
+    "gondolier_wait": {
+      "text": "Tu as trouvé quelque chose de précieux pour notre échange ? Je garde la clé en attendant.",
+      "choices": [
+
+      ]
+    },
+    "gondolier_trade": {
+      "text": "Cette perle me plaît beaucoup ! Veux-tu me la donner contre ma clé scintillante ?",
+      "choices": [
+        {
+          "label": "Échanger la perle contre la clé",
+          "requires": {
+            "items": [
+              "pearl"
+            ],
+            "unless_flags": [
+              "gondolier_trade_done"
+            ]
+          },
+          "effects": {
+            "take": [
+              "pearl"
+            ],
+            "give": [
+              "shimmering_key"
+            ],
+            "flags": [
+              "gondolier_trade_done"
+            ]
+          },
+          "next": "gondolier_after"
+        },
+        {
+          "label": "La garder encore",
+          "next": "gondolier_wait"
+        }
+      ]
+    },
+    "gondolier_after": {
+      "text": "Prends bien soin de cette clé ! Je me demande toujours ce qu'elle ouvre.",
+      "choices": [
+
+      ]
+    },
+    "doge_intro": {
+      "text": "Enfin quelqu'un qui m'adresse la parole ! Je suis le Doge. Sais-tu ce qu'était un Doge ?",
+      "enter": {
+        "flags": [
+          "doge_met"
+        ]
+      },
+      "choices": [
+        {
+          "label": "Un célèbre pirate de la lagune",
+          "next": "doge_wrong"
+        },
+        {
+          "label": "Le chef de la République de Venise",
+          "next": "doge_right"
+        },
+        {
+          "label": "Le capitaine des gondoliers",
+          "next": "doge_wrong"
+        }
+      ]
+    },
+    "doge_wrong": {
+      "text": "Pas tout à fait ! Écoute bien : le Doge dirigeait la République de Venise.",
+      "choices": [
+        {
+          "label": "Je comprends.",
+          "next": "doge_history"
+        }
+      ]
+    },
+    "doge_right": {
+      "text": "Exact ! Enfin quelqu'un qui connaît l'histoire de Venise.",
+      "choices": [
+        {
+          "label": "Et aujourd'hui ?",
+          "next": "doge_history"
+        }
+      ]
+    },
+    "doge_history": {
+      "text": "Le Doge dirigeait la République depuis le palais des Doges. Cette fonction a disparu avec la République. Et ma tempête m'a aussi privé de mon chapeau de cérémonie préféré !",
+      "enter": {
+        "flags": [
+          "doge_quiz_done"
+        ],
+        "quests": [
+          "viole"
+        ]
+      },
+      "choices": [
+
+      ]
+    },
+    "doge_wait_hat": {
+      "text": "Je cherche encore mon chapeau de cérémonie préféré, perdu pendant la tempête. Celui que je porte n'est pas le bon !",
+      "choices": [
+
+      ]
+    },
+    "doge_hat_return": {
+      "text": "Mon chapeau de cérémonie ! C'est bien celui que j'ai perdu pendant la tempête. Tu me le rends ?",
+      "choices": [
+        {
+          "label": "Rendre le chapeau",
+          "requires": {
+            "items": [
+              "doge_hat"
+            ],
+            "unless_flags": [
+              "doge_hat_returned"
+            ]
+          },
+          "effects": {
+            "take": [
+              "doge_hat"
+            ],
+            "flags": [
+              "doge_hat_returned",
+              "doge_chest_location_known"
+            ]
+          },
+          "next": "doge_secret"
+        }
+      ]
+    },
+    "doge_secret": {
+      "text": "Mon magnifique chapeau ! Puisque tu me l'as rapporté, je te confie un secret : je garde au palais la viole de Monteverdi, enfermée dans un coffre. La clé a disparu pendant la tempête.",
+      "choices": [
+
+      ]
+    },
+    "doge_wait_key": {
+      "text": "Le coffre est au palais, mais il manque sa clé. Le gondolier a peut-être vu quelque chose sur les canaux.",
+      "choices": [
+
+      ]
+    },
+    "doge_chest": {
+      "text": "Cette clé pourrait ouvrir le coffre du palais. La viole de Monteverdi s'y trouve.",
+      "choices": [
+        {
+          "label": "Ouvrir le coffre et prendre la viole",
+          "requires": {
+            "flags": [
+              "doge_chest_location_known"
+            ],
+            "items": [
+              "shimmering_key"
+            ],
+            "unless_flags": [
+              "chest_opened"
+            ]
+          },
+          "effects": {
+            "flags": [
+              "chest_opened"
+            ],
+            "give": [
+              "viola"
+            ]
+          },
+          "next": "doge_after"
+        }
+      ]
+    },
+    "doge_after": {
+      "text": "J'ai confié la viole à tes soins. Que Monteverdi retrouve au moins ce souvenir.",
+      "choices": [
+
+      ]
+    },
+    "monteverdi_intro": {
+      "text": "Ha ! Ha ! Mes manuscrits dispersés aux quatre vents ! Venise ne mérite pas mes chefs-d'œuvre. On admire ses palais, mais qui écoute encore ma musique ? Je suis Claudio Monteverdi, maître de musique de Saint-Marc. Tu cherches mes fragments ? Quelle perte de temps !",
+      "enter": {
+        "flags": [
+          "monteverdi_met"
+        ]
+      },
+      "choices": [
+        {
+          "label": "Je retrouverai tous les fragments !",
+          "next": "monteverdi_difficult"
+        },
+        {
+          "label": "C'est vous qui avez provoqué la tempête ?",
+          "next": "monteverdi_denial"
+        },
+        {
+          "label": "Pourquoi êtes-vous content de leur disparition ?",
+          "next": "monteverdi_forgotten"
+        }
+      ]
+    },
+    "monteverdi_difficult": {
+      "text": "Quelle assurance ! Ces fragments ne se laisseront pas retrouver si facilement.",
+      "choices": [
+        {
+          "label": "Et votre viole ?",
+          "next": "monteverdi_request"
+        }
+      ]
+    },
+    "monteverdi_denial": {
+      "text": "Moi ? Voilà une accusation bien insolente ! Je constate seulement que cette tempête a enfin forcé Venise à parler de ma musique.",
+      "choices": [
+        {
+          "label": "Et votre viole ?",
+          "next": "monteverdi_request"
+        }
+      ]
+    },
+    "monteverdi_forgotten": {
+      "text": "Parce que les Vénitiens ont oublié ce qu'ils possédaient. Il a fallu perdre ces pages pour qu'ils les regardent enfin.",
+      "choices": [
+        {
+          "label": "Et votre viole ?",
+          "next": "monteverdi_request"
+        }
+      ]
+    },
+    "monteverdi_request": {
+      "text": "Une ancienne viole me rappelait mes débuts à la cour de Mantoue. Elle ne m'importe guère, bien sûr… Mais si tu la trouves, veille à ne pas l'abîmer.",
+      "enter": {
+        "flags": [
+          "monteverdi_viola_request_known"
+        ],
+        "quests": [
+          "viole"
+        ]
+      },
+      "choices": [
+
+      ]
+    },
+    "monteverdi_wait": {
+      "text": "Tu poursuis donc ton enquête ? Cette viole ne m'intéresse toujours pas… Enfin, prends-en soin si tu la trouves.",
+      "choices": [
+
+      ]
+    },
+    "monteverdi_return": {
+      "text": "Cette viole… Je reconnaîtrais son son entre mille. Tu me la rapportes ?",
+      "choices": [
+        {
+          "label": "Lui rendre la viole",
+          "requires": {
+            "items": [
+              "viola"
+            ],
+            "unless_flags": [
+              "viola_returned"
+            ]
+          },
+          "effects": {
+            "take": [
+              "viola"
+            ],
+            "give": [
+              "vespers_fragment_monteverdi"
+            ],
+            "flags": [
+              "viola_returned",
+              "fragment_monteverdi_acquired"
+            ],
+            "finish_quests": [
+              "viole"
+            ]
+          },
+          "next": "monteverdi_reward"
+        }
+      ]
+    },
+    "monteverdi_reward": {
+      "text": "Ma viole… Hum ! Tiens, prends ce bout de papier. Il ne m'intéresse absolument pas.",
+      "choices": [
+
+      ]
+    },
+    "monteverdi_after": {
+      "text": "Ce fragment ? Tu l'as toujours ? Je demande seulement… par curiosité.",
+      "choices": [
+
+      ]
+    },
+    "stmarc_intro": {
+      "text": "Tu voudrais rencontrer mon lion ailé ? Il est très gourmand. Il ne viendra que si tu prépares son plat préféré avec les fruits de plusieurs arbres remarquables de Venise. Explore les places et les jardins, observe les arbres, puis prépare la recette.",
+      "enter": {
+        "flags": [
+          "saint_mark_met",
+          "lion_recipe_known"
+        ],
+        "quests": [
+          "lion"
+        ]
+      },
+      "choices": [
+
+      ]
+    },
+    "stmarc_wait": {
+      "text": "Observe les arbres de Venise. Leurs fruits permettront de préparer le plat préféré du lion ailé.",
+      "choices": [
+
+      ]
+    },
+    "lion_wait": {
+      "text": "Le lion ailé passe au-dessus de la lagune. Sans son plat préféré, il ne descend pas encore.",
+      "choices": [
+
+      ]
+    },
+    "lion_summon": {
+      "text": "Le parfum du plat attire le lion ailé. Il descend enfin vers toi.",
+      "choices": [
+        {
+          "label": "Présenter le plat",
+          "requires": {
+            "items": [
+              "lion_dish"
+            ],
+            "unless_flags": [
+              "lion_summoned"
+            ]
+          },
+          "effects": {
+            "take": [
+              "lion_dish"
+            ],
+            "flags": [
+              "lion_summoned"
+            ],
+            "finish_quests": [
+              "lion"
+            ]
+          },
+          "next": "lion_after"
+        }
+      ]
+    },
+    "lion_after": {
+      "text": "Le lion ailé te regarde avec curiosité.",
+      "choices": [
+
+      ]
+    }
+  }
+}
