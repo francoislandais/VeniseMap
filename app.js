@@ -410,6 +410,7 @@ function onPos(lat, lon, acc, manual = false) {
     if (DEV) userMarker.on("dragend", () => { const p = userMarker.getLngLat(); devPinned = true; onPos(p.lat, p.lng, 10, true); });
   }
   if (!userMarker.isDragging || !userMarker.isDragging()) userMarker.setLngLat([lon, lat]);
+  if (boatMarker) updateBoatInteraction(boatAt());
   if ((first || locateAsked) && !manual && tab === "map") { map.jumpTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 16) }); locateAsked = false; }
   const pn = performance.now(); if (manual || pn - (onPos.last || 0) > 2000) { onPos.last = pn; updateOverlap(); renderNext(); if (openId) updateMedal(); } // pas plus d'une fois toutes les 2 s : évite les micro-saccades de la carte à chaque fix GPS
 }
@@ -523,6 +524,7 @@ const boatPoint = (d) => { // position à la distance d (m) le long de la boucle
   const a = pts[lo], b = pts[(lo + 1) % pts.length], t = (d - cum[lo]) / ((cum[lo + 1] - cum[lo]) || 1); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 };
 const BOAT_T0 = "vq_boat_t0";
+const BOAT_NEAR = 70; // mètres autour de la position actuelle du bateau
 function boatPlan(t0, T = RENDEZ_VOUS) { // { speed (m/s), total (m), tEnd } : nombre entier de tours, arrivée à T (ou le plus tôt possible si T est trop proche)
   const { L, moor } = BOAT_PATH, dt = (T - t0) / 1000;
   if (dt * BOAT_VMAX < moor) return { speed: BOAT_V, total: moor, tEnd: t0 + (moor / BOAT_V) * 1000 }; // trop tard pour tenir l'heure : trajet direct à vitesse normale
@@ -535,17 +537,20 @@ function boatAt(now = Date.now(), t0 = +localStorage.getItem(BOAT_T0) || now) {
   const d = Math.max(0, pl.speed * (now - t0) / 1000); return { ll: boatPoint(d), moored: false, d, plan: pl };
 }
 let boatMarker = null, boatLeft = false;
+const boatNear = (b) => !!pos && dist(pos.lat, pos.lon, b.ll[1], b.ll[0]) <= BOAT_NEAR + Math.min(Math.max(pos.acc || 0, 0), 30);
 function updateBoatInteraction(b) {
   if (!boatMarker) return;
   const el = boatMarker.getElement();
-  if (el.classList.contains("moored") === b.moored) return;
+  const available = boatNear(b);
+  if (el.classList.contains("moored") === b.moored && el.classList.contains("interactable") === available) return;
   el.classList.toggle("moored", b.moored);
-  el.tabIndex = b.moored ? 0 : -1;
-  el.setAttribute("role", b.moored ? "button" : "img");
-  el.setAttribute("aria-label", b.moored ? "Rencontrer Corto à bord de son bateau à quai" : "Bateau de Corto en mer");
+  el.classList.toggle("interactable", available);
+  el.tabIndex = available ? 0 : -1;
+  el.setAttribute("role", available ? "button" : "img");
+  el.setAttribute("aria-label", available ? "Rencontrer Corto à bord de son bateau" : b.moored ? "Bateau de Corto à quai, trop éloigné" : "Bateau de Corto en mer, trop éloigné");
 }
 function meetCortoAtBoat(event) {
-  if (!boatAt().moored || !mapWorkVisible() || !$("#sheet").hidden || !$("#modal").hidden) return;
+  if (!boatNear(boatAt()) || !mapWorkVisible() || !$("#sheet").hidden || !$("#modal").hidden) return;
   event.stopPropagation();
   openCortoRendezvous();
 }
@@ -2053,8 +2058,8 @@ function dgDraw(cv, M) {
 function ovalCam() {
   return new Promise((resolve) => {
     const cam = document.createElement("div"); cam.className = "ocam";
-    cam.innerHTML = `<video autoplay playsinline muted></video><div class="oc-oval"></div><p class="oc-t">Place ton visage dans l'ovale</p><p class="oc-e" hidden></p>
-      <div class="oc-bar"><button class="oc-b" data-x>Annuler</button><button class="oc-shot" data-shot aria-label="Prendre la photo"></button><label class="oc-b">Une photo<input type="file" accept="image/*" capture="user" hidden data-file></label></div>`;
+    cam.innerHTML = `<video autoplay playsinline muted></video><div class="oc-oval"></div><p class="oc-t">Ton visage dans l'ovale</p><p class="oc-e" hidden></p>
+      <div class="oc-bar"><button type="button" class="oc-cancel" data-x aria-label="Annuler">×</button><button type="button" class="oc-shot" data-shot aria-label="Prendre la photo"></button><label class="oc-import" aria-label="Choisir une photo"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="2"/><circle cx="8" cy="9" r="2"/><path d="m3 18 6-6 4 4 3-3 5 5"/></svg><input type="file" accept="image/*" capture="user" hidden data-file></label></div>`;
     document.body.appendChild(cam);
     const video = $("video", cam), oval = $(".oc-oval", cam), err = $(".oc-e", cam); let stream = null;
     const done = (v) => { try { stream && stream.getTracks().forEach((t) => t.stop()); } catch {} cam.remove(); resolve(v); };
@@ -2070,7 +2075,7 @@ function ovalCam() {
     };
     $("[data-file]", cam).onchange = (e) => {
       const f = e.target.files[0]; if (!f) return;
-      const im = new Image(), u = URL.createObjectURL(f); im.onload = () => { done(im); }; im.src = u;
+      const im = new Image(), u = URL.createObjectURL(f); im.onload = () => { URL.revokeObjectURL(u); done(im); }; im.onerror = () => { URL.revokeObjectURL(u); fail("Cette photo ne peut pas être ouverte."); }; im.src = u;
     };
     const fail = (t) => { err.textContent = t; err.hidden = false; $("[data-shot]", cam).hidden = true; };
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -2082,38 +2087,49 @@ const CAM_SVG = '<svg viewBox="0 0 48 48" width="26" height="26" fill="none" str
 let montClose = null; // fermeture du montage ouvert par-dessus une épreuve (bouton retour du téléphone inclus)
 function renderDoge(v = $("#v-doge"), id = "doge", onDone = null) {
   const M = MONTAGES[id] || MONTAGES.doge;
-  v.innerHTML = `<div class="bhead"><span class="bface"></span><div class="bbub">${M.intro}</div></div>
-    <div class="dg-wrap"><canvas id="dg" class="dg" width="${M.W}" height="${M.H}"></canvas><button type="button" class="dg-cam ${dgPhoto ? "" : "pulse"}" id="dg-pick" aria-label="Prendre un selfie">${CAM_SVG}</button></div>
-    <button class="btn blue wide" id="dg-ok" ${dgPhoto ? "" : "disabled"}>Valider</button>
-    <p class="muted" style="text-align:center;margin-top:10px">La photo reste sur ton téléphone. ${M.credit}</p>`;
+  v.innerHTML = `<button type="button" class="mont-back" aria-label="Fermer la photo">×</button>
+    <div class="mont-art"><canvas id="dg" class="dg" width="${M.W}" height="${M.H}"></canvas><button type="button" class="dg-cam pulse" id="dg-pick" aria-label="Prendre une photo">${CAM_SVG}</button></div>
+    <details class="mont-credit"><summary aria-label="Informations sur le tableau">ⓘ</summary><p>La photo reste sur ton téléphone. ${M.credit}</p></details>`;
   const cv = $("#dg", v), draw = () => dgDraw(cv, M);
   const ready = MONT_IMGS[M.src] ? Promise.resolve() : new Promise((ok) => { const im = new Image(); im.onload = () => { MONT_IMGS[M.src] = im; ok(); }; im.onerror = ok; im.src = M.src; });
   ready.then(draw);
-  $("#dg-pick", v).onclick = async () => { const p = await ovalCam(); if (!p) return; dgPhoto = p; dgTf = { x: 0, y: 0, s: 1 }; renderDoge(v, id, onDone); };
-  $("#dg-ok", v).onclick = () => { // enregistre le montage dans la galerie « Photos souvenirs »
-    $("#dg-ok", v).disabled = true;
-    const owner = photoOwner();
-    cv.toBlob(async (b) => {
-      if (owner !== photoOwner()) return;
-      try { await putPhoto(`mont:${Date.now()}`, { blob: b, t: Date.now(), place: id, mont: 1 }, owner); } catch {}
-      dgPhoto = null;
-      const first = id !== "doge" && !has("ph:" + id), pl = place(id);
-      if (first) { // première photo de ce lieu : Corto félicite, une dizaine d'étoiles tombent dans l'escarcelle
-        award("ph:" + id, 10, meIdx()); save(); refreshAll(); confetti(60);
-        const bb = $(".bbub", v); if (bb) bb.innerHTML = "<b>Bravo, très joli, très imposant !</b>";
-        starsIntoPurse(10); await sleep(3300);
-        if (pl && pl.reward && !has("fin:" + pl.id)) await solemn(pl);
-      } else { toast("📸 Photo enregistrée dans tes souvenirs !"); confetti(60); }
-      if (onDone) onDone(); else { renderDoge(v, id, onDone); if (tab === "photos") renderPhotos(); }
-    }, "image/jpeg", 0.9);
+  $(".mont-back", v).onclick = () => { if (history.state?.vqMont) history.back(); else montClose?.(); };
+  const pick = $("#dg-pick", v);
+  pick.onclick = async () => {
+    if (pick.disabled) return;
+    const photo = await ovalCam(); if (!photo || !v.isConnected) return;
+    pick.disabled = true;
+    dgPhoto = photo; dgTf = { x: 0, y: 0, s: 1 };
+    await ready;
+    if (!v.isConnected || !MONT_IMGS[M.src]) { pick.disabled = false; toast("Le portrait ne peut pas s'ouvrir pour l'instant."); return; }
+    draw(); v.classList.add("mont-photo-taken");
+    const owner = photoOwner(), blob = await new Promise((resolve) => cv.toBlob(resolve, "image/jpeg", 0.9));
+    if (!blob || owner !== photoOwner()) { pick.disabled = false; v.classList.remove("mont-photo-taken"); toast("La photo n'a pas pu être enregistrée."); return; }
+    try { await putPhoto(`mont:${Date.now()}`, { blob, t: Date.now(), place: id, mont: 1 }, owner); }
+    catch { pick.disabled = false; v.classList.remove("mont-photo-taken"); toast("La photo n'a pas pu être enregistrée."); return; }
+    dgPhoto = null;
+    const first = id !== "doge" && !has("ph:" + id), pl = place(id);
+    if (first) { award("ph:" + id, 10, meIdx()); save(); refreshAll(); starsIntoPurse(10); }
+    const hint = pl?.reward && !has("fin:" + pl.id) ? pl.reward.hint : "";
+    if (hint) { award("fin:" + pl.id, 0, meIdx()); save(); }
+    confetti(60);
+    const bravo = document.createElement("div"); bravo.className = "mont-bravo";
+    bravo.innerHTML = `<span class="bface" aria-hidden="true"></span><div class="bbub"><b>Bravo, ${esc(gradeLc())} !</b><span>Quel beau souvenir de Venise !</span>${hint ? `<i>${esc(hint)}</i>` : ""}</div>`;
+    v.appendChild(bravo);
+    await sleep(3000);
+    if (v.isConnected) onDone?.();
   };
 }
 function openMontage(id) {
-  const m = document.createElement("div"); m.className = "mont"; document.body.appendChild(m);
+  const m = document.createElement("div"); m.className = "mont mont-simple"; document.body.appendChild(m);
   try { history.pushState({ vqMont: 1 }, ""); } catch {}
   let open = true;
-  montClose = () => { if (!open) return; open = false; m.remove(); montClose = null; if (tab === "photos") renderPhotos(); };
-  renderDoge(m, id, () => { if (history.state && history.state.vqMont) history.back(); else montClose && montClose(); });
+  montClose = () => { if (!open) return; open = false; m.remove(); dgPhoto = null; montClose = null; if (tab === "photos") renderPhotos(); };
+  renderDoge(m, id, () => {
+    montClose?.();
+    if (tab !== "map") setTab("map"); else if (openId) closeSheet();
+    if (history.state?.vqMont) history.back();
+  });
 }
 /* ───────── Photos souvenirs : mosaïque des montages de l'enfant ───────── */
 // Photo en plein écran, avec « Retour » et « Partager » (le bouton retour du téléphone ferme aussi la photo)

@@ -1,4 +1,4 @@
-// La première rencontre se relit depuis le bateau de Corto, une fois celui-ci à quai.
+// La première rencontre se relit depuis le bateau de Corto quand le joueur en est proche.
 import { createCortoEditor } from "./corto-rendezvous-editor.js";
 
 const isLocal = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
