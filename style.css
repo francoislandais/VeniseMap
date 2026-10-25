@@ -1182,7 +1182,6 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .cr-art-storm .cr-scroll,.cr-art-gondolier .cr-scroll{padding-top:min(37dvh,310px)}
 .cr-art-corto .cr-scroll{padding-top:min(41dvh,350px)}
 .cr-copy{max-width:660px;margin:auto;font-size:clamp(18px,4.6vw,22px);line-height:1.42;text-shadow:0 2px 7px rgba(0,0,0,.9)}
-.cr-copy h2{font:inherit;font-size:clamp(25px,6.5vw,38px);line-height:1.12;margin:0 0 20px;color:#fff}
 .cr-copy p{margin:0 0 18px}.cr-copy p:last-child{margin-bottom:0}
 .cr-copy em{font-style:italic}.cr-copy strong{font-weight:900;color:#fff}
 .cr-close{position:absolute;z-index:3;top:calc(env(safe-area-inset-top,0px) + 8px);right:12px;border:0;background:rgba(10,25,44,.72);color:#fff;border-radius:50%;width:44px;height:44px;font:32px/1 Arial,sans-serif;cursor:pointer}
