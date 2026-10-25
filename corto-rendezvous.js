@@ -8,6 +8,7 @@ const PAGES = [
   },
   {
     art: "storm",
+    head: "right",
     paragraphs: [
       "Une terrible tempête s'est abattue sur la ville. De gigantesques bourrasques ont traversé la lagune et se sont engouffrées dans le palais des Doges.",
       "À l'intérieur, elles ont soulevé des feuilles, renversé des objets et dispersé aux quatre vents les précieux fragments d'une partition : celle des <em>Vêpres</em> du grand Claudio Monteverdi !",
@@ -22,6 +23,7 @@ const PAGES = [
   },
   {
     art: "plain",
+    head: "left",
     paragraphs: [
       "Certains habitants racontent avoir rencontré, au détour d'une ruelle, un vieil homme à l'allure vénérable qui prétend être le Doge lui-même ! D'autres jurent avoir aperçu une silhouette fantomatique errant dans la ville. Il pourrait s'agir, figure-toi, du fantôme de Monteverdi !",
       "Et ce n'est pas tout… On raconte même qu'un immense lion ailé aurait été aperçu survolant la lagune !",
@@ -37,6 +39,7 @@ const PAGES = [
   },
   {
     art: "gondolier",
+    head: "right",
     paragraphs: [
       "Pour commencer, je te conseille d'aller voir le gondolier. Cet homme connaît Venise comme sa poche. Ses canaux, ses ruelles, ses passages secrets… Rien ne lui échappe !",
       "Si quelque chose d'inhabituel s'est produit, il en a certainement entendu parler.",
@@ -66,13 +69,15 @@ export function openCortoRendezvous() {
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-label", "Conversation avec Corto");
-  overlay.innerHTML = '<div class="cr-scene"></div><button class="cr-close" type="button" aria-label="Fermer la rencontre">×</button><nav class="cr-nav" aria-label="Pages du récit"><button class="cr-prev" type="button">‹ Précédent</button><span class="cr-count"></span><button class="cr-next" type="button">Suivant ›</button></nav>';
+  overlay.tabIndex = -1;
+  overlay.innerHTML = '<div class="cr-stage"></div><button class="cr-close" type="button" aria-label="Fermer la rencontre">×</button><button class="cr-prev" type="button" aria-label="Page précédente" hidden>‹ Précédent</button>';
   document.body.appendChild(overlay);
   document.body.classList.add("corto-rendezvous-open");
   let index = 0;
-  const scene = overlay.querySelector(".cr-scene");
+  let scene = null;
+  let pointerStart = null;
+  const stage = overlay.querySelector(".cr-stage");
   const prev = overlay.querySelector(".cr-prev");
-  const next = overlay.querySelector(".cr-next");
   const closeButton = overlay.querySelector(".cr-close");
   const close = () => {
     document.removeEventListener("keydown", onKey);
@@ -82,7 +87,9 @@ export function openCortoRendezvous() {
   };
   const show = () => {
     const page = PAGES[index];
-    scene.className = `cr-scene cr-art-${page.art}`;
+    stage.querySelectorAll(".cr-exit").forEach((el) => el.remove());
+    const nextScene = document.createElement("div");
+    nextScene.className = `cr-scene cr-art-${page.art}${page.head ? " cr-has-head" : ""}${scene ? " cr-enter" : ""}`;
     const art = page.art === "corto"
       ? '<img class="cr-corto" src="img/intro/e1.webp" alt="Corto Maltese debout">'
       : page.art === "storm"
@@ -90,20 +97,39 @@ export function openCortoRendezvous() {
         : page.art === "gondolier"
           ? '<img class="cr-painting" src="img/narrative/corto-gondolier.png" alt="Un gondolier sur la lagune">'
           : "";
-    scene.innerHTML = `${art}<div class="cr-scroll"><div class="cr-copy">${page.paragraphs.map((p) => `<p>${p}</p>`).join("")}</div></div>`;
-    prev.disabled = index === 0;
-    next.textContent = index === PAGES.length - 1 ? "Terminer" : "Suivant ›";
-    overlay.querySelector(".cr-count").textContent = `${index + 1} / ${PAGES.length}`;
+    const head = page.head ? `<img class="cr-head cr-head-${page.head}" src="img/corto-content.webp" alt="">` : "";
+    nextScene.innerHTML = `${art}${head}<div class="cr-scroll"><div class="cr-copy">${page.paragraphs.map((p) => `<p>${p}</p>`).join("")}</div></div>`;
+    const old = scene;
+    stage.appendChild(nextScene);
+    scene = nextScene;
+    prev.hidden = index === 0;
+    if (!old) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { old.remove(); nextScene.classList.remove("cr-enter"); return; }
+    old.classList.add("cr-exit");
+    requestAnimationFrame(() => requestAnimationFrame(() => nextScene.classList.remove("cr-enter")));
+    setTimeout(() => old.remove(), 520);
   };
+  const advance = () => { if (index === PAGES.length - 1) close(); else { index++; show(); } };
+  const back = () => { if (index > 0) { index--; show(); } };
   const onKey = (event) => {
     if (event.key === "Escape") close();
-    else if (event.key === "ArrowRight" && index < PAGES.length - 1) { index++; show(); }
-    else if (event.key === "ArrowLeft" && index > 0) { index--; show(); }
+    else if (event.key === "ArrowRight" || ((event.key === "Enter" || event.key === " ") && event.target === overlay)) { event.preventDefault(); advance(); }
+    else if (event.key === "ArrowLeft") { event.preventDefault(); back(); }
   };
   document.addEventListener("keydown", onKey);
+  stage.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    pointerStart = { x: event.clientX, y: event.clientY, scroll: scene.querySelector(".cr-scroll")?.scrollTop || 0, time: Date.now() };
+  });
+  stage.addEventListener("pointerup", (event) => {
+    const start = pointerStart; pointerStart = null;
+    if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12 || Date.now() - start.time > 800) return;
+    if (Math.abs((scene.querySelector(".cr-scroll")?.scrollTop || 0) - start.scroll) > 4) return;
+    advance();
+  });
+  stage.addEventListener("pointercancel", () => { pointerStart = null; });
   closeButton.onclick = close;
-  prev.onclick = () => { if (index > 0) { index--; show(); } };
-  next.onclick = () => { if (index === PAGES.length - 1) close(); else { index++; show(); } };
+  prev.onclick = back;
   show();
-  next.focus();
+  overlay.focus();
 }

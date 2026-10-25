@@ -1171,27 +1171,31 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 /* Rencontre avec Corto : récit ouvert uniquement par son bateau à quai. */
 .corto-rendezvous{position:fixed;inset:0;z-index:5000;background:#102238;color:#fff;font-family:"Special Elite","Courier New",monospace;isolation:isolate}
 .corto-rendezvous-open{overflow:hidden}
-.cr-scene{position:absolute;inset:0;overflow:hidden;background:radial-gradient(circle at 70% 20%,#34506c 0,#102238 54%,#091523 100%)}
+.cr-stage{position:absolute;inset:0;cursor:pointer;touch-action:pan-y}
+.cr-scene{position:absolute;inset:0;overflow:hidden;background:radial-gradient(circle at 70% 20%,#34506c 0,#102238 54%,#091523 100%);opacity:1;transition:opacity .48s ease}
+.cr-scene.cr-enter,.cr-scene.cr-exit{opacity:0}
+.cr-scene.cr-exit{pointer-events:none}
 .cr-scene::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(7,17,30,.1) 0,rgba(7,17,30,.3) 30%,rgba(7,17,30,.92) 76%,#091523 100%)}
 .cr-scene.cr-art-plain::after{background:none}
 .cr-painting{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
 .cr-art-storm .cr-painting{object-position:47% 26%}
 .cr-art-gondolier .cr-painting{object-position:50% 24%}
 .cr-corto{position:absolute;top:calc(env(safe-area-inset-top,0px) + 22px);right:max(3vw,12px);height:min(39dvh,370px);width:auto;max-width:60vw;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,.5))}
-.cr-scroll{position:absolute;z-index:1;inset:0 0 calc(78px + env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 52px) clamp(20px,6vw,48px) 28px}
+.cr-head{position:absolute;z-index:1;top:calc(env(safe-area-inset-top,0px) + 64px);width:clamp(100px,29vw,150px);height:auto;max-height:25dvh;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.65));pointer-events:none;-webkit-mask-image:linear-gradient(to bottom,#000 75%,transparent);mask-image:linear-gradient(to bottom,#000 75%,transparent)}
+.cr-head-right{right:18px}.cr-head-left{left:18px;transform:scaleX(-1)}
+.cr-scroll{position:absolute;z-index:1;inset:0;overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 52px) clamp(20px,6vw,48px) calc(82px + env(safe-area-inset-bottom,0px))}
 .cr-art-storm .cr-scroll,.cr-art-gondolier .cr-scroll{padding-top:min(37dvh,310px)}
 .cr-art-corto .cr-scroll{padding-top:min(41dvh,350px)}
+.cr-art-plain.cr-has-head .cr-scroll{padding-top:min(27dvh,230px)}
 .cr-copy{max-width:660px;margin:auto;font-size:clamp(18px,4.6vw,22px);line-height:1.42;text-shadow:0 2px 7px rgba(0,0,0,.9)}
 .cr-copy p{margin:0 0 18px}.cr-copy p:last-child{margin-bottom:0}
 .cr-copy em{font-style:italic}.cr-copy strong{font-weight:900;color:#fff}
 .cr-close{position:absolute;z-index:3;top:calc(env(safe-area-inset-top,0px) + 8px);right:12px;border:0;background:rgba(10,25,44,.72);color:#fff;border-radius:50%;width:44px;height:44px;font:32px/1 Arial,sans-serif;cursor:pointer}
-.cr-nav{position:absolute;z-index:3;left:0;right:0;bottom:0;min-height:calc(72px + env(safe-area-inset-bottom,0px));padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;background:#091523}
-.cr-nav button{border:1px solid rgba(255,255,255,.32);border-radius:999px;background:#183653;color:#fff;font:inherit;font-size:16px;min-height:44px;padding:8px 16px;cursor:pointer}
-.cr-nav button:disabled{opacity:.35;cursor:default}
-.cr-nav .cr-next{background:#244b73;border-color:#5985af}
-.cr-count{white-space:nowrap;font-size:15px;color:#d3e3f5}
+.cr-prev{position:absolute;z-index:3;left:14px;bottom:calc(12px + env(safe-area-inset-bottom,0px));min-height:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:rgba(9,21,35,.38);color:rgba(255,255,255,.72);font:inherit;font-size:15px;cursor:pointer}
+.cr-prev[hidden]{display:none}
+.cr-prev:focus-visible,.cr-close:focus-visible{outline:2px solid #fff;outline-offset:2px}
 @media (min-width:700px){.cr-corto{right:max(calc((100vw - 900px)/2),10vw);height:min(55dvh,520px)}.cr-art-corto .cr-scroll{padding-top:min(50dvh,490px)}.cr-art-storm .cr-scroll,.cr-art-gondolier .cr-scroll{padding-top:min(48dvh,430px)}}
-@media (prefers-reduced-motion:reduce){.cr-corto{animation:none}}
+@media (prefers-reduced-motion:reduce){.cr-scene{transition:none}}
 
 /* Message final de Corto : plus bas (plus de « toucher pour continuer »), il laisse passer les touchers vers la carte */
 .in2-end{pointer-events:none;padding-top:70px;padding-bottom:calc(2px + var(--safe-b))}
