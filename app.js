@@ -3,6 +3,7 @@ import { createMap, WC_URL, OSM_URL, OFM_TILEJSON, FONTS, useStamen } from "./ma
 import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
 import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
 import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
+import { openCortoRendezvous } from "./corto-rendezvous.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -487,15 +488,35 @@ function boatPlan(t0, T = RENDEZ_VOUS) { // { speed (m/s), total (m), tEnd } : n
   const k = Math.max(0, Math.round((BOAT_V * dt - moor) / L)), total = k * L + moor; return { speed: total / dt, total, tEnd: T };
 }
 function boatAt(now = Date.now(), t0 = +localStorage.getItem(BOAT_T0) || now) {
-  const pl = boatPlan(t0); if (now >= pl.tEnd) return { ll: boatPoint(BOAT_PATH.moor), moored: true, plan: pl };
+  const pl = boatPlan(t0);
+  // Aperçu local : permet de vérifier la rencontre avant l'heure d'arrivée réelle, sans effet sur les sites publics.
+  if ((LOCAL_PREVIEW && QS.get("bateau") === "quai") || now >= pl.tEnd) return { ll: boatPoint(BOAT_PATH.moor), moored: true, plan: pl };
   const d = Math.max(0, pl.speed * (now - t0) / 1000); return { ll: boatPoint(d), moored: false, d, plan: pl };
 }
 let boatMarker = null, boatLeft = false;
+function updateBoatInteraction(b) {
+  if (!boatMarker) return;
+  const el = boatMarker.getElement();
+  if (el.classList.contains("moored") === b.moored) return;
+  el.classList.toggle("moored", b.moored);
+  el.tabIndex = b.moored ? 0 : -1;
+  el.setAttribute("role", b.moored ? "button" : "img");
+  el.setAttribute("aria-label", b.moored ? "Rencontrer Corto à bord de son bateau à quai" : "Bateau de Corto en mer");
+}
+function meetCortoAtBoat(event) {
+  if (!boatAt().moored || !mapWorkVisible() || !$("#sheet").hidden || !$("#modal").hidden) return;
+  event.stopPropagation();
+  openCortoRendezvous();
+}
 function ensureBoat(fresh) { // fresh : fin de l'intro → le voilier repart du point de départ (toujours le même, quelle que soit l'heure)
   try { if (fresh || !localStorage.getItem(BOAT_T0)) localStorage.setItem(BOAT_T0, String(Date.now())); } catch {}
-  if (boatMarker) { boatMarker.getElement().style.visibility = ""; boatMarker.setLngLat(boatAt().ll); return; }
+  if (boatMarker) { boatMarker.getElement().style.visibility = ""; const b = boatAt(); boatMarker.setLngLat(b.ll); updateBoatInteraction(b); return; }
   const el = document.createElement("div"); el.className = "lagoon-boat"; el.innerHTML = '<div class="lb-flip"><img src="img/intro/e5.webp" alt=""></div>';
-  boatMarker = new maplibregl.Marker({ element: el, anchor: "center", offset: [0, -0.28 * BOAT.w] }).setLngLat(boatAt().ll).addTo(map); // la coque (78 % de la hauteur) est posée sur le point
+  el.addEventListener("click", meetCortoAtBoat);
+  el.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); meetCortoAtBoat(event); } });
+  const b = boatAt();
+  boatMarker = new maplibregl.Marker({ element: el, anchor: "center", offset: [0, -0.28 * BOAT.w] }).setLngLat(b.ll).addTo(map); // la coque (78 % de la hauteur) est posée sur le point
+  updateBoatInteraction(b);
   requestAnimationFrame(boatTick);
 }
 let boatLast = 0;
@@ -504,7 +525,7 @@ function boatTick(ts) {
   if (!boatMarker || !mapWorkVisible()) { setTimeout(() => requestAnimationFrame(boatTick), 250); return; }
   requestAnimationFrame(boatTick);
   if (ts - boatLast < (ecoOn() ? 120 : 40)) return; boatLast = ts;
-  const b = boatAt(); if (boatMarker.getElement().style.visibility === "hidden") return; boatMarker.setLngLat(b.ll);
+  const b = boatAt(); if (boatMarker.getElement().style.visibility === "hidden") return; boatMarker.setLngLat(b.ll); updateBoatInteraction(b);
   if (!b.moored) { // il regarde dans le sens de la marche (retournement doux)
     const a = map.project(b.ll), c = map.project(boatAt(Date.now() + 8000).ll), dx = c.x - a.x; if (Math.abs(dx) > 0.3) { const left = dx < 0; if (left !== boatLeft) { boatLeft = left; boatMarker.getElement().classList.toggle("left", left); } }
   }

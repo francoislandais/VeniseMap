@@ -1164,7 +1164,35 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .in2.in2-fin{background:transparent!important}
 .in2-part.in2-long{text-align:justify;text-align-last:left;hyphens:auto;-webkit-hyphens:auto}
 .lagoon-boat{width:64px;height:64px;pointer-events:none}
+.lagoon-boat.moored{pointer-events:auto;cursor:pointer;touch-action:manipulation}
+.lagoon-boat.moored:focus-visible{outline:3px solid #fff;outline-offset:3px;border-radius:50%}
 .lagoon-boat img{width:100%;height:100%;display:block;transform-origin:50% 78%;animation:in2-tangue 5.2s ease-in-out infinite}
+
+/* Rencontre avec Corto : récit ouvert uniquement par son bateau à quai. */
+.corto-rendezvous{position:fixed;inset:0;z-index:5000;background:#102238;color:#fff;font-family:"Special Elite","Courier New",monospace;isolation:isolate}
+.corto-rendezvous-open{overflow:hidden}
+.cr-scene{position:absolute;inset:0;overflow:hidden;background:radial-gradient(circle at 70% 20%,#34506c 0,#102238 54%,#091523 100%)}
+.cr-scene::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(7,17,30,.1) 0,rgba(7,17,30,.3) 30%,rgba(7,17,30,.92) 76%,#091523 100%)}
+.cr-scene.cr-art-plain::after{background:none}
+.cr-painting{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
+.cr-art-storm .cr-painting{object-position:47% 26%}
+.cr-art-gondolier .cr-painting{object-position:50% 24%}
+.cr-corto{position:absolute;top:calc(env(safe-area-inset-top,0px) + 22px);right:max(3vw,12px);height:min(39dvh,370px);width:auto;max-width:60vw;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,.5))}
+.cr-scroll{position:absolute;z-index:1;inset:0 0 calc(78px + env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 52px) clamp(20px,6vw,48px) 28px}
+.cr-art-storm .cr-scroll,.cr-art-gondolier .cr-scroll{padding-top:min(37dvh,310px)}
+.cr-art-corto .cr-scroll{padding-top:min(41dvh,350px)}
+.cr-copy{max-width:660px;margin:auto;font-size:clamp(18px,4.6vw,22px);line-height:1.42;text-shadow:0 2px 7px rgba(0,0,0,.9)}
+.cr-copy h2{font:inherit;font-size:clamp(25px,6.5vw,38px);line-height:1.12;margin:0 0 20px;color:#fff}
+.cr-copy p{margin:0 0 18px}.cr-copy p:last-child{margin-bottom:0}
+.cr-copy em{font-style:italic}.cr-copy strong{font-weight:900;color:#fff}
+.cr-close{position:absolute;z-index:3;top:calc(env(safe-area-inset-top,0px) + 8px);right:12px;border:0;background:rgba(10,25,44,.72);color:#fff;border-radius:50%;width:44px;height:44px;font:32px/1 Arial,sans-serif;cursor:pointer}
+.cr-nav{position:absolute;z-index:3;left:0;right:0;bottom:0;min-height:calc(72px + env(safe-area-inset-bottom,0px));padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box;background:#091523}
+.cr-nav button{border:1px solid rgba(255,255,255,.32);border-radius:999px;background:#183653;color:#fff;font:inherit;font-size:16px;min-height:44px;padding:8px 16px;cursor:pointer}
+.cr-nav button:disabled{opacity:.35;cursor:default}
+.cr-nav .cr-next{background:#244b73;border-color:#5985af}
+.cr-count{white-space:nowrap;font-size:15px;color:#d3e3f5}
+@media (min-width:700px){.cr-corto{right:max(calc((100vw - 900px)/2),10vw);height:min(55dvh,520px)}.cr-art-corto .cr-scroll{padding-top:min(50dvh,490px)}.cr-art-storm .cr-scroll,.cr-art-gondolier .cr-scroll{padding-top:min(48dvh,430px)}}
+@media (prefers-reduced-motion:reduce){.cr-corto{animation:none}}
 
 /* Message final de Corto : plus bas (plus de « toucher pour continuer »), il laisse passer les touchers vers la carte */
 .in2-end{pointer-events:none;padding-top:70px;padding-bottom:calc(2px + var(--safe-b))}
