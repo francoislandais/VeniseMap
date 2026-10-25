@@ -646,7 +646,7 @@ const FAR_LINES = [
   "Hého, {g} ! {N} ne t'entend pas d'aussi loin. Avance un peu !",
   "On ne crie pas à travers tout Venise, {g}. Rapproche-toi {de}.",
   "{N} est bien trop loin, {g}. Il va falloir marcher un peu !",
-  "Un {g} qui veut parler {to} commence par s'en approcher. Allez, en route !",
+  "Pour parler {to}, {g}, commence par t'en approcher. Allez, en route !",
   "Impossible de lui parler d'ici, {g}. Rapproche-toi, il ne mord pas !",
   "Trop loin, {g} ! Prends tes jambes à ton cou et rejoins {n}.",
   "Tu fais des signes, mais {n} ne te voit pas, {g}. Approche-toi !",
@@ -662,11 +662,11 @@ const OFFSHORE_LINES = [
   "Le gondolier rame au milieu des flots. Attends qu'il s'approche du rivage, {g}.",
   "Tu ne peux pas marcher sur l'eau, {g} ! Attends que le gondolier vienne près du quai.",
 ];
-function offshoreLine(W) { return OFFSHORE_LINES[Math.floor(Math.random() * OFFSHORE_LINES.length)].replace(/\{g\}/g, gradeLc()); }
+function offshoreLine(W) { return OFFSHORE_LINES[Math.floor(Math.random() * OFFSHORE_LINES.length)].replace(/\{g\}/g, cortoAddress()); }
 let farLast = -1;
 function farLine(W) {
   const L = W.farLines || FAR_LINES; let i; do { i = Math.floor(Math.random() * L.length); } while (i === farLast && L.length > 1);
-  farLast = i; const g = gradeLc(), cap = (t) => t[0].toUpperCase() + t.slice(1);
+  farLast = i; const g = cortoAddress(), cap = (t) => t[0].toUpperCase() + t.slice(1);
   return L[i].replace(/\{G\}/g, cap(g)).replace(/\{g\}/g, g).replace(/\{N\}/g, cap(W.name)).replace(/\{n\}/g, W.name).replace(/\{to\}/g, W.to).replace(/\{de\}/g, W.de);
 }
 function walkerTap(W) {
@@ -965,7 +965,7 @@ const inZone = (p) => DEV || (geoReady && !!pos && distTo(p) <= Math.min(p.r, ZO
 // Phrase de Corto citant le lieu (corto-lieux.js) : distance et temps de marche ; pas deux fois la même de suite pour un même niveau.
 const placeFarLast = {};
 function placeFarLine(p, d) {
-  const kind = d < 200 ? "near" : d > 1500 ? "far" : "mid", L = LIEUX[p.id], idx = level(pointsOf(meIdx())), g = LEVELS[idx].name.toLowerCase();
+  const kind = d < 200 ? "near" : d > 1500 ? "far" : "mid", L = LIEUX[p.id], idx = level(pointsOf(meIdx())), g = cortoAddress();
   const pool = PLACE_FAR[kind].filter((l) => typeof l === "string" || ((!l.in || (L && L.in)) && (l.lo == null || idx >= l.lo) && (l.hi == null || idx <= l.hi)));
   const rec = placeFarLast[kind] = placeFarLast[kind] || []; let i; do { i = Math.floor(Math.random() * pool.length); } while (pool.length > 2 && rec.includes(i)); rec.push(i); if (rec.length > 2) rec.shift();
   const l = pool[i], t = typeof l === "string" ? l : l.t, la = L ? L.la : p.name.replace(/^L'/, "l'").replace(/^(Le|La|Les) /, (m) => m.toLowerCase());
@@ -1198,7 +1198,7 @@ const LINES = {
 };
 const lastLine = {};
 function say(kind, p, extra = {}) {
-  const idx = level(pointsOf(meIdx())), g = LEVELS[idx].name.toLowerCase();
+  const idx = level(pointsOf(meIdx())), g = cortoAddress();
   const pool = LINES[kind].filter((l) => typeof l === "string" || ((l.lo == null || idx >= l.lo) && (l.hi == null || idx <= l.hi)));
   const rec = lastLine[kind] = lastLine[kind] || [];
   let i; do { i = Math.floor(Math.random() * pool.length); } while (pool.length > 2 && rec.includes(i));
@@ -1231,6 +1231,7 @@ let FACTS = null;
 const factsReady = fetch("data/facts.json").then((r) => r.json()).then((j) => (FACTS = j)).catch(() => {});
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const gradeLc = () => LEVELS[level(pointsOf(meIdx()))].name.toLowerCase();
+const cortoAddress = () => level(pointsOf(meIdx())) === 0 ? myName() : gradeLc();
 const shuffle = (arr) => arr.map((x) => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map((p) => p[1]);
 let curLoop = 0; // une seule boucle d'épreuve vivante à la fois (évite les doublons si on touche « J'y suis ! » pendant la reprise automatique)
 const bsleep = async (ms) => { await sleep(ms); if (openId !== "bridges" && openId !== "chap" && !suspended) throw 0; };
@@ -1599,7 +1600,7 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
   setTimeout(() => { if (openId === "chap") { if (conclusionOnly) chapEnd(p, replay, preview); else runChapters(p, replay); } }, 350);
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
-const endBravo = () => `Bravo, ${gradeLc()} !`;
+const endBravo = () => `Bravo, ${cortoAddress()} !`;
 const endSecret = (p) => p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
 function conclusionEditor(sh, p, elements, defaults) {
   conclusionEditorAbort?.abort();
@@ -1790,7 +1791,7 @@ async function runChapters(p, replay = false) {
   const myLoop = ++curLoop;
   const bsleep = async (ms) => { await sleep(ms); if (openId !== "bridges" && openId !== "chap" && !suspended) throw 0; if (myLoop !== curLoop) throw 0; }; // cette boucle meurt si une autre a pris le relais
   try {
-    const say = async (el, text, pad) => { cortoType(el); await bsleep(900); cortoFill(el, text.replace(/\{g\}/g, gradeLc())); bFill(el, pad); await bsleep(350); };
+    const say = async (el, text, pad) => { cortoType(el); await bsleep(900); cortoFill(el, text.replace(/\{g\}/g, cortoAddress())); bFill(el, pad); await bsleep(350); };
     // Liste plate de questions-réponses (les chapitres ne servent plus qu'à ranger les données).
     // Les questions liées (next) sont des étapes à part entière ; un toucher après chaque révélation lance la suivante.
     const all = p.chapters.flatMap((cc) => cc.steps).filter((s) => !s.pending).flatMap(chainOf).map((x) => ({ ...x, next: undefined }));
@@ -1819,7 +1820,7 @@ async function runChapters(p, replay = false) {
       };
       const newRev = async (text, bar) => { // écran de révélation : Corto content en haut, image dessous
         rv = chatAdd('<span class="arr-face"></span><div class="m-bubble typing"><i></i><i></i><i></i></div>', "fc rv"); sh.dataset.k = "one";
-        await bsleep(80); cortoFill(rv, text.replace(/\{g\}/g, gradeLc())); await bsleep(100); await showImg(bar);
+        await bsleep(80); cortoFill(rv, text.replace(/\{g\}/g, cortoAddress())); await bsleep(100); await showImg(bar);
       };
       if (j > 0) { await clearTalk(); el = null; await newRev(`${lead} ${qs[j].q}`.trim(), chainBar(qs, j)); lead = ""; }
       for (; j < qs.length; j++) {
@@ -2485,7 +2486,7 @@ function renderBridges() {
   Promise.all([bridgesReady, factsReady]).then(() => {
     if (tab !== "bridges" || !BRIDGES) return;
     const byId = new Map(BRIDGES.map((b) => [String(b[0]), b])), found = bridgeKeys().sort((x, y) => S.done[x].t - S.done[y].t).map((k) => byId.get(k.slice(2))).filter(Boolean);
-    const n = found.length, say = n ? `Voici les ponts que tu as trouvés, ${gradeLc()} : **${n}** sur ${BRIDGES.length}. Bravo, camarade !` : `Tu n'as pas encore trouvé de pont, ${gradeLc()}. Dès que tu en traverses un, il viendra s'ajouter ici !`;
+    const n = found.length, say = n ? `Voici les ponts que tu as trouvés, ${cortoAddress()} : **${n}** sur ${BRIDGES.length}. Bravo, camarade !` : `Tu n'as pas encore trouvé de pont, ${cortoAddress()}. Dès que tu en traverses un, il viendra s'ajouter ici !`;
     menuSay(say);
     // Mosaïque des ponts trouvés qui ont une image (le nom en discret) ; les autres sont simplement comptés à la fin.
     const withImg = found.filter((b) => b[3]), noImg = found.length - withImg.length;
@@ -2791,7 +2792,7 @@ function openWorkView(W, id) {
 }
 function renderTrophies() {
   const v = $("#v-trophies"), pts = pointsOf(meIdx()), li = level(pts), cur = LEVELS[li], nx = LEVELS[li + 1];
-  menuSay(nx ? `Tu as **${pts}** étoiles, ${gradeLc()} ! Encore ${nx.min - pts} pour devenir ${nx.name}.` : `Tu as **${pts}** étoiles : tu es au niveau maximum, bravo !`);
+  menuSay(nx ? `Tu as **${pts}** étoiles, ${cortoAddress()} ! Encore ${nx.min - pts} pour devenir ${nx.name}.` : `Tu as **${pts}** étoiles : tu es au niveau maximum, bravo !`);
   v.innerHTML = `<h2>🏆 Trophées</h2>
     <div class="levelcard"><div class="big">${cur.emoji}</div><h3 style="color:#fff;margin:4px 0">${me().avatar} ${esc(myName())} · ${cur.name}</h3><div style="font-size:30px;font-weight:900">⭐ ${pts}</div>
       <div class="bar"><i style="width:${nx ? ((pts - cur.min) / (nx.min - cur.min)) * 100 : 100}%"></i></div>
