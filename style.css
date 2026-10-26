@@ -2077,3 +2077,22 @@ body.music-victory-active #home-btn{z-index:2300;pointer-events:none}
 @media (prefers-reduced-motion:reduce){#sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo{transition:none}}
 
 #sheet.chap.chap-conclusion .chap-secret-lead:only-child{margin-bottom:0}
+
+/* Première rencontre avec le gondolier : l'aquarelle reste en place entre les répliques. */
+.gondolier-rendezvous .gr-painting{position:absolute;top:0;left:-4%;width:108%;height:100%;object-fit:cover;object-position:50% 24%;animation:cr-watercolor-drift 20s ease-in-out infinite alternate}
+.gondolier-rendezvous .gr-storm{position:absolute;top:0;left:-4%;width:108%;height:100%;object-fit:cover;object-position:50% 50%;opacity:0;pointer-events:none;transition:opacity .7s ease;animation:cr-watercolor-drift 20s ease-in-out infinite alternate}
+.gondolier-rendezvous.gr-storm-active .gr-storm{opacity:1}
+.gr-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(7,17,30,.6) 0%,rgba(7,17,30,.58) 48%,rgba(7,17,30,.2) 76%,rgba(7,17,30,.65) 100%)}
+.gr-speaker{position:absolute;z-index:3;right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));width:clamp(82px,23vw,120px);height:auto;pointer-events:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.55));animation:gr-speaker-bob 4s ease-in-out infinite alternate}
+@keyframes gr-speaker-bob{from{transform:translateY(0)}to{transform:translateY(-5px)}}
+.gr-stage{position:absolute;z-index:1;inset:0;cursor:pointer;touch-action:pan-y}
+.gr-scene{position:absolute;inset:0;opacity:1;transition:opacity .48s ease}
+.gr-scene.gr-enter,.gr-scene.gr-exit{opacity:0}
+.gr-scene.gr-exit{pointer-events:none}
+.gr-key{position:absolute;z-index:1;top:43%;left:50%;width:min(82vw,410px);height:auto;pointer-events:none;animation:gr-key-emerge 1.35s ease-out both,gr-key-float 4s ease-in-out 1.35s infinite alternate}
+@keyframes gr-key-emerge{from{opacity:0;filter:blur(14px) drop-shadow(0 0 16px #fbd672);transform:translate(-50%,22px) scale(.78)}to{opacity:1;filter:blur(0) drop-shadow(0 0 18px #e5bb4e);transform:translate(-50%,0) scale(1)}}
+@keyframes gr-key-float{from{transform:translate(-50%,0) scale(1)}to{transform:translate(-50%,-9px) scale(1.025)}}
+.gr-scroll{position:absolute;z-index:2;inset:0;overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 17dvh) clamp(25px,7vw,55px) calc(85px + env(safe-area-inset-bottom,0px))}
+.gr-copy{max-width:620px;margin:0 auto;color:#fff;font-size:clamp(18px,4.8vw,25px);line-height:1.43;text-shadow:0 2px 8px rgba(0,0,0,.95);overflow-wrap:anywhere}
+.gr-copy strong{font-weight:900;color:#fff}
+@media (prefers-reduced-motion:reduce){.gondolier-rendezvous .gr-painting,.gondolier-rendezvous .gr-storm,.gr-speaker,.gr-key{animation:none}.gr-storm,.gr-scene{transition:none}.gr-key{transform:translateX(-50%)}}

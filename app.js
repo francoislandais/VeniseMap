@@ -4,6 +4,7 @@ import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
 import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
 import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
 import { openCortoRendezvous } from "./corto-rendezvous.js";
+import { openGondolierRendezvous } from "./gondolier-rendezvous.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -745,6 +746,12 @@ function farLine(W) {
 function walkerTap(W) {
   const d = walkerAt(W), m = pos ? dist(pos.lat, pos.lon, d.lat, d.lon) : Infinity;
   if (m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
+  if (W.id === "gondolier") {
+    openGondolierRendezvous(() => {
+      if (!has("story:gondolier:first")) { award("story:gondolier:first", 0, meIdx()); save(); }
+    });
+    return;
+  }
   if (W.quiz) openWalkerQuiz(W); else cortoSays(W.msg);
 }
 // Rencontre en grand : le personnage grandit en haut de l'écran et pose sa question ; mauvaise réponse -> il se vexe, rapetisse et s'enfuit en courant.
