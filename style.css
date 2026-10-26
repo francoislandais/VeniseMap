@@ -364,6 +364,7 @@ img.full{width:100%;border-radius:14px}
 .mask-marker img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(16,19,47,.5))}
 .mask-marker.is-gem img{filter:drop-shadow(0 0 8px #ffe090) drop-shadow(0 2px 4px #251649)}
 .mask-marker:focus-visible{outline:2px solid #ffe096;outline-offset:3px;border-radius:50%}
+.mask-bloom{position:fixed;z-index:2450;display:block;object-fit:contain;pointer-events:none;transform-origin:center;filter:drop-shadow(0 0 16px rgba(255,229,150,.8));will-change:transform,opacity}
 .mask-rain-star{position:fixed;z-index:1750;pointer-events:none;color:#fff3b4;text-shadow:0 0 7px #fff,0 0 14px #ffc445;font:25px/1 Georgia,serif}
 .mask-gem-flight{position:fixed;z-index:1900;object-fit:contain;pointer-events:none;filter:drop-shadow(0 0 12px #ffe090)}
 .maplibregl-marker.pin:not(.mep){z-index:5}

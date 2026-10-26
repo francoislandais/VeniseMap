@@ -936,7 +936,7 @@ const maskKey = (id, player = meIdx()) => `mask:${player}:${id}`;
 const maskGemKey = (id, player = meIdx()) => `o:mask-gem:${player}:${id}`;
 const maskState = (id, player = meIdx()) => !has(maskKey(id, player)) ? "mask" : S.done[maskKey(id, player)].kind === "gem" && !has(maskGemKey(id, player)) ? "gem" : "done";
 function updateMaskMarkers() {
-  const zoom = map.getZoom(), size = Math.round(Math.min(52, Math.max(8, 12 * 2 ** (zoom - 15.5))));
+  const zoom = map.getZoom(), size = Math.round(Math.min(76, Math.max(10, 24 * 1.5 ** (zoom - 15))));
   for (const [id, { el, img }] of maskMarkers) {
     const state = maskState(id), src = state === "gem" ? MASK_GEM_IMAGE : MASK_IMAGE;
     el.hidden = !JEU || zoom < 15 || state === "done";
@@ -969,6 +969,23 @@ function maskRain(cx, cy) {
       { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${fall}px)) scale(.6)`, opacity: 0 },
     ], { duration: 850 + Math.random() * 450, delay: Math.random() * 230, easing: "ease-in", fill: "forwards" }).finished.finally(() => star.remove());
   }
+}
+async function bloomMask(img) {
+  const r = img.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const ghost = img.cloneNode(); ghost.className = "mask-bloom";
+  ghost.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+  document.body.appendChild(ghost); img.style.visibility = "hidden";
+  const dx = innerWidth / 2 - cx, dy = innerHeight / 2 - cy;
+  const scale = 1.2 * Math.max((innerWidth + 80) / Math.max(r.width, 16), (innerHeight + 80) / Math.max(r.height, 16));
+  const full = `translate(${dx}px,${dy}px) scale(${scale})`;
+  await ghost.animate([
+    { transform: "translate(0,0) scale(1)", opacity: 1, offset: 0 },
+    { transform: full, opacity: 1, offset: .62 },
+    { transform: full, opacity: 1, offset: .88 },
+    { transform: full, opacity: 0, offset: 1 },
+  ], { duration: 1750, easing: "ease-in-out", fill: "forwards" }).finished.catch(() => {});
+  ghost.remove();
+  return { cx: innerWidth / 2, cy: innerHeight / 2 };
 }
 async function collectMaskGem(site, record) {
   const player = meIdx(), key = maskGemKey(site.id, player);
@@ -1004,18 +1021,18 @@ async function tapMask(site, record) {
   if (distance > MASK_RADIUS + Math.min(fix.acc, 20)) {
     record.busy = false; toast(`Ce masque est encore à ${fmtD(distance)}. Approche-toi !`); return;
   }
-  const r = img.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const { cx, cy } = await bloomMask(img);
+  if (player !== meIdx()) { img.style.visibility = ""; record.busy = false; return; }
   if (Math.random() < .1) {
     award(maskKey(site.id, player), 0, player); S.done[maskKey(site.id, player)].kind = "gem"; save();
-    await img.animate([{ transform: "scale(1) rotate(0deg)", opacity: 1 }, { transform: "scale(1.7) rotate(360deg)", opacity: 0 }], { duration: 650, fill: "forwards" }).finished.catch(() => {});
-    img.src = MASK_GEM_IMAGE; el.classList.add("is-gem");
+    img.src = MASK_GEM_IMAGE; img.style.visibility = ""; el.classList.add("is-gem");
     await img.animate([{ transform: "scale(.3)", opacity: 0 }, { transform: "scale(1.4)", opacity: 1, offset: .6 }, { transform: "scale(1)", opacity: 1 }], { duration: 650, fill: "forwards" }).finished.catch(() => {});
     updateMaskMarkers(); toast("Une gemme ! Touche-la pour la ranger dans tes objets.");
   } else {
-    await img.animate([{ transform: "scale(1) rotate(0deg)", opacity: 1 }, { transform: "scale(1.85) rotate(360deg)", opacity: 0 }], { duration: 700, fill: "forwards" }).finished.catch(() => {});
     maskRain(cx, cy);
     award(maskKey(site.id, player), MASK_STARS, player); S.done[maskKey(site.id, player)].kind = "stars"; save(); refreshAll();
     starsToCounter(cx, cy, MASK_STARS, true);
+    img.style.visibility = "";
   }
   record.busy = false;
 }
