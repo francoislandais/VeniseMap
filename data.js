@@ -1,8 +1,8 @@
-// Contenu du jeu : « Le Livre du Lion » — escape game à Venise pour 5-9 ans.
+// Contenu du jeu : « Fables de Venise » — escape game à Venise pour 5-9 ans.
 // Coordonnées recoupées avec OpenStreetMap / Wikipédia (±20 m) : le bouton « maintenir 2 s » permet de valider sans GPS.
 
 export const STORY = {
-  title: "Le Livre du Lion",
+  title: "Fables de Venise",
   captain: { name: "Corto Maltese", emoji: "🧢" },
   intro: [
     "Cette nuit, le Lion ailé de la place Saint-Marc s'est réveillé en pleurant : son grand livre est VIDE !",
