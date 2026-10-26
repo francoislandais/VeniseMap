@@ -94,14 +94,34 @@ const PAGES = [
     ],
   },
   {
-    art: "plain",
+    art: "omen",
+    character: "doge",
+    backdrop: "img/narrative/venise-lavis-04.png",
     head: "left",
     paragraphs: [
-      "Certains habitants racontent avoir rencontré, au détour d'une ruelle, un vieil homme à l'allure vénérable qui prétend être le Doge lui-même ! D'autres jurent avoir aperçu une silhouette fantomatique errant dans la ville. Il pourrait s'agir, figure-toi, du fantôme de Monteverdi !",
+      "Certains habitants racontent avoir rencontré, au détour d'une ruelle, un vieil homme à l'allure vénérable qui prétend être le Doge lui-même !",
+    ],
+  },
+  {
+    layoutKey: 8,
+    art: "omen",
+    character: "monteverdi",
+    backdrop: "img/narrative/venise-lavis-03.png",
+    paragraphs: [
+      "D'autres jurent avoir aperçu une silhouette fantomatique errant dans la ville. Il pourrait s'agir, figure-toi, du fantôme de Monteverdi !",
+    ],
+  },
+  {
+    layoutKey: 9,
+    art: "omen",
+    character: "lion",
+    backdrop: "img/narrative/venise-lavis-02.png",
+    paragraphs: [
       "Et ce n'est pas tout… On raconte même qu'un immense lion ailé aurait été aperçu survolant la lagune !",
     ],
   },
   {
+    layoutKey: 4,
     art: "plain",
     paragraphs: [
       "Des histoires à dormir debout ? Peut-être… Mais à Venise, va savoir où finit la légende et où commence la vérité !",
@@ -110,6 +130,7 @@ const PAGES = [
     ],
   },
   {
+    layoutKey: 5,
     art: "gondolier",
     head: "right",
     paragraphs: [
@@ -118,6 +139,7 @@ const PAGES = [
     ],
   },
   {
+    layoutKey: 6,
     art: "plain",
     paragraphs: [
       "Si tu rencontres le vieil homme qui prétend être le Doge, tu peux également l'interroger. Mais prends garde : il paraît qu'il a un sacré caractère !",
@@ -125,6 +147,7 @@ const PAGES = [
     ],
   },
   {
+    layoutKey: 7,
     art: "corto",
     paragraphs: [
       "Voilà, jeune matelot. Tu sais tout ce que je sais.",
@@ -175,7 +198,7 @@ export async function openCortoRendezvous() {
   };
   const applyLayout = (target = scene, pageIndex = index) => {
     if (!target) return;
-    const changes = layout.pages?.[pageIndex] || {};
+    const changes = layout.pages?.[PAGES[pageIndex].layoutKey ?? pageIndex] || {};
     const copy = target.querySelector(".cr-copy");
     copy.querySelectorAll(".cr-paragraph").forEach((paragraph, i) => {
       paragraph.innerHTML = typeof changes.text?.[i] === "string" ? formatted(changes.text[i]) : PAGES[pageIndex].paragraphs[i];
@@ -214,15 +237,15 @@ export async function openCortoRendezvous() {
         const cfg = changes.elements?.[`paragraph-${i}`] || {};
         keepVisible(paragraph, number(cfg.x, 0, -100, 100), number(cfg.y, 0, -100, 100));
       });
-      for (const key of ["corto", "head"]) {
-        const image = target.querySelector(key === "corto" ? ".cr-corto" : ".cr-head");
+      for (const key of ["corto", "head", "actor"]) {
+        const image = target.querySelector(key === "corto" ? ".cr-corto" : key === "head" ? ".cr-head" : ".cr-omen");
         if (!image) continue;
         const cfg = changes.elements?.[key] || {};
         keepVisible(image, number(cfg.x, 0, -100, 100), number(cfg.y, 0, -100, 100));
       }
     });
-    for (const key of ["corto", "head"]) {
-      const element = target.querySelector(key === "corto" ? ".cr-corto" : ".cr-head");
+    for (const key of ["corto", "head", "actor"]) {
+      const element = target.querySelector(key === "corto" ? ".cr-corto" : key === "head" ? ".cr-head" : ".cr-omen");
       if (!element) continue;
       const cfg = changes.elements?.[key] || {};
       element.style.translate = `${number(cfg.x, 0, -100, 100)}vw ${number(cfg.y, 0, -100, 100)}dvh`;
@@ -246,15 +269,14 @@ export async function openCortoRendezvous() {
     stage.querySelectorAll(".cr-exit").forEach((el) => el.remove());
     const nextScene = document.createElement("div");
     nextScene.className = `cr-scene cr-art-${page.art}${page.head ? " cr-has-head" : ""}${scene ? " cr-enter" : ""}`;
+    const backdrop = page.backdrop || (page.art === "storm" ? "img/narrative/corto-tempete.png" : page.art === "gondolier" ? "img/narrative/corto-gondolier.png" : "");
     const art = page.art === "corto"
       ? '<img class="cr-corto" src="img/intro/e1.webp" alt="Corto Maltese debout">'
-      : page.art === "storm"
-        ? '<img class="cr-painting" src="img/narrative/corto-tempete.png" alt="Une tempête sur la lagune de Venise">'
-        : page.art === "gondolier"
-          ? '<img class="cr-painting" src="img/narrative/corto-gondolier.png" alt="Un gondolier sur la lagune">'
-          : "";
+      : backdrop ? `<img class="cr-painting" src="${backdrop}" alt="">` : "";
+    const characters = { doge: ["img/doge-big.webp", "Le Doge"], monteverdi: ["img/monteverdi-avatar.webp", "Le fantôme de Monteverdi"], lion: ["img/lion-avatar.webp", "Le lion ailé"] };
+    const actor = page.character ? `<img class="cr-omen cr-omen-${page.character}" src="${characters[page.character][0]}" alt="${characters[page.character][1]}">` : "";
     const head = page.head ? `<img class="cr-head cr-head-${page.head}" src="img/corto-content.webp" alt="">` : "";
-    nextScene.innerHTML = `${art}${head}<div class="cr-scroll"><div class="cr-copy">${page.paragraphs.map((p, i) => `<div class="cr-paragraph" data-paragraph="${i}">${p}</div>`).join("")}</div></div>`;
+    nextScene.innerHTML = `${art}${actor}${head}<div class="cr-scroll"><div class="cr-copy">${page.paragraphs.map((p, i) => `<div class="cr-paragraph" data-paragraph="${i}">${p}</div>`).join("")}</div></div>`;
     const old = scene;
     stage.appendChild(nextScene);
     scene = nextScene;
@@ -294,6 +316,6 @@ export async function openCortoRendezvous() {
   closeButton.onclick = close;
   prev.onclick = back;
   show();
-  if (canEdit) editor = createCortoEditor({ overlay, stage, layout, defaults: PAGES, getIndex: () => index, getScene: () => scene, applyLayout, showPage: (to) => { index = Math.max(0, Math.min(PAGES.length - 1, to)); show(); }, editable, draftKey, revealAll: () => typing?.finish() });
+  if (canEdit) editor = createCortoEditor({ overlay, stage, layout, defaults: PAGES, getIndex: () => index, getLayoutKey: () => PAGES[index].layoutKey ?? index, getScene: () => scene, applyLayout, showPage: (to) => { index = Math.max(0, Math.min(PAGES.length - 1, to)); show(); }, editable, draftKey, revealAll: () => typing?.finish() });
   overlay.focus();
 }

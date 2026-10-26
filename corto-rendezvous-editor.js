@@ -1,5 +1,5 @@
 // Outils locaux de composition : les déplacements sont enregistrés en pourcentage de l'écran.
-export function createCortoEditor({ overlay, stage, layout, defaults, getIndex, getScene, applyLayout, showPage, editable, draftKey, revealAll }) {
+export function createCortoEditor({ overlay, stage, layout, defaults, getIndex, getLayoutKey, getScene, applyLayout, showPage, editable, draftKey, revealAll }) {
   let editing = false, selected = "paragraph-0", drag = null;
   const bar = document.createElement("div");
   bar.className = "cr-editor";
@@ -33,15 +33,16 @@ export function createCortoEditor({ overlay, stage, layout, defaults, getIndex, 
     paragraph: { x: [-100, 100], y: [-100, 100], size: [.65, 1.7], width: [50, 100], gap: [0, 60], line: [1.1, 1.8] },
     corto: { x: [-100, 100], y: [-100, 100], size: [.35, 3] },
     head: { x: [-100, 100], y: [-100, 100], size: [.35, 3] },
+    actor: { x: [-100, 100], y: [-100, 100], size: [.35, 3] },
     painting: { x: [0, 100], y: [0, 100], size: [1, 1.8] },
   };
   const clamp = (v, [lo, hi]) => Math.max(lo, Math.min(hi, v));
   const paragraphIndex = (key = selected) => Number(key.slice("paragraph-".length));
   const kind = (key = selected) => key.startsWith("paragraph-") ? "paragraph" : key;
-  const defaultsFor = (key) => kind(key) === "paragraph" ? { x: 0, y: 0, size: 1, width: 100, gap: layout.pages?.[getIndex()]?.elements?.copy?.gap ?? 18, line: layout.pages?.[getIndex()]?.elements?.copy?.line ?? 1.42 }
+  const defaultsFor = (key) => kind(key) === "paragraph" ? { x: 0, y: 0, size: 1, width: 100, gap: layout.pages?.[getLayoutKey()]?.elements?.copy?.gap ?? 18, line: layout.pages?.[getLayoutKey()]?.elements?.copy?.line ?? 1.42 }
     : key === "painting" ? { x: defaults[getIndex()].art === "storm" ? 47 : 50, y: defaults[getIndex()].art === "storm" ? 26 : 24, size: 1 }
       : { x: 0, y: 0, size: 1 };
-  const page = () => ((layout.pages ||= {})[getIndex()] ||= {});
+  const page = () => ((layout.pages ||= {})[getLayoutKey()] ||= {});
   const current = () => {
     const elements = (page().elements ||= {});
     return (elements[selected] ||= defaultsFor(selected));
@@ -51,11 +52,11 @@ export function createCortoEditor({ overlay, stage, layout, defaults, getIndex, 
   const available = () => {
     const scene = getScene();
     const paragraphs = defaults[getIndex()].paragraphs.map((_, i) => [`paragraph-${i}`, `Paragraphe ${i + 1}`]);
-    return [...paragraphs, ...[["corto", "Corto debout"], ["head", "Tête de Corto"], ["painting", "Image de fond"]].filter(([key]) => !!scene?.querySelector(key === "corto" ? ".cr-corto" : key === "head" ? ".cr-head" : ".cr-painting"))];
+    return [...paragraphs, ...[["corto", "Corto debout"], ["head", "Tête de Corto"], ["actor", defaults[getIndex()].character === "doge" ? "Doge" : defaults[getIndex()].character === "monteverdi" ? "Monteverdi" : "Lion ailé"], ["painting", "Image de fond"]].filter(([key]) => !!scene?.querySelector(key === "corto" ? ".cr-corto" : key === "head" ? ".cr-head" : key === "actor" ? ".cr-omen" : ".cr-painting"))];
   };
-  const selectedElement = () => getScene()?.querySelector(kind() === "paragraph" ? `.cr-paragraph[data-paragraph="${paragraphIndex()}"]` : selected === "corto" ? ".cr-corto" : selected === "head" ? ".cr-head" : ".cr-painting");
+  const selectedElement = () => getScene()?.querySelector(kind() === "paragraph" ? `.cr-paragraph[data-paragraph="${paragraphIndex()}"]` : selected === "corto" ? ".cr-corto" : selected === "head" ? ".cr-head" : selected === "actor" ? ".cr-omen" : ".cr-painting");
   const positionHandle = () => {
-    const image = editing && (selected === "corto" || selected === "head") ? selectedElement() : null;
+    const image = editing && (selected === "corto" || selected === "head" || selected === "actor") ? selectedElement() : null;
     resizeHandle.hidden = !image;
     if (!image) return;
     const rect = image.getBoundingClientRect(), frame = overlay.getBoundingClientRect();
@@ -143,9 +144,9 @@ export function createCortoEditor({ overlay, stage, layout, defaults, getIndex, 
   });
   const onDown = (event) => {
     if (!editing || !event.isPrimary || event.button !== 0) return;
-    const hit = event.target.closest(".cr-paragraph,.cr-corto,.cr-head,.cr-painting");
+    const hit = event.target.closest(".cr-paragraph,.cr-corto,.cr-head,.cr-omen,.cr-painting");
     if (!hit) return;
-    selected = hit.classList.contains("cr-paragraph") ? `paragraph-${hit.dataset.paragraph}` : hit.classList.contains("cr-corto") ? "corto" : hit.classList.contains("cr-head") ? "head" : "painting";
+    selected = hit.classList.contains("cr-paragraph") ? `paragraph-${hit.dataset.paragraph}` : hit.classList.contains("cr-corto") ? "corto" : hit.classList.contains("cr-head") ? "head" : hit.classList.contains("cr-omen") ? "actor" : "painting";
     refresh();
     const c = current();
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, cx: c.x, cy: c.y, box: hit.getBoundingClientRect(), key: selected };
