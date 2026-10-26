@@ -930,17 +930,19 @@ map.on("zoom", updateTreeSize);
 fetch("data/arbres.json").then((r) => { if (!r.ok) throw new Error("Repères d’arbres indisponibles"); return r.json(); }).then((data) => renderTrees(data.points || [])).catch((e) => console.warn(e.message));
 
 /* Masques de carnaval cachés sur les promenades : chacun se gagne une fois par enfant. */
-const MASK_IMAGE = "img/masque-venitien-transparent.png", MASK_GEM_IMAGE = "img/objets/diamant.svg";
+const MASK_IMAGES = ["img/masque-venitien-transparent.png", ...[1, 2, 3, 4, 5].map((n) => `img/masque-carnaval-${n}.webp`)];
+const MASK_GEM_IMAGE = "img/objets/diamant.svg";
 const MASK_STARS = 5, MASK_RADIUS = 55, maskMarkers = new Map();
 const maskKey = (id, player = meIdx()) => `mask:${player}:${id}`;
 const maskGemKey = (id, player = meIdx()) => `o:mask-gem:${player}:${id}`;
 const maskState = (id, player = meIdx()) => !has(maskKey(id, player)) ? "mask" : S.done[maskKey(id, player)].kind === "gem" && !has(maskGemKey(id, player)) ? "gem" : "done";
 function updateMaskMarkers() {
-  const zoom = map.getZoom(), size = Math.round(Math.min(76, Math.max(10, 24 * 1.5 ** (zoom - 15))));
-  for (const [id, { el, img }] of maskMarkers) {
-    const state = maskState(id), src = state === "gem" ? MASK_GEM_IMAGE : MASK_IMAGE;
+  const zoom = map.getZoom(), size = Math.round(Math.min(56, Math.max(10, 17 * 1.45 ** (zoom - 15))));
+  for (const [id, { el, img, maskImage }] of maskMarkers) {
+    const state = maskState(id), src = state === "gem" ? MASK_GEM_IMAGE : maskImage;
     el.hidden = !JEU || zoom < 15 || state === "done";
     el.style.setProperty("--mask-size", size + "px");
+    el.style.setProperty("--mask-star-size", Math.round(Math.max(7, Math.min(12, size * .23))) + "px");
     el.classList.toggle("is-gem", state === "gem");
     if (img.getAttribute("src") !== src) img.src = src;
     el.setAttribute("aria-label", state === "gem" ? "Attraper la gemme du carnaval" : "Découvrir un masque vénitien");
@@ -1007,12 +1009,13 @@ async function tapMask(site, record) {
   if (record.busy || maskState(site.id) !== "mask" || !mapWorkVisible()) return;
   record.busy = true;
   const player = meIdx(), { el, img } = record, started = performance.now();
+  el.classList.add("is-searching");
   const turn = img.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], { duration: 900, iterations: Infinity });
   let frame = 0;
   const accelerate = (now) => { turn.playbackRate = Math.min(7, 1 + (now - started) / 450); frame = requestAnimationFrame(accelerate); };
   frame = requestAnimationFrame(accelerate);
   const [fix] = await Promise.all([maskFix(), sleep(1000)]);
-  cancelAnimationFrame(frame); turn.cancel();
+  cancelAnimationFrame(frame); turn.cancel(); el.classList.remove("is-searching");
   if (!el.isConnected || player !== meIdx()) { record.busy = false; return; }
   if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.acc) || fix.acc > 80) {
     record.busy = false; toast("Je ne parviens pas à vérifier ta position. Réessaie près du masque."); return;
@@ -1021,7 +1024,9 @@ async function tapMask(site, record) {
   if (distance > MASK_RADIUS + Math.min(fix.acc, 20)) {
     record.busy = false; toast(`Ce masque est encore à ${fmtD(distance)}. Approche-toi !`); return;
   }
+  el.classList.add("is-blooming");
   const { cx, cy } = await bloomMask(img);
+  el.classList.remove("is-blooming");
   if (player !== meIdx()) { img.style.visibility = ""; record.busy = false; return; }
   if (Math.random() < .1) {
     award(maskKey(site.id, player), 0, player); S.done[maskKey(site.id, player)].kind = "gem"; save();
@@ -1037,16 +1042,20 @@ async function tapMask(site, record) {
   record.busy = false;
 }
 function renderMasks(points) {
-  for (const site of points) {
-    if (!site.id || !Number.isFinite(site.lat) || !Number.isFinite(site.lon) || maskMarkers.has(site.id)) continue;
+  points.forEach((site, index) => {
+    if (!site.id || !Number.isFinite(site.lat) || !Number.isFinite(site.lon) || maskMarkers.has(site.id)) return;
     const el = document.createElement("button"); el.type = "button"; el.className = "mask-marker";
-    const img = document.createElement("img"); img.src = MASK_IMAGE; img.alt = ""; img.draggable = false; el.appendChild(img);
+    const maskImage = MASK_IMAGES[index % MASK_IMAGES.length];
+    const img = document.createElement("img"); img.src = maskImage; img.alt = ""; img.draggable = false; el.appendChild(img);
+    const orbit = document.createElement("span"); orbit.className = "mask-orbit"; orbit.setAttribute("aria-hidden", "true");
+    for (let star = 0; star < 3; star++) { const spark = document.createElement("i"); spark.textContent = "★"; orbit.appendChild(spark); }
+    el.appendChild(orbit);
     const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([site.lon, site.lat]).addTo(map);
-    const record = { el, img, marker, busy: false };
+    const record = { el, img, maskImage, marker, busy: false };
     el.addEventListener("pointerdown", (event) => event.stopPropagation());
     el.addEventListener("click", (event) => { event.stopPropagation(); tapMask(site, record); });
     maskMarkers.set(site.id, record);
-  }
+  });
   updateMaskMarkers();
 }
 fetch("data/masques.json").then((r) => { if (!r.ok) throw new Error("Masques indisponibles"); return r.json(); }).then((data) => renderMasks(data.points || [])).catch((e) => console.warn(e.message));
