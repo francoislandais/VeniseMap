@@ -1797,11 +1797,6 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
   { const bt = $("#b-talk"); if (window.ResizeObserver) new ResizeObserver(() => { sh.style.setProperty("--cqh", bt.offsetHeight + "px"); $$(".rev-img").forEach(fitRevImg); }).observe(bt); }
   if (DEV && !conclusionOnly) { const sk = document.createElement("button"); sk.type = "button"; sk.className = "dev-skip"; sk.textContent = "⏭ Fin"; sk.onclick = () => skipEnd && skipEnd(); sh.appendChild(sk); } // mode dev : sauter à l'écran final
   if (LOCAL_DEV && p.musicChallenge) { const b = document.createElement("button"); b.type = "button"; b.className = "dev-music"; b.textContent = "🔧 Dev · Défi musical"; b.onclick = () => openMusicChallenge(p.musicChallenge.entry, p, () => {}, true); sh.appendChild(b); }
-  { // coin haut gauche : seul le retour à la carte reste présent pendant l'épreuve
-    const dk = document.createElement("div"); dk.className = "dock";
-    dk.innerHTML = `<button type="button" class="dk dk-exit" aria-label="Revenir à la carte de Venise">${EXIT_SVG}</button>`;
-    sh.appendChild(dk); $(".dk-exit", dk).onclick = () => suspendChap();
-  }
   sh.onclick = null; // dans une épreuve, un toucher à côté des bulles et des boutons ne ferme rien : on y reste
   try { history.pushState({ vqBridge: 1 }, ""); } catch {}
   sh.style.backgroundColor = "#0a1c28";
@@ -1837,7 +1832,7 @@ function conclusionEditor(sh, p, elements, defaults) {
   let editing = false, selected = null, drag = null;
   const select = (key) => { selected = key; Object.entries(elements).forEach(([k, el]) => el.classList.toggle("chap-edit-selected", k === key)); $(".chap-edit-name", bar).textContent = key ? names[key] : "Touche un élément"; field.hidden = true; size.disabled = !key; size.value = String(Math.round((Number(layout[key]?.s) || 1) * 100)); sizeValue.textContent = `${size.value} %`; if (key && key !== "emblem") field.value = elements[key].textContent; };
   const cfg = (key) => (layout[key] ||= { x: 0, y: 0, s: 1 });
-  const showAll = () => { emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue.classList.add("shown"); planButton?.classList.add("shown"); photoButton?.classList.add("shown"); };
+  const showAll = () => { emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue?.classList.add("shown"); planButton?.classList.add("shown"); photoButton?.classList.add("shown"); };
   bar.addEventListener("click", async (e) => {
     const action = e.target.closest("button")?.dataset.ce; if (!action) return;
     if (action === "toggle") { editing = !editing; sh.classList.toggle("chap-editing", editing); tools.hidden = !editing; if (editing) showAll(); select(null); return; }
@@ -1860,18 +1855,18 @@ async function chapEnd(p, replay, preview = false) {
   await clearTalk();
   const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.classList.add("chap-conclusion"); sh.dataset.k = "one";
   const devSkip = $(".dev-skip", sh); if (devSkip) devSkip.remove();
-  const exitDock = $(".dock", sh); if (exitDock) exitDock.remove();
   const icon = PLACE_ICONS[p.id], emblem = document.createElement("div");
   emblem.className = "chap-victory";
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
-  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: "À présent, je vais te confier un secret.", secret: endSecret(p), plan: "Ouvre le plan de l'église." };
+  const hasSecret = !!(p.reward || p.musicChallenge);
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? endSecret(p) : "", plan: "Ouvre le plan de l'église." };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
   const msg = chatAdd(typingHtml, "fc chap-final-msg"), bubble = $(".m-bubble", msg);
   bubble.classList.remove("typing");
-  bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span><span class="chap-secret-clue">${esc(defaults.secret)}</span>`;
+  bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span>${hasSecret ? `<span class="chap-secret-clue">${esc(defaults.secret)}</span>` : ""}`;
   fitChapTalk();
   if (!preview && p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
   let planButton = null, photoButton = null;
@@ -1881,7 +1876,7 @@ async function chapEnd(p, replay, preview = false) {
     if (MONTAGES[p.id]) { photoButton = document.createElement("button"); photoButton.type = "button"; photoButton.className = "chap-end-photo"; photoButton.setAttribute("aria-label", "Prendre une photo souvenir"); photoButton.innerHTML = CAM_SVG; photoButton.onclick = () => openMontage(p.id); actions.appendChild(photoButton); }
     fitChapTalk();
   }
-  conclusionEditor(sh, p, { bravo: $(".chap-victory-bravo", emblem), completion: $(".chap-victory-line", emblem), emblem: $(".chap-victory-emblem", emblem), lead: $(".chap-secret-lead", bubble), secret: $(".chap-secret-clue", bubble), ...(planButton ? { plan: planButton } : {}) }, defaults);
+  conclusionEditor(sh, p, { bravo: $(".chap-victory-bravo", emblem), completion: $(".chap-victory-line", emblem), emblem: $(".chap-victory-emblem", emblem), lead: $(".chap-secret-lead", bubble), ...(hasSecret ? { secret: $(".chap-secret-clue", bubble) } : {}), ...(planButton ? { plan: planButton } : {}) }, defaults);
   const routePlanButton = () => {
     if (!planButton) return;
     const M = p.musicChallenge;
@@ -1894,12 +1889,12 @@ async function chapEnd(p, replay, preview = false) {
   const stage = (delay, action) => setTimeout(() => { if (emblem.isConnected) action(); }, delay);
   const lead = $(".chap-secret-lead", bubble), clue = $(".chap-secret-clue", bubble);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue.classList.add("shown"); planButton?.classList.add("shown"); photoButton?.classList.add("shown");
+    emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue?.classList.add("shown"); planButton?.classList.add("shown"); photoButton?.classList.add("shown");
   } else {
     stage(180, () => emblem.classList.add("shown"));
     stage(2500, () => emblem.classList.add("lit"));
     stage(3500, () => { bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); });
-    stage(4750, () => clue.classList.add("shown"));
+    if (clue) stage(4750, () => clue.classList.add("shown"));
     stage(5650, () => { planButton?.classList.add("shown"); photoButton?.classList.add("shown"); });
   }
 }

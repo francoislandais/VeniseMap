@@ -1493,7 +1493,6 @@ body.menu-open #corto-btn{display:none!important}
 /* ───────── Épreuve : Corto parle en bas (bande, texte à gauche, tête à droite) ; propositions au centre de l'espace libre ; image de révélation en haut ───────── */
 body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 #sheet.chap .chap-g-bot{display:none}
-#sheet.chap .dock{bottom:auto;top:calc(12px + var(--safe-t));left:12px}
 #sheet.chap .b-talk{position:absolute;left:0;right:0;width:100%!important;max-width:none!important;margin:0!important;bottom:0;top:auto;height:auto;max-height:60%;z-index:4;padding:64px 22px calc(100px + var(--safe-b)) 22px!important;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;
   background:linear-gradient(to top,rgba(250,240,222,.98) 0%,rgba(250,240,222,.97) calc(100% - 34px),rgba(250,240,222,0) 100%);pointer-events:none}
 #sheet.chap .b-talk .msg{display:block;gap:0;padding:0;margin:0}
@@ -1508,7 +1507,6 @@ body.chap-open #corto-btn,body.chap-open #bridge-btn{visibility:hidden}
 #sheet.chap .rev-cap{z-index:4;left:14px;right:14px;padding:0 10px 4px;font-size:12.5px}
 #sheet.chap .b-actions.two{z-index:5}
 #sheet.chap > .aud{position:absolute;left:18px;right:18px;top:calc(var(--safe-t) + 66px);z-index:3}
-#sheet.chap .dock:not(.up-dock) .dk-exit{display:grid}
 
 /* photo de révélation : grande, juste au-dessus de la bande de Corto, bords fondus */
 #sheet.chap .rev-img{position:absolute;left:0;right:0;margin:0 auto;top:auto!important;bottom:calc(var(--cqh,150px) - 6px)!important;max-width:100%!important;max-height:none!important;border-radius:0;box-shadow:none;background:none;z-index:3;object-fit:contain;
@@ -2063,3 +2061,5 @@ body.music-victory-active #home-btn{z-index:2300;pointer-events:none}
 #sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo.shown{opacity:1;transform:none;pointer-events:auto}
 #sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo svg{width:22px;height:22px}
 @media (prefers-reduced-motion:reduce){#sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo{transition:none}}
+
+#sheet.chap.chap-conclusion .chap-secret-lead:only-child{margin-bottom:0}
