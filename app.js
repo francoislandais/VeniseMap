@@ -11,10 +11,12 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 let scoreAnim = null; // animation du compteur en cours (étoiles qui arrivent)
 const KEY = "vq_state_v1";
 const QS = new URLSearchParams(location.search);
-// Seul l’interrupteur de l’onglet Dév. active les outils de test. L’ancien réglage est ignoré.
-let DEV = false;
-try { DEV = localStorage.getItem("vq_dev_enabled_v2") === "1"; } catch {}
 const LOCAL_PREVIEW = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+// Une position simulée explicite reste utilisable dans l'aperçu local, sans demande de GPS réel.
+const fakeParts = QS.get("fake")?.split(",");
+const LOCAL_FAKE = LOCAL_PREVIEW && fakeParts?.length === 2 && fakeParts.every((part) => part.trim() !== "" && Number.isFinite(Number(part)));
+let DEV = LOCAL_FAKE;
+try { DEV = LOCAL_FAKE || localStorage.getItem("vq_dev_enabled_v2") === "1"; } catch {}
 const LOCAL_DEV = DEV && LOCAL_PREVIEW;
 const DAY_MS = 86400000;
 
