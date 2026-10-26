@@ -188,38 +188,45 @@ export async function openCortoRendezvous() {
     copy.style.fontSize = `${Math.min(32, Math.max(16, base * size))}px`;
     copy.style.lineHeight = String(number(c.line, 1.42, 1.2, 1.8));
     copy.style.setProperty("--cr-gap", `${number(c.gap, 18, 6, 50)}px`);
-    const x = number(c.x, 0, -25, 25), y = number(c.y, 0, -30, 40);
+    const x = number(c.x, 0, -100, 100), y = number(c.y, 0, -100, 100);
     copy.style.translate = `${x}vw ${y}dvh`;
     copy.querySelectorAll(".cr-paragraph").forEach((paragraph, i) => {
       const cfg = changes.elements?.[`paragraph-${i}`] || {};
-      const px = number(cfg.x, 0, -35, 35), py = number(cfg.y, 0, -35, 45);
+      const px = number(cfg.x, 0, -100, 100), py = number(cfg.y, 0, -100, 100);
       paragraph.style.width = `${number(cfg.width, 100, 50, 100)}%`;
       paragraph.style.fontSize = `${Math.min(54, Math.max(13, base * size * number(cfg.size, 1, .65, 1.7)))}px`;
       paragraph.style.lineHeight = String(number(cfg.line, number(c.line, 1.42, 1.1, 1.8), 1.1, 1.8));
       paragraph.style.marginBottom = `${number(cfg.gap, number(c.gap, 18, 0, 60), 0, 60)}px`;
       paragraph.style.translate = `${px}vw ${py}dvh`;
     });
+    // Le cadrage suit l'écran entier : une boîte peut traverser ses anciennes marges.
+    // Hors édition, une petite partie reste visible pour qu'on puisse toujours la retrouver.
     requestAnimationFrame(() => {
-      if (!copy.isConnected) return;
-      const r = copy.getBoundingClientRect(), area = target.querySelector(".cr-scroll").getBoundingClientRect();
-      const dx = r.left < area.left + 12 ? area.left + 12 - r.left : r.right > area.right - 12 ? area.right - 12 - r.right : 0;
-      const dy = r.top < area.top + 8 ? area.top + 8 - r.top : 0;
-      if (dx || dy) copy.style.translate = `calc(${x}vw + ${Math.round(dx)}px) calc(${y}dvh + ${Math.round(dy)}px)`;
+      if (!copy.isConnected || editor?.editing) return;
+      const area = overlay.getBoundingClientRect();
+      const keepVisible = (element, tx, ty) => {
+        const box = element.getBoundingClientRect(), visible = 42;
+        const dx = box.right < area.left + visible ? area.left + visible - box.right : box.left > area.right - visible ? area.right - visible - box.left : 0;
+        const dy = box.bottom < area.top + visible ? area.top + visible - box.bottom : box.top > area.bottom - visible ? area.bottom - visible - box.top : 0;
+        if (dx || dy) element.style.translate = `calc(${tx}vw + ${Math.round(dx)}px) calc(${ty}dvh + ${Math.round(dy)}px)`;
+      };
       copy.querySelectorAll(".cr-paragraph").forEach((paragraph, i) => {
         const cfg = changes.elements?.[`paragraph-${i}`] || {};
-        const px = number(cfg.x, 0, -35, 35), py = number(cfg.y, 0, -35, 45);
-        const box = paragraph.getBoundingClientRect();
-        const adjustX = box.left < area.left + 12 ? area.left + 12 - box.left : box.right > area.right - 12 ? area.right - 12 - box.right : 0;
-        const adjustY = box.top < area.top + 8 ? area.top + 8 - box.top : 0;
-        if (adjustX || adjustY) paragraph.style.translate = `calc(${px}vw + ${Math.round(adjustX)}px) calc(${py}dvh + ${Math.round(adjustY)}px)`;
+        keepVisible(paragraph, number(cfg.x, 0, -100, 100), number(cfg.y, 0, -100, 100));
       });
+      for (const key of ["corto", "head"]) {
+        const image = target.querySelector(key === "corto" ? ".cr-corto" : ".cr-head");
+        if (!image) continue;
+        const cfg = changes.elements?.[key] || {};
+        keepVisible(image, number(cfg.x, 0, -100, 100), number(cfg.y, 0, -100, 100));
+      }
     });
     for (const key of ["corto", "head"]) {
       const element = target.querySelector(key === "corto" ? ".cr-corto" : ".cr-head");
       if (!element) continue;
       const cfg = changes.elements?.[key] || {};
-      element.style.translate = `${number(cfg.x, 0, -35, 35)}vw ${number(cfg.y, 0, -35, 45)}dvh`;
-      element.style.scale = String(number(cfg.size, 1, .5, 2));
+      element.style.translate = `${number(cfg.x, 0, -100, 100)}vw ${number(cfg.y, 0, -100, 100)}dvh`;
+      element.style.scale = String(number(cfg.size, 1, .35, 3));
     }
     const painting = target.querySelector(".cr-painting");
     if (painting) {
