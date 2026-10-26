@@ -28,7 +28,14 @@ export function createCortoSoundtrack() {
   const scene = (index, previous = page) => {
     page = index;
     if (muted) return;
+    if (index === 0) {
+      fade(music, 0, 250, true);
+      fade(wind, 0, 250, true);
+      fade(thunder, 0, 250, true);
+      return;
+    }
     const storm = index === 1 || index === 2;
+    if (music.paused) play(music);
     fade(music, storm ? .09 : .18, 650);
     if (storm) {
       if (wind.paused) { wind.currentTime = 0; play(wind); }
@@ -45,13 +52,12 @@ export function createCortoSoundtrack() {
   };
   return {
     get muted() { return muted; },
-    start() { if (!muted) { play(music); fade(music, .18, 900); } },
     scene,
     toggle() {
       muted = !muted;
       try { localStorage.setItem("vq_corto_sound_muted", muted ? "1" : "0"); } catch {}
       if (muted) for (const audio of [music, wind, thunder]) fade(audio, 0, 200, true);
-      else { play(music); scene(page, -1); }
+      else scene(page, -1);
       return muted;
     },
     stop() { for (const audio of [music, wind, thunder]) fade(audio, 0, 300, true); },

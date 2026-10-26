@@ -146,7 +146,6 @@ export async function openCortoRendezvous() {
   if (opening || document.querySelector(".corto-rendezvous")) return;
   opening = true;
   const sound = createCortoSoundtrack();
-  sound.start(); // le tap sur le bateau autorise la lecture sonore sur mobile
   const layout = await layoutPromise;
   opening = false;
   if (document.querySelector(".corto-rendezvous")) return;
