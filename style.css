@@ -1199,6 +1199,7 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .cr-scene.cr-enter,.cr-scene.cr-exit{opacity:0}
 .cr-scene.cr-exit{pointer-events:none}
 .cr-scene::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(7,17,30,.1) 0,rgba(7,17,30,.3) 30%,rgba(7,17,30,.92) 76%,#091523 100%)}
+.cr-art-gondolier::after{background:linear-gradient(to bottom,rgba(7,17,30,.52) 0%,rgba(7,17,30,.55) 48%,rgba(7,17,30,.18) 74%,rgba(7,17,30,.65) 100%)}
 .cr-scene.cr-art-plain::after{background:none}
 .cr-painting{position:absolute;top:0;left:-4%;width:108%;height:100%;object-fit:cover;object-position:center top;animation:cr-watercolor-drift 20s ease-in-out infinite alternate}
 @keyframes cr-watercolor-drift{from{transform:translate3d(-1.5%,0,0)}to{transform:translate3d(1.5%,0,0)}}

@@ -132,26 +132,12 @@ const PAGES = [
   {
     layoutKey: 5,
     art: "gondolier",
+    backdrop: "img/narrative/corto-gondolier-fin.png",
     head: "right",
     paragraphs: [
       "Pour commencer, je te conseille d'aller voir le gondolier. Cet homme connaît Venise comme sa poche. Ses canaux, ses ruelles, ses passages secrets… Rien ne lui échappe !",
       "Si quelque chose d'inhabituel s'est produit, il en a certainement entendu parler.",
-    ],
-  },
-  {
-    layoutKey: 6,
-    art: "plain",
-    paragraphs: [
-      "Si tu rencontres le vieil homme qui prétend être le Doge, tu peux également l'interroger. Mais prends garde : il paraît qu'il a un sacré caractère !",
-      "Quant au fantôme de Monteverdi… Je te déconseille de t'en approcher. Ceux qui disent l'avoir aperçu le décrivent comme une âme tourmentée, errant sans repos dans les rues de Venise. Mieux vaut garder tes distances, pour le moment.",
-    ],
-  },
-  {
-    layoutKey: 7,
-    art: "corto",
-    paragraphs: [
-      "Voilà, jeune matelot. Tu sais tout ce que je sais.",
-      "<strong>À présent, c'est à toi de jouer. Et souviens-toi : à Venise, les apparences sont parfois trompeuses…</strong>",
+      "Bonne chance !",
     ],
   },
 ];
