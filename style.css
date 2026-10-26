@@ -2032,3 +2032,12 @@ body.music-victory-active #home-btn{z-index:2300;pointer-events:none}
 .ocam .oc-cancel{justify-self:start;padding:0;font:30px/1 Arial,sans-serif}
 .ocam .oc-import{justify-self:end}
 .ocam .oc-shot{width:70px;height:70px;border:5px solid rgba(255,255,255,.5)}
+
+/* Conclusion : le plan et la photo occupent une rangée mesurée avec la parole de Corto. */
+#sheet.chap.chap-conclusion .b-talk .chap-end-actions{flex:none;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;margin:18px 0 0;pointer-events:none}
+#sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-plan{position:relative;left:auto;bottom:auto;flex:0 1 auto;align-self:auto;min-width:0;max-width:100%;margin:0;white-space:normal}
+#sheet.chap.chap-conclusion .b-talk .chap-end-actions.has-photo .chap-end-plan{max-width:calc(100% - 53px)}
+#sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo{position:relative;top:auto;right:auto;z-index:auto;flex:none;width:44px;height:44px;display:grid;place-items:center;margin:0;padding:0;border-color:rgba(201,230,238,.75);border-radius:50%;background:rgba(8,38,57,.92);opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .7s ease,transform .7s ease}
+#sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo.shown{opacity:1;transform:none;pointer-events:auto}
+#sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo svg{width:22px;height:22px}
+@media (prefers-reduced-motion:reduce){#sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo{transition:none}}

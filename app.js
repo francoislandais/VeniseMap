@@ -1692,7 +1692,7 @@ function conclusionEditor(sh, p, elements, defaults) {
   const controller = new AbortController(); conclusionEditorAbort = controller;
   window.addEventListener("resize", () => apply("emblem"), { signal: controller.signal });
   if (!LOCAL_DEV) return;
-  const emblem = $(".chap-victory", sh), bt = $("#b-talk", sh), lead = elements.lead, clue = elements.secret, planButton = elements.plan;
+  const emblem = $(".chap-victory", sh), bt = $("#b-talk", sh), lead = elements.lead, clue = elements.secret, planButton = elements.plan, photoButton = $(".chap-end-photo", sh);
   const names = { bravo: "Bravo", completion: "Fin des épreuves", emblem: "Vignette", lead: "Annonce", secret: "Secret", plan: "Bouton du plan" };
   const bar = document.createElement("div"); bar.className = "chap-edit-bar";
   bar.innerHTML = '<button type="button" data-ce="toggle">✎ Conclusion</button><div class="chap-edit-tools" hidden><span class="chap-edit-name">Touche un élément</span><button type="button" data-ce="minus">Taille −</button><button type="button" data-ce="plus">Taille +</button><label class="chap-edit-size">Taille <input type="range" min="50" max="250" step="5" value="100" aria-label="Taille de l’élément sélectionné"><output>100 %</output></label><button type="button" data-ce="text">✎ Texte</button><button type="button" data-ce="reset">Réinit.</button><button type="button" data-ce="flip">⇅</button><button type="button" data-ce="save">💾 Enregistrer</button><textarea class="chap-edit-text" rows="2" hidden aria-label="Texte de l’élément sélectionné"></textarea><small class="chap-edit-status">Glisse un élément pour le déplacer.</small></div>';
@@ -1701,7 +1701,7 @@ function conclusionEditor(sh, p, elements, defaults) {
   let editing = false, selected = null, drag = null;
   const select = (key) => { selected = key; Object.entries(elements).forEach(([k, el]) => el.classList.toggle("chap-edit-selected", k === key)); $(".chap-edit-name", bar).textContent = key ? names[key] : "Touche un élément"; field.hidden = true; size.disabled = !key; size.value = String(Math.round((Number(layout[key]?.s) || 1) * 100)); sizeValue.textContent = `${size.value} %`; if (key && key !== "emblem") field.value = elements[key].textContent; };
   const cfg = (key) => (layout[key] ||= { x: 0, y: 0, s: 1 });
-  const showAll = () => { emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue.classList.add("shown"); planButton?.classList.add("shown"); };
+  const showAll = () => { emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue.classList.add("shown"); planButton?.classList.add("shown"); photoButton?.classList.add("shown"); };
   bar.addEventListener("click", async (e) => {
     const action = e.target.closest("button")?.dataset.ce; if (!action) return;
     if (action === "toggle") { editing = !editing; sh.classList.toggle("chap-editing", editing); tools.hidden = !editing; if (editing) showAll(); select(null); return; }
@@ -1738,9 +1738,13 @@ async function chapEnd(p, replay, preview = false) {
   bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span><span class="chap-secret-clue">${esc(defaults.secret)}</span>`;
   fitChapTalk();
   if (!preview && p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
-  let planButton = null;
-  if (p.plan) { planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "chap-end-plan"; planButton.textContent = defaults.plan; bt.appendChild(planButton); fitChapTalk(); }
-  if (MONTAGES[p.id]) { const b = document.createElement("button"); b.type = "button"; b.className = "chap-end-photo"; b.textContent = "📸 Photo souvenir"; b.onclick = () => openMontage(p.id); sh.appendChild(b); }
+  let planButton = null, photoButton = null;
+  if (p.plan || MONTAGES[p.id]) {
+    const actions = document.createElement("div"); actions.className = "chap-end-actions" + (MONTAGES[p.id] ? " has-photo" : ""); bt.appendChild(actions);
+    if (p.plan) { planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "chap-end-plan"; planButton.textContent = defaults.plan; actions.appendChild(planButton); }
+    if (MONTAGES[p.id]) { photoButton = document.createElement("button"); photoButton.type = "button"; photoButton.className = "chap-end-photo"; photoButton.setAttribute("aria-label", "Prendre une photo souvenir"); photoButton.innerHTML = CAM_SVG; photoButton.onclick = () => openMontage(p.id); actions.appendChild(photoButton); }
+    fitChapTalk();
+  }
   conclusionEditor(sh, p, { bravo: $(".chap-victory-bravo", emblem), completion: $(".chap-victory-line", emblem), emblem: $(".chap-victory-emblem", emblem), lead: $(".chap-secret-lead", bubble), secret: $(".chap-secret-clue", bubble), ...(planButton ? { plan: planButton } : {}) }, defaults);
   const routePlanButton = () => {
     if (!planButton) return;
@@ -1754,13 +1758,13 @@ async function chapEnd(p, replay, preview = false) {
   const stage = (delay, action) => setTimeout(() => { if (emblem.isConnected) action(); }, delay);
   const lead = $(".chap-secret-lead", bubble), clue = $(".chap-secret-clue", bubble);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue.classList.add("shown"); planButton?.classList.add("shown");
+    emblem.classList.add("shown", "lit"); bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); clue.classList.add("shown"); planButton?.classList.add("shown"); photoButton?.classList.add("shown");
   } else {
     stage(180, () => emblem.classList.add("shown"));
     stage(2500, () => emblem.classList.add("lit"));
     stage(3500, () => { bt.classList.remove("chap-hint-pending"); lead.classList.add("shown"); });
     stage(4750, () => clue.classList.add("shown"));
-    stage(5650, () => planButton?.classList.add("shown"));
+    stage(5650, () => { planButton?.classList.add("shown"); photoButton?.classList.add("shown"); });
   }
 }
 /* ───────── « Où ? » : une petite carte avec une cible sur l'objet désigné par la question (champ loc des étapes) ───────── */
