@@ -95,15 +95,15 @@
       },
       {
         "type": "texte",
-        "question": "Au tout début, la chanteuse prononce deux mots mystérieux en latin : « Pulchra es ». À ton avis, que signifient-ils ?",
+        "question": "Au tout début, la chanteuse prononce en latin : « Pulchra es, amica mea ». À ton avis, que signifie cette phrase ?",
         "options": [
-          "Tu es belle",
-          "Tu es loin",
-          "Tu es seule",
-          "Tu es prête"
+          "Tu es belle, mon amie",
+          "Mon amie vient demain",
+          "Chante avec moi !",
+          "Où est mon amie ?"
         ],
         "answer": 0,
-        "explanation": "« Pulchra es » veut dire « Tu es belle ». En latin, « pulchra » signifie « belle » et « es » signifie « tu es ».",
+        "explanation": "« Pulchra es, amica mea » veut dire « Tu es belle, mon amie ». En latin, « pulchra » signifie « belle », « es » signifie « tu es » et « amica mea » signifie « mon amie ».",
         "audio": "short"
       },
       {
