@@ -69,10 +69,62 @@
       14
     ],
     "duoWaveform": [
-      15, 67, 100, 99, 85, 88, 91, 80, 83, 26, 15, 33, 100, 100,
-      89, 66, 59, 79, 74, 84, 72, 67, 92, 67, 50, 63, 59, 58,
-      69, 70, 66, 53, 56, 57, 85, 88, 51, 32, 28, 49, 57, 59,
-      64, 62, 61, 51, 39, 54, 56, 60, 63, 58, 40, 16, 15, 15
+      15,
+      67,
+      100,
+      99,
+      85,
+      88,
+      91,
+      80,
+      83,
+      26,
+      15,
+      33,
+      100,
+      100,
+      89,
+      66,
+      59,
+      79,
+      74,
+      84,
+      72,
+      67,
+      92,
+      67,
+      50,
+      63,
+      59,
+      58,
+      69,
+      70,
+      66,
+      53,
+      56,
+      57,
+      85,
+      88,
+      51,
+      32,
+      28,
+      49,
+      57,
+      59,
+      64,
+      62,
+      61,
+      51,
+      39,
+      54,
+      56,
+      60,
+      63,
+      58,
+      40,
+      16,
+      15,
+      15
     ],
     "credit": {
       "text": "Enregistrement transmis pour le projet et autorisé à la publication par son responsable. « René Jacobs » figure dans le nom du fichier ; attribution exacte à confirmer. Extraits préparés localement.",
@@ -119,6 +171,144 @@
         "answer": 0,
         "explanation": "Un duo réunit deux voix. Ici, les deux sopranos se répondent, puis chantent ensemble : chacune suit sa propre ligne mélodique.",
         "audio": "duo"
+      }
+    ]
+  },
+  {
+    "id": "deus",
+    "place": "basilique",
+    "places": [
+      "basilique",
+      "salute"
+    ],
+    "title": "Deus in adiutorium",
+    "subtitle": "L’ouverture des Vêpres de Monteverdi",
+    "fragment": "img/music/deus-parchemin.png",
+    "score": "img/music/02-facsimile.png",
+    "short": "audio/music/02-appel.mp3",
+    "second": {
+      "audio": "audio/music/02-appel-choeur.mp3",
+      "lead": "Une seule voix a lancé l’appel. Écoute maintenant la réponse du chœur et des instruments !",
+      "invitation": "Repère le moment où toutes les voix entrent ensemble."
+    },
+    "complete": "audio/vespro-deus-in-adiutorium.mp3",
+    "completeLabel": "Si tu le souhaites, écoute toute l’ouverture des Vêpres.",
+    "lead": "Voici le tout début des Vêpres de Monteverdi. Une voix lance un appel dans le silence.",
+    "invitation": "Ouvre grand tes oreilles et écoute !",
+    "credit": {
+      "text": "Enregistrement transmis pour le projet, sans interprètes ni licence indiqués dans le MP3. Extraits découpés localement ; droits de diffusion à confirmer.",
+      "source": null,
+      "license": null
+    },
+    "questions": [
+      {
+        "key": "voice",
+        "question": "Quelle voix lance seule le premier appel ?",
+        "options": [
+          "Un ténor",
+          "Une soprano",
+          "Une basse",
+          "Tout le chœur"
+        ],
+        "answer": 0,
+        "explanation": "C’est une voix de ténor : une voix d’homme plutôt aiguë. Elle chante seule la courte phrase d’ouverture, comme un chant d’église ancien."
+      },
+      {
+        "key": "prayer",
+        "question": "« Deus in adiutorium meum intende » : que demande le chanteur ?",
+        "options": [
+          "Que Dieu vienne l’aider",
+          "Qu’on lui apporte à dîner",
+          "Qu’on ouvre les portes",
+          "Qu’on arrête la musique"
+        ],
+        "answer": 0,
+        "explanation": "Il prie : « Dieu, viens à mon aide ! » C’est l’appel traditionnel qui ouvre les vêpres, une prière du soir."
+      },
+      {
+        "key": "response",
+        "question": "Après l’appel, que se passe-t-il ?",
+        "options": [
+          "Le chœur répond avec les instruments",
+          "Le ténor recommence tout seul",
+          "Un violon joue sans voix",
+          "Tout devient silencieux"
+        ],
+        "answer": 0,
+        "explanation": "Le chœur répond « Seigneur, hâte-toi de me secourir ». Les voix chantent ensemble pendant que les instruments font éclater une fanfare : Monteverdi reprend une musique de son opéra L’Orfeo."
+      }
+    ]
+  },
+  {
+    "id": "06",
+    "place": "frari",
+    "title": "Duo Seraphim",
+    "subtitle": "Deux voix, puis trois, dans les Vêpres",
+    "fragment": "img/music/06-parchemin.png",
+    "score": "img/music/06-facsimile.png",
+    "short": "audio/music/06-court.mp3",
+    "second": {
+      "audio": "audio/music/06-dialogue.mp3",
+      "lead": "Deux ténors commencent ce passage. Écoute comment leurs phrases se rejoignent.",
+      "invitation": "L’un chante, puis l’autre reprend son idée musicale."
+    },
+    "complete": "audio/music/06-long.mp3",
+    "completeLabel": "Si tu le souhaites, écoute plus longtemps ce passage des Vêpres.",
+    "lead": "Ce fragment porte les premières notes du « Duo Seraphim », un passage des Vêpres de Monteverdi.",
+    "invitation": "Ouvre grand tes oreilles et écoute !",
+    "credit": {
+      "text": "Extraits d’un MP3 de « Duo Seraphim » transmis pour le projet. Interprètes et droits de diffusion non indiqués ; prototype local.",
+      "source": null,
+      "license": null
+    },
+    "questions": [
+      {
+        "key": "voice",
+        "question": "Quelle sorte de voix entends-tu au début ?",
+        "options": [
+          "Un ténor",
+          "Une soprano",
+          "Une basse",
+          "Un contre-ténor"
+        ],
+        "answer": 0,
+        "explanation": "Monteverdi confie ce début à des ténors : des voix d’hommes assez aiguës. Le nom de la partie est aussi écrit sur le fragment."
+      },
+      {
+        "key": "seraph",
+        "question": "Dans le titre, que sont les séraphins ?",
+        "options": [
+          "Des êtres ailés des récits bibliques",
+          "Des instruments à cordes",
+          "Des bateaux vénitiens",
+          "Des cloches d’église"
+        ],
+        "answer": 0,
+        "explanation": "Dans le livre d’Isaïe, les séraphins sont des êtres célestes à six ailes. Ils s’appellent l’un l’autre en chantant « Saint, saint, saint »."
+      },
+      {
+        "key": "imitation",
+        "question": "Comment les deux chanteurs font-ils dialoguer leurs voix ?",
+        "options": [
+          "Le second reprend l’idée du premier",
+          "Ils se disputent en criant",
+          "L’un parle sans chanter",
+          "Ils chantent toujours à l’unisson"
+        ],
+        "answer": 0,
+        "explanation": "Le second reprend une idée musicale lancée par le premier : c’est une imitation. Leurs voix se croisent et chantent parfois ensemble ; ce n’est pas un écho mot pour mot."
+      },
+      {
+        "key": "clamabant",
+        "question": "« Duo Seraphim clamabant » : que faisaient les deux séraphins ?",
+        "options": [
+          "Ils s’appelaient l’un l’autre",
+          "Ils dormaient en silence",
+          "Ils cherchaient un bateau",
+          "Ils jouaient de la trompette"
+        ],
+        "answer": 0,
+        "explanation": "« Duo » veut dire « deux » et « clamabant » signifie qu’ils criaient ou appelaient. Ils proclament « Saint, saint, saint ». Plus loin, une troisième voix rejoint les deux ténors quand le texte parle de trois témoins de la Trinité."
       }
     ]
   }

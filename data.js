@@ -48,6 +48,7 @@ export const PLACES = [
     story: "Regarde le plafond et les murs : des millions de petits morceaux de verre doré brillent comme un trésor de pirates !",
     clue: "Le Lion garde son or là-haut. Lève les yeux, petit marin : l'or ne se cache jamais par terre.",
     reward: {"point": "E", "emoji": "🪶", "name": "La plume de l'évangéliste", "at": [0.463, 0.2], "hint": "La grande croix de l'iconostase a quelque chose pour toi."},
+    musicChallenge: { entry: "deus", point: "F", at: [0.54, 0.38], hint: "Près du maître-autel, un fragment de musique t’attend." },
     plan: {
       "img": "img/plan/basilique.webp",
       "w": 1369,
@@ -1773,6 +1774,7 @@ export const PLACES = [
   { id: "salute", emoji: "⛪", name: "La Salute", lat: 45.4306, lon: 12.3347, r: 80,
     story: "Cette énorme église est posée sur plus d'un million de pieux de bois plantés dans la vase de la lagune !",
     clue: "Les grandes choses ont des racines cachées. Monte les marches et chuchote ton souhait au vent.",
+    musicChallenge: { entry: "deus", hint: "Une autre piste vers le fragment de l’ouverture t’attend ici." },
     chapters: [
       {
         "steps": [
@@ -2921,6 +2923,7 @@ export const PLACES = [
     story: "Une immense église de briques rouges, pleine de trésors : des tableaux géniaux, des tombes de grands artistes, des sièges de bois sculpté. Et un compositeur célèbre y repose : Monteverdi ! (Parents : entrée payante selon l'âge, horaires à vérifier avant de venir. Visite silencieuse, sans flash.)",
     clue: "Ici dorment des maîtres de la musique et de la peinture. Ouvrez grand les yeux, Gardiens : trois trésors se cachent sous ces voûtes.",
     reward: {"point": "C", "emoji": "🐚", "name": "La coquille d'or", "at": [0.63, 0.42], "hint": "Saint Jean-Baptiste a quelque chose pour toi."},
+    musicChallenge: { entry: "06", point: "B", at: [0.53, 0.36], hint: "Près de la tombe de Monteverdi, cherche un fragment de partition." },
     plan: {
       "img": "img/plan/frari.webp",
       "w": 1430,

@@ -92,9 +92,8 @@ body:not(.menu-open) #up-bg,body:not(.menu-open) #up-bar,body:not(.menu-open) .v
 .pin-in.dim{opacity:.45;transform:scale(.8)}
 .pin-in.final{border-color:var(--terra)}
 .pin-tag{position:absolute;top:-6px;right:-4px;background:var(--ok);color:#fff;border-radius:50%;width:20px;height:20px;font-size:12px;display:grid;place-items:center;border:2px solid #fff}
-.me{width:44px;height:44px;margin:-4px 0 0 -4px;font-size:34px;text-align:center;line-height:44px;animation:bob 1.6s ease-in-out infinite}
+.me{width:44px;height:44px;margin:-4px 0 0 -4px;font-size:34px;text-align:center;line-height:44px}
 .me-ring{position:absolute;inset:0;border-radius:50%;background:rgba(14,90,110,.25);animation:ping 2s infinite}
-@keyframes bob{50%{transform:translateY(-4px)}}
 @keyframes ping{from{transform:scale(.6);opacity:1}to{transform:scale(1.8);opacity:0}}
 
 /* Sheet */
@@ -168,6 +167,30 @@ input.t,select.t{font:inherit;border:3px solid var(--line);border-radius:12px;pa
 .banner small{font-size:16px;font-weight:800;opacity:.9}
 .dlist .pl{border-radius:0;border-bottom:1px solid var(--line);padding:14px 18px}
 .modal .box{overflow:hidden}
+.admin-code-input{display:block;width:100%;box-sizing:border-box;margin:14px 0;text-align:center;font-size:28px;letter-spacing:.3em}
+.admin-code-error{color:#a02b25;font-weight:800;text-align:center!important}
+body.admin-code-open #geo-gate{display:none!important}
+.admin-roster{max-height:260px;overflow:auto}
+.admin-player-name{flex:1;min-width:0}
+.admin-player-delete{padding:6px 9px;border:1px solid #b54b46;border-radius:8px;color:#9c302c;font-size:.78em;font-weight:700}
+.admin-player-delete:disabled{opacity:.5}
+.pf-others{margin:15px 0 4px;text-align:left;border-top:1px solid rgba(255,255,255,.2);padding-top:12px;max-height:36vh;overflow:auto}
+.pf-others h4{margin:0 0 7px;font-size:.9em;font-weight:700;color:#fff}
+.pf-other{display:flex;align-items:center;gap:9px;padding:6px 1px;border-bottom:1px solid rgba(255,255,255,.14);font-size:.85em}
+.pf-other-avatar{font-size:22px}.pf-other>span:nth-child(2){flex:1;min-width:0}.pf-other small{display:block;color:#bed2db}.pf-other strong{white-space:nowrap;font-size:.9em}
+.reward-editor{display:grid;gap:12px}
+.reward-editor label{display:grid;gap:5px;font-weight:700}
+.reward-editor select{width:100%;min-height:44px;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);font:inherit}
+.reward-summary{display:grid;gap:8px;max-height:360px;overflow:auto}
+.reward-summary>div{display:grid;gap:2px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.reward-summary span{font-size:.88em;opacity:.8}
+.admin-team,.admin-player,.admin-local-player{display:flex;align-items:center;gap:10px}
+.admin-team{justify-content:space-between;margin:8px 0 4px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.admin-player{padding:5px 0}
+.admin-player span:nth-child(2),.admin-local-player b{flex:1}
+.admin-player-avatar{font-size:23px}
+.admin-local-player{flex-wrap:wrap;margin-bottom:8px}
+.admin-local-player .btn{margin-left:auto}
 .modal .box>.corto{width:calc(100% + 40px);max-width:none;margin:-20px -20px 12px;border:0;border-radius:0;box-shadow:none}
 
 /* Carte sobre : seuls les défis sont en couleur */
@@ -362,22 +385,9 @@ img.full{width:100%;border-radius:14px}
 .maplibregl-marker.mask-marker{z-index:25;width:var(--mask-size,32px);height:var(--mask-size,32px);min-width:0;min-height:0;padding:0;border:0;background:none;box-shadow:none;cursor:pointer;touch-action:manipulation}
 .mask-marker[hidden],body:not(.jeu) .maplibregl-marker.mask-marker{display:none!important}
 .mask-marker img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(16,19,47,.5))}
-.mask-orbit{position:absolute;inset:-9px;pointer-events:none;animation:maskOrbit 3.6s linear infinite}
-.mask-orbit i{position:absolute;display:block;color:#fff1ad;text-shadow:0 0 3px #fff,0 0 8px #ffbe3b;font:var(--mask-star-size,8px)/1 Georgia,serif}
-.mask-orbit i:nth-child(1){top:-1px;left:calc(50% - 4px)}
-.mask-orbit i:nth-child(2){top:58%;right:-2px}
-.mask-orbit i:nth-child(3){bottom:12%;left:-2px}
-.mask-marker.mask-distant .mask-orbit{inset:-3px;opacity:.75}
-.mask-marker.is-searching .mask-orbit{animation-duration:1.2s}
-.mask-marker.is-blooming .mask-orbit{visibility:hidden}
-@keyframes maskOrbit{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.mask-orbit{animation:none}}
 .mask-marker.is-gem img{filter:drop-shadow(0 0 8px #ffe090) drop-shadow(0 2px 4px #251649)}
 .mask-marker:focus-visible{outline:2px solid #ffe096;outline-offset:3px;border-radius:50%}
 .mask-bloom{position:fixed;z-index:2450;display:block;object-fit:contain;pointer-events:none;transform-origin:center;filter:drop-shadow(0 0 16px rgba(255,229,150,.8));will-change:transform,opacity}
-.mask-victory-orbit{position:fixed;z-index:2451;width:0;height:0;pointer-events:none;animation:maskVictoryOrbit 1.55s linear infinite}
-.mask-victory-orbit i{position:absolute;left:0;top:0;color:#fff2a9;text-shadow:0 0 6px #fff,0 0 13px #ffce54;font:28px/1 Georgia,serif;transform:rotate(var(--angle)) translateX(var(--mask-orbit-radius)) rotate(calc(-1 * var(--angle)))}
-@keyframes maskVictoryOrbit{to{transform:rotate(360deg)}}
 .mask-vapor-star{position:fixed;z-index:2452;pointer-events:none;color:#ffe7a2;text-shadow:0 0 8px #fff,0 0 16px #ffd76c;font:20px/1 Georgia,serif}
 .mask-rain-star{position:fixed;z-index:1750;pointer-events:none;color:#fff3b4;text-shadow:0 0 7px #fff,0 0 14px #ffc445;font:25px/1 Georgia,serif}
 .mask-gem-flight{position:fixed;z-index:1900;object-fit:contain;pointer-events:none;filter:drop-shadow(0 0 12px #ffe090)}
@@ -499,8 +509,24 @@ body.jeu .me-badge{display:none}
 .hud-kids{pointer-events:auto;cursor:pointer}
 .pf{position:fixed;inset:0;z-index:1900;background:rgba(8,28,38,.86);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
 .pf-card{width:100%;max-width:380px;background:#12303f;border:2px solid rgba(255,255,255,.25);border-radius:22px;padding:18px;color:#fff;display:flex;flex-direction:column;gap:10px}
+.pf-card{margin:auto}
 .pf-card h3{margin:0;text-align:center;font-size:20px}
 .pf-cur{display:grid;place-items:center;height:72px}
+.pf-cur[role=button]{cursor:pointer;border-radius:12px}
+.pf-cur[role=button]:focus-visible,.pf-switch:focus-visible{outline:3px solid #ffd778;outline-offset:3px}
+.pf-switch-hint{margin:0;text-align:center;font-size:13px;line-height:1.35;color:#cde0e7}
+.pf-switch{width:100%;min-height:56px;display:flex;align-items:center;gap:10px;padding:7px 11px;border:1px solid #9ac1d1;border-radius:13px;background:#24516a;color:#fff;font:inherit;text-align:left;cursor:pointer}
+.pf-switch-avatar{flex:none;width:40px;height:40px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:#fff;color:#173447;font-size:25px}
+.pf-switch-avatar img{width:100%;height:100%;object-fit:cover}
+.pf-switch span:nth-child(2){flex:1}
+.pf-offline{display:grid;gap:5px;padding:10px;border:1px solid rgba(154,193,209,.55);border-radius:13px;background:rgba(255,255,255,.07)}
+.pf-offline-button{min-height:42px;border:1px solid #9ac1d1;border-radius:10px;background:#24516a;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.pf-offline-button:disabled{opacity:.6;cursor:default}
+.pf-offline small{font-size:12px;line-height:1.35;color:#cde0e7}
+.pf-offline p{margin:0;font-size:12px;line-height:1.35;color:#fff}
+.pf-offline p:empty,.pf-offline-track[hidden]{display:none}
+.pf-offline-track{height:6px;border-radius:6px;background:rgba(255,255,255,.2);overflow:hidden}
+.pf-offline-track i{display:block;height:100%;width:0;background:#ffd778;transition:width .2s}
 .pf-cur .in-ph{width:72px;height:72px}
 .pf-em{width:72px;height:72px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:42px}
 .pf-card .t{width:100%;box-sizing:border-box;font-size:18px;border-radius:999px;padding:11px 18px;text-align:center}
@@ -894,7 +920,7 @@ body.jeu .me-badge{display:none}
 
 /* doge qui se balade : petit personnage détouré, sans pastille */
 .pin.doge{width:50px;height:44px;cursor:pointer;z-index:4;background:none}
-.doge-av{width:50px;height:auto;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));animation:bob 2.2s ease-in-out infinite}
+.doge-av{width:50px;height:auto;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
 .doge-msg{position:fixed;left:0;right:0;bottom:0;z-index:1500;display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between;gap:6px;padding:70px 14px 0 22px;background:linear-gradient(to top,rgba(250,240,222,.97) 0%,rgba(250,240,222,.94) 55%,rgba(250,240,222,0) 100%);pointer-events:none}
 .doge-msg .dm-txt{flex:1;align-self:center;margin-bottom:calc(30px + var(--safe-b));font-size:18px;line-height:1.3;font-weight:500;color:#141822;text-shadow:0 0 8px #fffaf0,0 0 3px #fffaf0}
 .doge-msg .dm-corto{flex:none;width:150px;height:150px;object-fit:contain;margin-bottom:var(--safe-b);filter:drop-shadow(0 3px 5px rgba(0,0,0,.25))}
@@ -915,7 +941,6 @@ body.jeu .me-badge{display:none}
 .wq-txt{margin:18px 0 14px;max-width:360px;text-align:center;font-size:24px;line-height:1.25;font-weight:700;color:#141822;text-shadow:0 0 6px #fffaf0,0 0 6px #fffaf0,0 0 3px #fffaf0}
 .wq .b-actions{position:static;width:100%;max-width:380px;padding:0}
 .wq .b-btn{pointer-events:auto}
-.pin.doge.run .doge-av{animation:bob .18s ease-in-out infinite}
 .pin.doge.angry .doge-av{filter:drop-shadow(0 0 7px rgba(235,40,30,.95)) drop-shadow(0 0 3px rgba(235,40,30,.9))}
 .doge-zap{position:absolute;left:50%;top:-18px;margin-left:-11px;font-size:22px;display:none;filter:drop-shadow(0 0 3px #fff);pointer-events:none}
 .pin.doge.angry .doge-zap{display:block;animation:zap .3s steps(2) infinite alternate}
@@ -1257,6 +1282,25 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .cr-editing .cr-prev{display:none}
 @media (min-width:700px){.cr-corto{right:max(calc((100vw - 900px)/2),10vw);height:min(55dvh,520px)}.cr-art-corto .cr-scroll{padding-top:min(50dvh,490px)}.cr-art-storm .cr-scroll,.cr-art-gondolier .cr-scroll{padding-top:min(48dvh,430px)}}
 @media (prefers-reduced-motion:reduce){.cr-scene{transition:none}.cr-painting,.cr-omen{animation:none}}
+
+/* Première rencontre avec le gondolier : l'aquarelle reste en place entre les répliques. */
+.gondolier-rendezvous .gr-painting{position:absolute;top:0;left:-4%;width:108%;height:100%;object-fit:cover;object-position:50% 24%;animation:cr-watercolor-drift 20s ease-in-out infinite alternate}
+.gondolier-rendezvous .gr-storm{position:absolute;top:0;left:-4%;width:108%;height:100%;object-fit:cover;object-position:50% 50%;opacity:0;pointer-events:none;transition:opacity .7s ease;animation:cr-watercolor-drift 20s ease-in-out infinite alternate}
+.gondolier-rendezvous.gr-storm-active .gr-storm{opacity:1}
+.gr-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(7,17,30,.6) 0%,rgba(7,17,30,.58) 48%,rgba(7,17,30,.2) 76%,rgba(7,17,30,.65) 100%)}
+.gr-speaker{position:absolute;z-index:3;right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));width:clamp(82px,23vw,120px);height:auto;pointer-events:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.55));animation:gr-speaker-bob 4s ease-in-out infinite alternate}
+@keyframes gr-speaker-bob{from{transform:translateY(0)}to{transform:translateY(-5px)}}
+.gr-stage{position:absolute;z-index:1;inset:0;cursor:pointer;touch-action:pan-y}
+.gr-scene{position:absolute;inset:0;opacity:1;transition:opacity .48s ease}
+.gr-scene.gr-enter,.gr-scene.gr-exit{opacity:0}
+.gr-scene.gr-exit{pointer-events:none}
+.gr-key{position:absolute;z-index:1;top:43%;left:50%;width:min(82vw,410px);height:auto;pointer-events:none;animation:gr-key-emerge 1.35s ease-out both,gr-key-float 4s ease-in-out 1.35s infinite alternate}
+@keyframes gr-key-emerge{from{opacity:0;filter:blur(14px) drop-shadow(0 0 16px #fbd672);transform:translate(-50%,22px) scale(.78)}to{opacity:1;filter:blur(0) drop-shadow(0 0 18px #e5bb4e);transform:translate(-50%,0) scale(1)}}
+@keyframes gr-key-float{from{transform:translate(-50%,0) scale(1)}to{transform:translate(-50%,-9px) scale(1.025)}}
+.gr-scroll{position:absolute;z-index:2;inset:0;overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 17dvh) clamp(25px,7vw,55px) calc(85px + env(safe-area-inset-bottom,0px))}
+.gr-copy{max-width:620px;margin:0 auto;color:#fff;font-size:clamp(18px,4.8vw,25px);line-height:1.43;text-shadow:0 2px 8px rgba(0,0,0,.95);overflow-wrap:anywhere}
+.gr-copy strong{font-weight:900;color:#fff}
+@media (prefers-reduced-motion:reduce){.gondolier-rendezvous .gr-painting,.gondolier-rendezvous .gr-storm,.gr-speaker,.gr-key{animation:none}.gr-storm,.gr-scene{transition:none}.gr-key{transform:translateX(-50%)}}
 
 /* Message final de Corto : plus bas (plus de « toucher pour continuer »), il laisse passer les touchers vers la carte */
 .in2-end{pointer-events:none;padding-top:70px;padding-bottom:calc(2px + var(--safe-b))}
@@ -1973,13 +2017,16 @@ body.bridge-open #corto-btn{visibility:hidden!important}
 .bridge-ceremony .bridge-dots i:nth-child(3){animation-delay:.4s}
 .bridge-ceremony.bridge-revealed .bridge-dots{display:none}
 @keyframes bridgeThink{0%,70%,100%{opacity:.15}30%{opacity:1}}
-.bridge-ceremony.bridge-thinking .bridge-name,.bridge-ceremony.bridge-thinking .bridge-stage{opacity:0;pointer-events:none}
-.bridge-ceremony.bridge-revealed .bridge-name,.bridge-ceremony.bridge-revealed .bridge-stage{opacity:1;transition:opacity .55s ease .15s}
+.bridge-ceremony.bridge-thinking .bridge-name{opacity:0;pointer-events:none}
+.bridge-ceremony.bridge-thinking .bridge-stage{visibility:hidden;pointer-events:none}
+.bridge-ceremony.bridge-revealed .bridge-name{opacity:1;transition:opacity .55s ease .15s}
+.bridge-ceremony.bridge-revealed .bridge-stage{visibility:visible;pointer-events:auto}
 .bridge-ceremony .bridge-name{position:absolute;z-index:2;top:calc(140px + var(--safe-t));left:20px;right:20px;margin:0;color:#fff;font:600 clamp(16px,4.2vw,22px)/1.2 Georgia,serif;text-shadow:0 2px 9px #03111e}
-.bridge-ceremony .bridge-stage{position:absolute;z-index:3;top:clamp(170px,32dvh,280px);bottom:calc(108px + var(--safe-b));left:14px;right:14px;max-width:510px;margin:auto;display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0;overflow:hidden}
-.bridge-ceremony .bridge-answers{grid-row:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:8px 10px;overflow-y:auto;scrollbar-width:thin}
+.bridge-ceremony .bridge-stage{position:absolute;z-index:3;top:clamp(170px,32vh,280px);top:clamp(170px,32dvh,280px);bottom:calc(62px + var(--safe-b));left:14px;right:14px;max-width:510px;margin:auto;display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0;overflow:hidden}
+.bridge-ceremony .bridge-answers{grid-row:1;min-height:0;display:block;padding:8px 10px;overflow-y:auto;scrollbar-width:thin}
 .bridge-ceremony .bridge-answers[hidden]{display:none!important}
-.bridge-ceremony .bridge-answers button{flex:none;width:min(100%,340px);min-height:44px;padding:10px 16px;border:1px solid rgba(166,213,229,.78);border-radius:999px;background:linear-gradient(135deg,rgba(17,63,87,.97),rgba(7,30,49,.97));color:#fff;font:15px/1.2 Arial,sans-serif;text-align:center;text-wrap:balance;box-shadow:0 3px 12px rgba(0,8,18,.42),inset 0 1px rgba(255,255,255,.12)}
+.bridge-ceremony .bridge-answers button{display:block;width:min(100%,340px);min-height:44px;margin:0 auto 9px;padding:10px 16px;border:1px solid rgba(166,213,229,.78);border-radius:999px;background:linear-gradient(135deg,rgba(17,63,87,.97),rgba(7,30,49,.97));color:#fff;font:15px/1.2 Arial,sans-serif;text-align:center;text-wrap:balance;box-shadow:0 3px 12px rgba(0,8,18,.42),inset 0 1px rgba(255,255,255,.12)}
+.bridge-ceremony .bridge-answers button:last-child{margin-bottom:0}
 .bridge-ceremony .bridge-answers button.right{background:#216d50;border-color:#a9dfb4;box-shadow:0 0 0 4px rgba(76,175,106,.35)}
 .bridge-ceremony .bridge-answers button.wrong{opacity:.42}
 .bridge-ceremony .bridge-corto{grid-row:2;display:flex;align-items:flex-end;gap:10px;min-height:74px;width:100%;padding:12px 4px 0;box-sizing:border-box}
@@ -1989,7 +2036,7 @@ body.bridge-open #corto-btn{visibility:hidden!important}
 .bridge-ceremony .bridge-next{position:absolute;z-index:4;right:16px;bottom:calc(8px + var(--safe-b));min-height:44px;padding:8px 12px;border:0;background:none;color:#f8edcf;font:700 16px/1.2 Georgia,serif;text-shadow:0 2px 8px #03111e}
 .bridge-ceremony .bridge-next[hidden]{display:none!important}
 @media (max-height:650px){.bridge-ceremony .bridge-answers button{min-height:38px;padding:7px 12px}.bridge-ceremony .bridge-corto img{width:66px;height:66px}.bridge-ceremony .bridge-words{font-size:17px}}
-@media (prefers-reduced-motion:reduce){.bridge-ceremony .bridge-dots i{animation:none;opacity:1}.bridge-ceremony .bridge-sparks span{animation:none;opacity:.8}.bridge-ceremony .bridge-hero,.bridge-ceremony .bridge-sparks,.bridge-ceremony.bridge-revealed .bridge-name,.bridge-ceremony.bridge-revealed .bridge-stage{transition:none}}
+@media (prefers-reduced-motion:reduce){.bridge-ceremony .bridge-dots i{animation:none;opacity:1}.bridge-ceremony .bridge-sparks span{animation:none;opacity:.8}.bridge-ceremony .bridge-hero,.bridge-ceremony .bridge-sparks,.bridge-ceremony.bridge-revealed .bridge-name{transition:none}}
 
 /* Accueil d'épreuve après validation GPS : photo plein écran, lancement au centre, Corto en bas. */
 #sheet.arrival-direct{display:block;padding:0;background:#081b2b}
@@ -2076,23 +2123,10 @@ body.music-victory-active #home-btn{z-index:2300;pointer-events:none}
 #sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo svg{width:22px;height:22px}
 @media (prefers-reduced-motion:reduce){#sheet.chap.chap-conclusion .b-talk .chap-end-actions .chap-end-photo{transition:none}}
 
+/* Une épreuve sans trésor se termine par une seule phrase de Corto. */
 #sheet.chap.chap-conclusion .chap-secret-lead:only-child{margin-bottom:0}
+.vq-background *, .vq-background *::before, .vq-background *::after{animation-play-state:paused!important;transition:none!important}
 
-/* Première rencontre avec le gondolier : l'aquarelle reste en place entre les répliques. */
-.gondolier-rendezvous .gr-painting{position:absolute;top:0;left:-4%;width:108%;height:100%;object-fit:cover;object-position:50% 24%;animation:cr-watercolor-drift 20s ease-in-out infinite alternate}
-.gondolier-rendezvous .gr-storm{position:absolute;top:0;left:-4%;width:108%;height:100%;object-fit:cover;object-position:50% 50%;opacity:0;pointer-events:none;transition:opacity .7s ease;animation:cr-watercolor-drift 20s ease-in-out infinite alternate}
-.gondolier-rendezvous.gr-storm-active .gr-storm{opacity:1}
-.gr-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(7,17,30,.6) 0%,rgba(7,17,30,.58) 48%,rgba(7,17,30,.2) 76%,rgba(7,17,30,.65) 100%)}
-.gr-speaker{position:absolute;z-index:3;right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));width:clamp(82px,23vw,120px);height:auto;pointer-events:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.55));animation:gr-speaker-bob 4s ease-in-out infinite alternate}
-@keyframes gr-speaker-bob{from{transform:translateY(0)}to{transform:translateY(-5px)}}
-.gr-stage{position:absolute;z-index:1;inset:0;cursor:pointer;touch-action:pan-y}
-.gr-scene{position:absolute;inset:0;opacity:1;transition:opacity .48s ease}
-.gr-scene.gr-enter,.gr-scene.gr-exit{opacity:0}
-.gr-scene.gr-exit{pointer-events:none}
-.gr-key{position:absolute;z-index:1;top:43%;left:50%;width:min(82vw,410px);height:auto;pointer-events:none;animation:gr-key-emerge 1.35s ease-out both,gr-key-float 4s ease-in-out 1.35s infinite alternate}
-@keyframes gr-key-emerge{from{opacity:0;filter:blur(14px) drop-shadow(0 0 16px #fbd672);transform:translate(-50%,22px) scale(.78)}to{opacity:1;filter:blur(0) drop-shadow(0 0 18px #e5bb4e);transform:translate(-50%,0) scale(1)}}
-@keyframes gr-key-float{from{transform:translate(-50%,0) scale(1)}to{transform:translate(-50%,-9px) scale(1.025)}}
-.gr-scroll{position:absolute;z-index:2;inset:0;overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 17dvh) clamp(25px,7vw,55px) calc(85px + env(safe-area-inset-bottom,0px))}
-.gr-copy{max-width:620px;margin:0 auto;color:#fff;font-size:clamp(18px,4.8vw,25px);line-height:1.43;text-shadow:0 2px 8px rgba(0,0,0,.95);overflow-wrap:anywhere}
-.gr-copy strong{font-weight:900;color:#fff}
-@media (prefers-reduced-motion:reduce){.gondolier-rendezvous .gr-painting,.gondolier-rendezvous .gr-storm,.gr-speaker,.gr-key{animation:none}.gr-storm,.gr-scene{transition:none}.gr-key{transform:translateX(-50%)}}
+/* Position simulée choisie directement dans l'aperçu administrateur. */
+#admin-position-tip{position:fixed;left:50%;bottom:calc(84px + var(--safe-b));z-index:519;box-sizing:border-box;max-width:calc(100vw - 24px);padding:9px 13px;border:1px solid #efcf83;border-radius:12px;background:rgba(8,37,56,.95);color:#fff;font:700 13px/1.3 Arial,sans-serif;text-align:center;box-shadow:0 3px 14px rgba(0,8,18,.38);pointer-events:none;transform:translateX(-50%)}
+body.menu-open #admin-position-tip,body.chap-open #admin-position-tip{display:none}

@@ -1,5 +1,5 @@
-import { loadProfile, saveProfile, clearProfile, runIntro, cortoSays, editProfile, FACE } from "./intro.js";
-import { createMap, WC_URL, OSM_URL, OFM_TILEJSON, FONTS, useStamen } from "./mapstyle.js";
+import { loadProfile, loadProfileFor, saveProfile, clearProfile, setProfilePlayerId, runIntro, cortoSays, editProfile, FACE } from "./intro.js";
+import { createMap, WC_URL, OFM_TILES, OFM_GLYPHS, FONTS, useStamen } from "./mapstyle.js";
 import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
 import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
 import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
@@ -8,66 +8,127 @@ import { openGondolierRendezvous } from "./gondolier-rendezvous.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+function visibleInterval(callback, delay) {
+  let timer = null;
+  const update = () => { if (document.hidden) { clearInterval(timer); timer = null; } else if (timer == null) timer = setInterval(callback, delay); };
+  document.addEventListener("visibilitychange", update);
+  addEventListener("pagehide", () => { clearInterval(timer); timer = null; });
+  addEventListener("pageshow", update);
+  update();
+}
+const activeMedia = new Set(), nativeMediaPlay = HTMLMediaElement.prototype.play;
+HTMLMediaElement.prototype.play = function (...args) {
+  if (document.hidden) return Promise.reject(new DOMException("Application en arrière-plan", "NotAllowedError"));
+  activeMedia.add(this);
+  this.addEventListener("pause", () => activeMedia.delete(this), { once: true });
+  const started = nativeMediaPlay.apply(this, args);
+  started?.then?.(() => { if (document.hidden) this.pause(); }).catch?.(() => activeMedia.delete(this));
+  return started;
+};
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ADMIN_CONTEXT = /^\/admin\/[^/]+\/preview\.html$/.test(location.pathname);
 let scoreAnim = null; // animation du compteur en cours (étoiles qui arrivent)
-const KEY = "vq_state_v1";
+const OLD_KEY = "vq_state_v1", PLAYER_KEY = "vq_player_id_v1";
+const LEAGUE = "1234";
+let legacyTeam = null, legacyIndex = 0;
+try { legacyTeam = JSON.parse(localStorage.getItem("vq_team")); legacyIndex = Number(localStorage.getItem("vq_active")) || 0; } catch {}
+const newPlayerId = () => `p-${crypto.randomUUID ? crypto.randomUUID().replaceAll("-", "") : [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+let PLAYER_ID = ADMIN_CONTEXT ? "p-00000000000000000000000000000000" : null;
+if (!ADMIN_CONTEXT) { try { PLAYER_ID = localStorage.getItem(PLAYER_KEY); } catch {} }
+if (!PLAYER_ID) { PLAYER_ID = legacyTeam?.team ? `legacy-${legacyTeam.team}-${legacyIndex}` : newPlayerId(); try { localStorage.setItem(PLAYER_KEY, PLAYER_ID); } catch {} }
+setProfilePlayerId(PLAYER_ID, { migrateLegacy: !ADMIN_CONTEXT });
+// Les anciens petits états locaux appartiennent au joueur ouvert lors de la mise à jour.
+if (!ADMIN_CONTEXT) try {
+  if (localStorage.getItem("vq_player_local_migrated_v1") !== "1") {
+    const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).filter((key) => ["vq_boat_t0", "vq_held", "vq_held_pos"].includes(key) || /^vq_huff_[^:]+$/.test(key || ""));
+    for (const key of keys) { const value = localStorage.getItem(key); if (value !== null) localStorage.setItem(`${key}:${PLAYER_ID}`, value); localStorage.removeItem(key); }
+    localStorage.setItem("vq_player_local_migrated_v1", "1");
+  }
+} catch {}
+let KEY = ADMIN_CONTEXT ? "vq_admin_preview_state_v1" : `vq_player_state_v1:${PLAYER_ID}`;
 const QS = new URLSearchParams(location.search);
 const LOCAL_PREVIEW = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 // Une position simulée explicite reste utilisable dans l'aperçu local, sans demande de GPS réel.
 const fakeParts = QS.get("fake")?.split(",");
 const LOCAL_FAKE = LOCAL_PREVIEW && fakeParts?.length === 2 && fakeParts.every((part) => part.trim() !== "" && Number.isFinite(Number(part)));
 let DEV = LOCAL_FAKE;
-try { DEV = LOCAL_FAKE || localStorage.getItem("vq_dev_enabled_v2") === "1"; } catch {}
+try { DEV = LOCAL_FAKE || (ADMIN_CONTEXT && localStorage.getItem("vq_dev_enabled_v2") === "1"); } catch {}
 const LOCAL_DEV = DEV && LOCAL_PREVIEW;
 const DAY_MS = 86400000;
 
 /* ───────── État (fusionnable : une clé = un fait, dernier écrit gagnant) ───────── */
 const isoToday = () => new Date().toISOString().slice(0, 10);
 function freshState() {
-  return { kids: [{ name: "", avatar: "🦁" }, { name: "", avatar: "🐙" }], start: isoToday(), done: {}, cfgT: 0, onboarded: false };
+  return { kids: [{ name: "", avatar: "🦁" }], start: isoToday(), done: {}, cfgT: 0, onboarded: false };
+}
+function projectLegacyState(old, index) {
+  const kid = old.kids?.[index]; if (!kid || kid.deleted) return freshState();
+  const done = {};
+  for (let [key, value] of Object.entries(old.done || {})) {
+    if (!value || typeof value !== "object") continue;
+    const owner = value.w;
+    if (key.startsWith("grant:")) { const parts = key.split(":"); if (parts[1] !== String(index)) continue; key = `grant:0:${parts.slice(2).join(":")}`; }
+    else if (key.startsWith("mask:") || key.startsWith("o:mask-gem:")) { const parts = key.split(":"), offset = parts[0] === "mask" ? 1 : 2; if (parts[offset] !== String(index)) continue; parts[offset] = "0"; key = parts.join(":"); }
+    else if (/^(tr:|o:|music:)/.test(key) && ![index, "all", null, undefined].includes(owner)) continue;
+    if (![index, "all", null, undefined].includes(owner)) continue;
+    done[key] = owner === index ? { ...value, w: 0 } : { ...value };
+  }
+  return { kids: [{ name: kid.name || "Joueur", avatar: kid.avatar || "🦁" }], start: old.start || isoToday(), done, cfgT: old.cfgT || 0, onboarded: !!old.onboarded };
 }
 function loadState() {
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.done) return s; } catch {}
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.done) { s.done = Object.fromEntries(Object.entries(s.done).filter(([, v]) => v?.w !== "legacy-other")); localStorage.setItem(KEY, JSON.stringify(s)); return s; } } catch {}
+  if (!ADMIN_CONTEXT && legacyTeam?.team) { try { const old = JSON.parse(localStorage.getItem(OLD_KEY)); if (old?.done) { const s = projectLegacyState(old, legacyIndex); localStorage.setItem(KEY, JSON.stringify(s)); return s; } } catch {} }
   return freshState();
 }
 let S = loadState();
 
 function mergeState(a, b) {
-  const done = { ...(a.done || {}) };
-  for (const [k, v] of Object.entries(b.done || {})) if (!done[k] || (v.t || 0) > (done[k].t || 0)) done[k] = v;
+  const done = Object.fromEntries(Object.entries(a.done || {}).filter(([, v]) => v?.w !== "legacy-other"));
+  for (const [k, v] of Object.entries(b.done || {})) if (v?.w !== "legacy-other" && (!done[k] || (v.t || 0) > (done[k].t || 0))) done[k] = v;
   const cfg = (b.cfgT || 0) > (a.cfgT || 0) ? b : a;
-  return { kids: cfg.kids, start: cfg.start, teamName: cfg.teamName || "", onboarded: a.onboarded || b.onboarded, cfgT: Math.max(a.cfgT || 0, b.cfgT || 0), done };
+  return { kids: [(cfg.kids || [{}])[0]], start: cfg.start, onboarded: a.onboarded || b.onboarded, cfgT: Math.max(a.cfgT || 0, b.cfgT || 0), resetAt: Math.max(a.resetAt || 0, b.resetAt || 0), done };
 }
-let syncTimer, syncEpoch = 0;
+let syncTimer, syncEpoch = 0, syncAbort = null;
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
-  clearTimeout(syncTimer); syncTimer = setTimeout(sync, 800);
+  clearTimeout(syncTimer); if (!document.hidden) syncTimer = setTimeout(sync, 800);
 }
 let syncStatus = "…";
-// Équipe et code de la partie : mémorisés sur ce téléphone (plusieurs téléphones d'une même famille donnent le même nom d'équipe).
-const TEAMKEY = "vq_team";
-const LEAGUE = "1234"; // code de la partie (voir data/league.txt sur le Pi)
-let TEAM = null;
-try { TEAM = JSON.parse(localStorage.getItem(TEAMKEY)); } catch {}
-const slug = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
-const apiHeaders = () => ({ "content-type": "application/json", "X-Team": (TEAM && TEAM.team) || "famille", "X-League": (TEAM && TEAM.league) || "" });
+const apiHeaders = () => ({ "content-type": "application/json", "X-Player": PLAYER_ID, "X-League": LEAGUE });
+let retiringPlayer = false;
+async function retireDeletedPlayer() {
+  if (retiringPlayer) return; retiringPlayer = true;
+  try { await clearPlayerPhotos(PLAYER_ID); } catch {}
+  clearProfile();
+  try { localStorage.removeItem(KEY); localStorage.removeItem(PLAYER_KEY); localStorage.removeItem("vq_team"); localStorage.removeItem("vq_active"); } catch {}
+  location.reload();
+}
 async function sync() {
-  if (!JEU) return;
+  if (!JEU || ADMIN_CONTEXT || document.hidden) return;
   const epoch = syncEpoch;
+  syncAbort?.abort();
+  const controller = new AbortController(); syncAbort = controller;
   backfillQuestionWorks();
   try {
-    const r = await fetch("api/sync", { method: "POST", headers: apiHeaders(), body: JSON.stringify(S) });
-    if (r.status === 403) { syncStatus = "🔒 code de la partie incorrect"; if (tab === "settings") renderSettings(); return; }
+    const r = await fetch("api/sync", { method: "POST", headers: apiHeaders(), body: JSON.stringify(S), signal: controller.signal });
+    if (r.status === 410) { await retireDeletedPlayer(); return; }
+    if (r.status === 403) { syncStatus = "🔒 accès à la partie indisponible"; if (tab === "settings") renderSettings(); return; }
     if (!r.ok) throw new Error(r.status);
     const remote = await r.json();
     if (epoch !== syncEpoch) return;
     const before = JSON.stringify(S);
-    S = mergeState(S, remote);
+    if ((remote.resetAt || 0) > (S.resetAt || 0)) {
+      await clearPlayerPhotos(PLAYER_ID);
+      PROFILE = { name: remote.kids?.[0]?.name || myName(), avatar: remote.kids?.[0]?.avatar || "🦁" }; saveProfile(PROFILE);
+      S = remote;
+      heldId = null; heldEl?.remove(); heldEl = null; try { localStorage.removeItem(HELD_KEY); } catch {}
+    } else S = mergeState(S, remote);
     backfillQuestionWorks();
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
     syncStatus = "✅ synchronisé " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     if (before !== JSON.stringify(S)) refreshAll();
-  } catch { syncStatus = "📴 hors-ligne (les points sont gardés sur ce téléphone)"; }
+  } catch (error) { if (error?.name !== "AbortError") syncStatus = "📴 hors-ligne (les points sont gardés sur ce téléphone)"; }
+  finally { if (syncAbort === controller) syncAbort = null; }
   if (tab === "settings") renderSettings();
 }
 
@@ -76,17 +137,44 @@ const award = (k, p, w = "all") => { S.done[k] = { t: Date.now(), p, w }; };
 const unaward = (k) => { S.done[k] = { t: Date.now(), p: 0, d: 1 }; };
 const points = () => Object.values(S.done).reduce((n, v) => n + (v.d ? 0 : v.p || 0), 0);
 const pointsOf = (i) => Object.values(S.done).reduce((n, v) => n + (!v.d && (v.w == null || v.w === "all" || v.w === i) ? v.p || 0 : 0), 0);
-let active = 0;
 let tab = "map", lastTab = "days", menuOpen = false, menuReturnPending = false;
-try { active = +localStorage.getItem("vq_active") || 0; } catch {}
-const me = () => S.kids[Math.min(active, S.kids.length - 1)];
-const meIdx = () => Math.min(active, S.kids.length - 1);
-const myName = () => me().name || "Joueur " + (meIdx() + 1);
-function setActive(i) {
-  if (typeof viewClose === "function") viewClose();
-  heldId = null; heldEl?.remove(); heldEl = null; saveHeld(); objectAssembly.clear();
-  active = i; try { localStorage.setItem("vq_active", i); } catch {}
-  refreshAll(); renderBadge(); refreshUserMarker(); if (tab === "photos") renderPhotos();
+const meIdx = () => 0;
+const me = () => S.kids[0] || { name: "", avatar: "🙂" };
+const myName = () => me().name || "Joueur";
+const REWARD_CACHE = "vq_player_rewards_v1:";
+let rewardPlacements = {};
+const grantKey = (player, reward) => `grant:${player}:${reward}`;
+const rewardTarget = (reward) => rewardPlacements[reward] || "default";
+const musicFoundFor = (id, player = meIdx()) => has(grantKey(player, `music:${id}`)) || ([`music:${id}:found`, `music:${id}:won`].some((key) => has(key) && S.done[key].w === player));
+const musicWonFor = (id, player = meIdx()) => has(grantKey(player, `music-won:${id}`)) || (has(`music:${id}:won`) && S.done[`music:${id}:won`].w === player);
+function applyConfiguredGrants() {
+  const gained = [];
+  for (const [reward, target] of Object.entries(rewardPlacements)) {
+      const player = 0;
+      if (!/^t:[a-z0-9-]+:[0-9]{1,3}$/.test(target) || !has(target) || has(grantKey(player, reward))) continue;
+      award(grantKey(player, reward), 0, player); gained.push({ player, reward });
+  }
+  if (gained.length) { save(); if (tab === "objects") renderObjects(); if (tab === "music") renderMusicCollection(); }
+  return gained;
+}
+function announceConfiguredGrants(gained, player) {
+  const mine = gained.filter((item) => item.player === player);
+  if (!mine.length) return;
+  const names = mine.map(({ reward }) => reward.startsWith("music:") ? "un fragment de partition" : OBJECTS.find((item) => `object:${item.id}` === reward)?.name || "un objet");
+  setTimeout(() => toast(`🎁 Tu as trouvé ${names.join(" et ")} !`, 5000), 900);
+}
+async function loadRewardPlacements() {
+  try { rewardPlacements = JSON.parse(localStorage.getItem(REWARD_CACHE + PLAYER_ID)) || {}; } catch { rewardPlacements = {}; }
+  if (document.hidden) return;
+  try {
+    const r = await fetch("api/rewards", { headers: apiHeaders() });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.placements || typeof data.placements !== "object") return;
+    rewardPlacements = data.placements;
+    try { localStorage.setItem(REWARD_CACHE + PLAYER_ID, JSON.stringify(rewardPlacements)); } catch {}
+    applyConfiguredGrants();
+  } catch {}
 }
 // Outil de développement : ?niveau=N force le grade affiché (0 = simple touriste) et reste mémorisé ; ?niveau= le retire.
 let devLevel = null;
@@ -191,6 +279,36 @@ function modal(html, onClose) {
   return close;
 }
 
+let adminUnlocked = ADMIN_CONTEXT, adminPromptOpen = false, adminPlayers = [], adminRewards = {}, adminCode = "";
+if (ADMIN_CONTEXT) fetch("api/admin/session", { headers: apiHeaders() }).then((r) => r.ok ? r.json() : Promise.reject()).then((data) => { adminPlayers = data.players || []; adminRewards = data.rewards || {}; if (tab === "settings") renderSettings(); }).catch(() => { location.replace(location.pathname.replace(/preview\.html$/, "")); });
+function requestAdminAccess(target) {
+  if (adminPromptOpen) return;
+  adminPromptOpen = true;
+  document.body.classList.add("admin-code-open");
+  const close = modal(`<h2>🔒 Accès administrateur</h2><p>Entre le code à 4 chiffres pour ouvrir les réglages et voir les joueurs.</p>
+    <form id="admin-code-form"><input id="admin-code" class="t admin-code-input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" aria-label="Code administrateur" required>
+    <p id="admin-code-error" class="admin-code-error" role="alert" hidden></p><div class="row"><button type="button" class="btn ghost grow" data-close>Annuler</button><button type="submit" class="btn blue grow">Ouvrir</button></div></form>`, () => { adminPromptOpen = false; document.body.classList.remove("admin-code-open"); });
+  const box = $("#modal"), input = $("#admin-code", box), error = $("#admin-code-error", box), form = $("#admin-code-form", box);
+  input.oninput = () => { input.value = input.value.replace(/\D/g, "").slice(0, 4); error.hidden = true; };
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    if (input.value.length !== 4) return;
+    const submit = $("button[type=submit]", form); submit.disabled = true; error.hidden = true;
+    try {
+      const r = await fetch("api/admin/unlock", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ code: input.value }) });
+      if (!adminPromptOpen) return;
+      if (!r.ok) { const details = await r.json().catch(() => ({})); error.textContent = r.status === 429 ? "Trop d'essais. Réessaie dans une minute." : details.error === "code incorrect" ? "Code incorrect." : "Accès indisponible. Vérifie la connexion à la partie."; error.hidden = false; input.value = ""; input.focus(); return; }
+      const data = await r.json();
+      adminPlayers = Array.isArray(data.players) ? data.players : [];
+      adminRewards = data.rewards && typeof data.rewards === "object" ? data.rewards : {};
+      adminCode = input.value;
+      close(); adminUnlocked = true; setTab(target);
+    } catch { error.textContent = "Connexion indisponible. Réessaie quand le réseau revient."; error.hidden = false; }
+    finally { submit.disabled = false; }
+  };
+  setTimeout(() => input.focus(), 50);
+}
+
 /* ───────── Photos (gardées sur le téléphone, IndexedDB) ───────── */
 const PHOTO_SESSION_KEY = "vq_photo_session_v1";
 // Un espace local de photos par nouvelle partie et par joueur.
@@ -200,8 +318,31 @@ function photoSession() {
   if (!id) { id = newPhotoSession(); try { localStorage.setItem(PHOTO_SESSION_KEY, id); } catch {} }
   return id;
 }
-const photoOwner = () => photoSession() + ":" + meIdx();
+const photoOwner = () => photoSession() + ":" + PLAYER_ID;
 const idb = () => new Promise((res, rej) => { const r = indexedDB.open("vq-photos", 1); r.onupgradeneeded = () => r.result.createObjectStore("p"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+async function migrateLegacyPhotos() {
+  if (ADMIN_CONTEXT) return;
+  try { if (localStorage.getItem("vq_photo_owner_migrated_v2") === "1") return; } catch {}
+  const oldOwner = photoSession() + ":" + (legacyTeam?.team && PLAYER_ID.startsWith("legacy-") ? legacyIndex : 0), owner = photoOwner();
+  const db = await idb();
+  try {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("p", "readwrite"), store = tx.objectStore("p"), cursor = store.openCursor();
+      cursor.onsuccess = () => {
+        const row = cursor.result;
+        if (!row) return;
+        const key = String(row.key);
+        if (key.startsWith(oldOwner + ":") && row.value?.owner === oldOwner) {
+          store.put({ ...row.value, owner }, owner + key.slice(oldOwner.length));
+          store.delete(row.key);
+        }
+        row.continue();
+      };
+      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+    });
+  } finally { db.close(); }
+  try { localStorage.setItem("vq_photo_owner_migrated_v2", "1"); } catch {}
+}
 async function putPhoto(key, rec, owner = photoOwner()) {
   if (owner !== photoOwner()) return;
   const db = await idb();
@@ -228,6 +369,16 @@ async function clearAllPhotos() {
   try { await new Promise((res, rej) => { const t = db.transaction("p", "readwrite"); t.objectStore("p").clear(); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
   finally { db.close(); }
 }
+async function clearPlayerPhotos(player) {
+  const owner = photoSession() + ":" + player;
+  const db = await idb();
+  try { await new Promise((res, rej) => {
+    const tx = db.transaction("p", "readwrite"), store = tx.objectStore("p"), keys = store.getAllKeys();
+    keys.onsuccess = () => keys.result.filter((key) => String(key).startsWith(owner + ":")).forEach((key) => store.delete(key));
+    keys.onerror = () => rej(keys.error);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  }); } finally { db.close(); }
+}
 function shrink(file, max = 900) {
   return new Promise((res) => {
     const img = new Image(), u = URL.createObjectURL(file);
@@ -253,6 +404,7 @@ function showGeoGate(message = "Pour jouer, autorise la localisation avec le bou
 function acceptGeo(fix) {
   geoRequesting = false; geoReady = true; showGeoGate();
   onPos(fix.coords.latitude, fix.coords.longitude, fix.coords.accuracy);
+  lastGeoSample = Date.now();
   syncGeoWatch();
 }
 function rejectGeo(err) {
@@ -260,18 +412,26 @@ function rejectGeo(err) {
   showGeoGate(err?.code === 1 ? "Ce site n'a pas accès à ta position. Autorise-le dans les réglages du navigateur, puis réessaie." : "Je ne peux pas obtenir ta position. Vérifie la localisation et réessaie.");
 }
 function requestGeo() {
-  if (DEV || geoRequesting) return;
+  if (DEV || geoRequesting || document.hidden) return;
   if (!navigator.geolocation) { showGeoGate("Ce navigateur ne fournit pas la localisation. Active-la pour jouer."); return; }
   geoRequesting = true;
   showGeoGate("Réponds à la demande de localisation du navigateur.");
-  navigator.geolocation.getCurrentPosition(
-    acceptGeo,
-    rejectGeo,
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
-  );
+  let id, timer, finished = false;
+  const done = (fix, err) => {
+    if (finished) return;
+    finished = true;
+    if (id != null) navigator.geolocation.clearWatch(id);
+    clearTimeout(timer); document.removeEventListener("visibilitychange", onHidden);
+    if (document.hidden) { geoRequesting = false; return; }
+    if (fix) acceptGeo(fix); else rejectGeo(err);
+  };
+  const onHidden = () => { if (document.hidden) done(); };
+  document.addEventListener("visibilitychange", onHidden);
+  timer = setTimeout(() => done(null, { code: 3 }), 15000);
+  id = navigator.geolocation.watchPosition((fix) => done(fix), (err) => done(null, err), { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
 }
 $("#geo-retry").onclick = requestGeo;
-$("#geo-settings").onclick = () => setTab("settings");
+if ($("#geo-settings")) $("#geo-settings").onclick = () => { if (ADMIN_CONTEXT) setTab("settings"); };
 const dist = (a, b, c, d) => {
   const R = 6371000, r = Math.PI / 180, dLat = (c - a) * r, dLon = (d - b) * r;
   const x = Math.sin(dLat / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(dLon / 2) ** 2;
@@ -293,6 +453,9 @@ let JEU = true;
 if (DEV) try { const q = QS.get("jeu"); if (q === "1") localStorage.setItem("vq_jeu", "1"); else if (q === "0") localStorage.setItem("vq_jeu", "0"); JEU = localStorage.getItem("vq_jeu") !== "0"; } catch {}
 document.body.classList.toggle("jeu", JEU);
 let PROFILE = loadProfile();
+if (legacyTeam?.team && legacyIndex > 0) {
+  try { const saved = JSON.parse(localStorage.getItem(`vq_player_profile_v1:${legacyTeam.team}:${legacyIndex}`)) || {}; PROFILE = { name: me().name, avatar: me().avatar, ...(saved.photo ? { photo: saved.photo } : {}) }; saveProfile(PROFILE); } catch { PROFILE = { name: me().name, avatar: me().avatar }; }
+}
 const VENICE = { w: 12.24, s: 45.36, e: 12.47, n: 45.55 }; // zone explorable : Venise et ses alentours
 const inVenice = (lat, lon) => lon >= VENICE.w && lon <= VENICE.e && lat >= VENICE.s && lat <= VENICE.n;
 let outside = false, locateAsked = false;
@@ -316,7 +479,6 @@ function outfitPartShift(shift) { // ancien décalage commun -> deux décalages 
   return { hat: clamp(shift?.hat || legacy), body: clamp(shift?.body || legacy) };
 }
 function profileHtml() {
-  if (meIdx() !== 0) return me().avatar;
   if (!PROFILE) return "🙂";
   if (PROFILE.photo && PROFILE.outfitOverlayHat && PROFILE.outfitOverlayBody && PROFILE.outfitLayout && PROFILE.outfitOverlayVersion === 3) {
     const shifts = outfitPartShift(PROFILE.outfitShift);
@@ -339,32 +501,63 @@ function profileHtml() {
 }
 function renderBadge() {
   const b = $("#me-badge"); if (!b) return;
-  b.hidden = !PROFILE; if (!PROFILE) return;
+  b.hidden = !PROFILE; if (b.hidden) return;
   b.innerHTML = `<span class="mb-av">${profileHtml()}</span><span class="mb-name">${esc(myName())}</span>`;
 }
 function userEl() {
   const el = document.createElement("div"); el.className = "pin mep";
-  el.innerHTML = `<div class="me-ring"></div><div class="me ${PROFILE && PROFILE.photo && meIdx() === 0 ? "ph" : "em"}${DEV ? " dev" : ""}">${PROFILE ? profileHtml() : "🙂"}</div>`;
+  el.innerHTML = `<div class="me-ring"></div><div class="me ${PROFILE?.photo ? "ph" : "em"}${DEV ? " dev" : ""}">${profileHtml()}</div>`;
   // (le personnage n'est plus cliquable : l'espace de l'enfant s'ouvre par la pastille maison, en bas à gauche)
   return el;
 }
 function refreshUserMarker() { if (userMarker) { const ll = userMarker.getLngLat(); userMarker.remove(); userMarker = null; if (pos) onPos(pos.lat, pos.lon, pos.acc, true); } }
-let watchId, userMarker, geoStarted = false, geoSimulated = false;
+let watchId = null, geoTimer = null, geoWatchTimeout = null, geoEpoch = 0, lastGeoSample = 0, preciseFixes = 0;
+let userMarker, geoStarted = false, geoSimulated = false;
+const GEO_INTERVAL = 15000;
 // En mode développeur, le bateau peut être déplacé pour tester le jeu.
 // Le mode réel reste actif tant que l’interrupteur de l’onglet Dév. est éteint.
 let devPinned = false; // le bateau a été posé à la main : le GPS réel est ignoré
-// Le GPS précis ne sert qu'avec la carte active ; la dernière position reste affichée pendant les autres écrans.
-function syncGeoWatch() {
-  if (!geoStarted || geoSimulated || (!DEV && !geoReady) || !navigator.geolocation) return;
-  const needed = !document.hidden && !devPinned && tab === "map" && $("#quest").hidden && !document.body.classList.contains("chap-open") && !$(".music-found,.music-quest");
-  if (!needed && watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  if (needed && watchId == null) watchId = navigator.geolocation.watchPosition((e) => onPos(e.coords.latitude, e.coords.longitude, e.coords.accuracy), (err) => { if (!DEV && err?.code === 1) { navigator.geolocation.clearWatch(watchId); watchId = null; geoReady = false; pos = null; userMarker?.remove(); userMarker = null; showGeoGate("La localisation a été désactivée. Autorise-la de nouveau pour jouer."); } else if (locateAsked) toast("📍 Je ne te trouve pas… active la localisation !"); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+// Une seule relève au plus toutes les 15 s sur la carte ; aucun suivi continu en arrière-plan.
+function stopGeoWatch() {
+  geoEpoch++;
+  clearTimeout(geoTimer); geoTimer = null;
+  clearTimeout(geoWatchTimeout); geoWatchTimeout = null;
+  if (watchId != null) navigator.geolocation.clearWatch(watchId);
+  watchId = null;
 }
+const geoNeeded = () => geoStarted && !geoSimulated && (DEV || geoReady) && !document.hidden && !devPinned && !preciseFixes && tab === "map" && !openId && $("#quest").hidden && $("#sheet").hidden && !document.body.classList.contains("chap-open") && !$(".music-found,.music-quest");
+function pollGeo() {
+  geoTimer = null;
+  if (!geoNeeded() || !navigator.geolocation) return;
+  const epoch = geoEpoch;
+  let finished = false;
+  const finish = () => {
+    if (finished || epoch !== geoEpoch) return;
+    finished = true;
+    clearTimeout(geoWatchTimeout); geoWatchTimeout = null;
+    if (watchId != null) navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    lastGeoSample = Date.now();
+    if (geoNeeded()) geoTimer = setTimeout(pollGeo, GEO_INTERVAL);
+  };
+  geoWatchTimeout = setTimeout(finish, 12000);
+  watchId = navigator.geolocation.watchPosition(
+    (fix) => { if (finished || epoch !== geoEpoch) return; try { onPos(fix.coords.latitude, fix.coords.longitude, fix.coords.accuracy); } finally { finish(); } },
+    (err) => { if (finished || epoch !== geoEpoch) return; if (!DEV && err?.code === 1) { geoReady = false; pos = null; userMarker?.remove(); userMarker = null; showGeoGate("La localisation a été désactivée. Autorise-la de nouveau pour jouer."); } else if (locateAsked) toast("📍 Je ne te trouve pas… active la localisation !"); finish(); },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 }
+  );
+}
+function syncGeoWatch() {
+  if (!geoNeeded() || !navigator.geolocation) { stopGeoWatch(); return; }
+  if (watchId == null && geoTimer == null) geoTimer = setTimeout(pollGeo, Math.max(0, GEO_INTERVAL - (Date.now() - lastGeoSample)));
+}
+function beginPreciseFix() { preciseFixes++; stopGeoWatch(); }
+function endPreciseFix() { preciseFixes = Math.max(0, preciseFixes - 1); lastGeoSample = document.hidden ? 0 : Date.now(); syncGeoWatch(); }
 const scheduleGeoSync = () => queueMicrotask(syncGeoWatch);
 function startGeo() {
   if (geoStarted) { syncGeoWatch(); return; }
   geoStarted = true;
-  if (!DEV) {
+  if (!DEV && !ADMIN_CONTEXT) {
     showGeoGate();
     if (MODERN_GEO) {
       const control = $("#geo-control");
@@ -387,12 +580,26 @@ function startGeo() {
   }
   const fake = DEV ? QS.get("fake") : null;
   if (DEV) window.__fake = (a, b) => { devPinned = true; onPos(a, b, 10, true); };
-  // Le toucher reste disponible en mode dev même avec une position simulée dans l'URL.
-  if (DEV) map.on("click", (e) => { devPinned = true; onPos(e.lngLat.lat, e.lngLat.lng, 10, true); syncGeoWatch(); });
+  // L'administrateur choisit sa position sur la carte, sans utiliser le GPS de l'appareil.
+  if (ADMIN_CONTEXT) {
+    const tip = document.createElement("div");
+    tip.id = "admin-position-tip";
+    tip.setAttribute("role", "status");
+    tip.textContent = "📍 Clique sur la carte pour placer ta position.";
+    document.body.appendChild(tip);
+  }
+  if (DEV || ADMIN_CONTEXT) map.on("click", (e) => {
+    if (ADMIN_CONTEXT && e.originalEvent?.target?.closest?.(".maplibregl-marker,.maplibregl-ctrl")) return;
+    devPinned = true;
+    if (ADMIN_CONTEXT) geoReady = true;
+    onPos(e.lngLat.lat, e.lngLat.lng, 10, true);
+    if (ADMIN_CONTEXT) $("#admin-position-tip").textContent = "📍 Position placée. Touche un lieu pour tester l'épreuve.";
+    syncGeoWatch();
+  });
   if (fake) { geoSimulated = true; const [la, lo] = fake.split(",").map(Number); window.__fake(la, lo); return; }
   const gps = DEV ? QS.get("gps") : null; // position simulée réservée au mode développeur
   if (gps) { geoSimulated = true; const [la, lo] = gps.split(",").map(Number); setTimeout(() => onPos(la, lo, 15), 600); return; }
-  if (DEV) setTimeout(() => { if (!pos) { const c = map.getCenter(); onPos(c.lat, c.lng, 10); } }, 1500);
+  if (DEV && !ADMIN_CONTEXT) setTimeout(() => { if (!pos) { const c = map.getCenter(); onPos(c.lat, c.lng, 10); } }, 1500);
   syncGeoWatch();
 }
 function onPos(lat, lon, acc, manual = false) {
@@ -420,7 +627,18 @@ function onPos(lat, lon, acc, manual = false) {
 /* ───────── Arrivée, pages, finale ───────── */
 // Musique d'ambiance d'un lieu (p.music) : amorcée au toucher de « J'y suis ! » (les navigateurs l'exigent), lancée avec le fondu d'arrivée, coupée en douceur au départ.
 const MUSIC = {}; let curMusic = null;
-function fadeAudio(a, to, ms, done) { const from = a.volume, t0 = performance.now(); const id = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / ms); a.volume = Math.max(0, Math.min(1, from + (to - from) * k)); if (k >= 1) { clearInterval(id); if (done) done(); } }, 40); }
+const audioFadeTimers = new Set();
+function fadeAudio(a, to, ms, done) {
+  if (document.hidden) { a.pause(); return; }
+  const from = a.volume, t0 = performance.now();
+  const id = setInterval(() => {
+    if (document.hidden) { clearInterval(id); audioFadeTimers.delete(id); a.pause(); return; }
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    a.volume = Math.max(0, Math.min(1, from + (to - from) * k));
+    if (k >= 1) { clearInterval(id); audioFadeTimers.delete(id); if (done) done(); }
+  }, 40);
+  audioFadeTimers.add(id);
+}
 function primeMusic(p) { if (!p.music) return; try { const a = MUSIC[p.id] || (MUSIC[p.id] = new Audio(p.music)); a.preload = "auto"; a.volume = 0; const r = a.play(); if (r && r.then) r.then(() => { a.pause(); a.currentTime = 0; }).catch(() => {}); } catch {} }
 function startMusic(p) { const a = MUSIC[p.id]; if (!a) return; try { a.currentTime = 0; a.volume = 0; const r = a.play(); if (r && r.catch) r.catch(() => {}); curMusic = a; fadeAudio(a, 0.85, 1800); } catch {} }
 function stopMusic(ms = 1000) { const a = curMusic; if (!a) return; curMusic = null; fadeAudio(a, 0, ms, () => { try { a.pause(); } catch {} }); }
@@ -526,7 +744,7 @@ const boatPoint = (d) => { // position à la distance d (m) le long de la boucle
   const { pts, cum, L } = BOAT_PATH; d = ((d % L) + L) % L; let lo = 0, hi = pts.length; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cum[mid] <= d) lo = mid; else hi = mid; }
   const a = pts[lo], b = pts[(lo + 1) % pts.length], t = (d - cum[lo]) / ((cum[lo + 1] - cum[lo]) || 1); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 };
-const BOAT_T0 = "vq_boat_t0";
+const BOAT_T0 = `vq_boat_t0:${PLAYER_ID}`;
 const BOAT_NEAR = 70; // mètres autour de la position actuelle du bateau
 function boatPlan(t0, T = RENDEZ_VOUS) { // { speed (m/s), total (m), tEnd } : nombre entier de tours, arrivée à T (ou le plus tôt possible si T est trop proche)
   const { L, moor } = BOAT_PATH, dt = (T - t0) / 1000;
@@ -570,19 +788,27 @@ function ensureBoat(fresh) { // fresh : fin de l'intro → le voilier repart du 
   boatMarker = new maplibregl.Marker({ element: el, anchor: "center", offset: [0, -0.28 * BOAT.w] }).setLngLat(b.ll).addTo(map); // la coque (78 % de la hauteur) est posée sur le point
   updateBoatInteraction(b);
   centerBoatPreview(b);
-  requestAnimationFrame(boatTick);
+  scheduleBoatTick();
 }
 let boatLast = 0;
 const mapWorkVisible = () => !document.hidden && tab === "map" && $("#quest").hidden && !document.body.classList.contains("chap-open") && !document.body.classList.contains("intro-open") && !$(".music-found,.music-quest");
+let boatFrame = 0, boatRetry = 0;
+function scheduleBoatTick(delay = 67) {
+  if (document.hidden || !boatMarker || boatFrame || boatRetry) return;
+  boatRetry = setTimeout(() => { boatRetry = 0; boatFrame = requestAnimationFrame((ts) => { boatFrame = 0; boatTick(ts); }); }, delay);
+}
+function stopBoatTick() { cancelAnimationFrame(boatFrame); clearTimeout(boatRetry); boatFrame = boatRetry = 0; }
 function boatTick(ts) {
-  if (!boatMarker || !mapWorkVisible()) { setTimeout(() => requestAnimationFrame(boatTick), 250); return; }
-  requestAnimationFrame(boatTick);
-  if (ts - boatLast < (ecoOn() ? 120 : 40)) return; boatLast = ts;
+  if (document.hidden) return;
+  if (!boatMarker || !mapWorkVisible()) { scheduleBoatTick(250); return; }
+  scheduleBoatTick();
+  if (ts - boatLast < (ecoOn() ? 125 : 60)) return; boatLast = ts;
   const b = boatAt(); if (boatMarker.getElement().style.visibility === "hidden") return; boatMarker.setLngLat(b.ll); updateBoatInteraction(b);
   if (!b.moored) { // il regarde dans le sens de la marche (retournement doux)
     const a = map.project(b.ll), c = map.project(boatAt(Date.now() + 8000).ll), dx = c.x - a.x; if (Math.abs(dx) > 0.3) { const left = dx < 0; if (left !== boatLeft) { boatLeft = left; boatMarker.getElement().classList.toggle("left", left); } }
   }
 }
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopBoatTick(); else scheduleBoatTick(); });
 if (DEV) { window.__boat = { at: boatAt, plan: boatPlan, path: BOAT_PATH, T: RENDEZ_VOUS };
 window.__boatOpts = () => BOAT_OPTS; } // (outil de test)
 const BOAT_OPTS = { map, boat: { lngLat: BOAT.lngLat, w: BOAT.w, ensure: () => ensureBoat(true), hide: () => { if (boatMarker) boatMarker.getElement().style.visibility = "hidden"; } } };
@@ -627,7 +853,7 @@ function huffOff(W, t) {
   if (dt < HUFF_RUN) return (h.from || 0) + (h.m - (h.from || 0)) * (1 - (1 - dt / HUFF_RUN) ** 3);
   if (dt < HUFF_STAY) return h.m;
   if (dt < HUFF_STAY + 60) return h.m * (1 - (dt - HUFF_STAY) / 60);
-  W.huff = null; try { localStorage.removeItem("vq_huff_" + W.id); } catch {} return 0;
+  W.huff = null; try { localStorage.removeItem(`vq_huff_${W.id}:${PLAYER_ID}`); } catch {} return 0;
 }
 // Lion ailé : le plus souvent en plein vol (vitesse de croisière M.cruise, m/s) ; plus rarement posé (arrêt complet) : `landings` = [{at, dur}] en secondes dans un cycle de `period` s, avec rampes de M.ramp s au décollage et à l'atterrissage. Tout dépend de l'heure absolue.
 function lostDist(M, L, x) { // distance « perdue » (par unité de vitesse) pendant un atterrissage de durée L, au temps x
@@ -785,7 +1011,7 @@ function openWalkerQuiz(W) {
       img.animate([{ transform: "rotate(0)" }, { transform: "rotate(-7deg) translateX(-8px)" }, { transform: "rotate(7deg) translateX(8px)" }, { transform: "rotate(-6deg) translateX(-6px)" }, { transform: "rotate(6deg) translateX(6px)" }, { transform: "rotate(0)" }], { duration: 700, iterations: 2 });
       setTimeout(() => close(() => {
         const cur = huffOff(W, Date.now()); W.huff = { t0: Date.now(), from: cur, m: cur + HUFF_M }; // Il repart d'où il en était et file encore plus loin.
-        try { localStorage.setItem("vq_huff_" + W.id, JSON.stringify(W.huff)); } catch {}
+        try { localStorage.setItem(`vq_huff_${W.id}:${PLAYER_ID}`, JSON.stringify(W.huff)); } catch {}
         el.classList.add("run"); setTimeout(() => el.classList.remove("run"), (HUFF_RUN + 1) * 1000);
       }), 2300);
     }
@@ -797,7 +1023,7 @@ async function startWalker(W) {
     if (W.id !== "gondolier") pts = detourRoute(pts); // les personnages à terre ou en vol contournent les pastilles ; le gondolier reste sur l'eau, intact
     const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + dist(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]));
     W.R = { pts, cum, total: cum[cum.length - 1] };
-    try { W.huff = JSON.parse(localStorage.getItem("vq_huff_" + W.id) || "null"); } catch { W.huff = null; }
+    try { W.huff = JSON.parse(localStorage.getItem(`vq_huff_${W.id}:${PLAYER_ID}`) || "null"); } catch { W.huff = null; }
   } catch { return; }
   const el = document.createElement("div"); el.className = "pin doge"; el.style.width = W.w + "px";
   const av = W.rig ? `<div class="doge-av lion-rig" style="width:${W.w}px;aspect-ratio:${W.rig.ratio}"><img class="lr-body" src="${W.rig.body}" alt="${W.name}"><img class="lr-rear" src="${W.rig.rear}" alt=""><img class="lr-front" src="${W.rig.front}" alt=""><img class="lr-wings" src="${W.rig.wings}" alt=""></div>` : `<img class="doge-av" style="width:${W.w}px" src="${W.img}" alt="${W.name}">`;
@@ -808,19 +1034,24 @@ async function startWalker(W) {
   W.marker = new maplibregl.Marker({ element: el, anchor: "bottom", subpixelPositioning: true }).setLngLat([d.lon, d.lat]).addTo(map);
 }
 let walkLast = 0;
-// Mode éco : les personnages ne sont recalculés que 20 fois par seconde (au lieu de chaque image) ; tout le reste est inchangé.
+// Une douzaine de positions par seconde suffit pour des trajets lents sur la carte.
 const ecoOn = () => { try { return localStorage.getItem("vq_eco") === "1"; } catch { return false; } };
-let walkPrev = 0;
+let walkPrev = 0, walkFrame = 0, walkRetry = 0, walkersReady = false;
+function scheduleWalkTick(delay = ecoOn() ? 125 : 83) {
+  if (document.hidden || !walkersReady || walkFrame || walkRetry) return;
+  walkRetry = setTimeout(() => { walkRetry = 0; walkFrame = requestAnimationFrame((ts) => { walkFrame = 0; walkTick(ts); }); }, delay);
+}
+function stopWalkTick() { cancelAnimationFrame(walkFrame); clearTimeout(walkRetry); walkFrame = walkRetry = 0; }
 function walkTick(ts) {
-  if (!mapWorkVisible()) { setTimeout(() => requestAnimationFrame(walkTick), 250); return; }
-  if (ecoOn() && ts - walkPrev < 49) { requestAnimationFrame(walkTick); return; } // saute les images intermédiaires (≈ 20 images/s sur un écran 60 Hz)
-  const eco = ecoOn(), k = walkPrev ? Math.min(3, Math.max(1, (ts - walkPrev) / 16.7)) : 1; walkPrev = ts; // k : lissages recalés sur le temps réel écoulé
+  if (document.hidden) return;
+  if (!mapWorkVisible()) { scheduleWalkTick(250); return; }
+  const k = walkPrev ? Math.min(6, Math.max(1, (ts - walkPrev) / 16.7)) : 1; walkPrev = ts; // lissage recalé sur le temps réel écoulé
   const now = nowMs();
   for (const W of WALKERS) if (W.motion && W.marker) { const v = motionSpeed(W.motion, now) / W.motion.cruise, c = W.marker.getElement().classList; c.toggle("flying", v > 0.2); c.toggle("landed", v <= 0.2); }
   for (const W of WALKERS) if (W.marker) W.marker.getElement().classList.toggle("angry", !!W.huff && now - W.huff.t0 < (DEV ? 5 : 60) * 1000); // fâché : éclair et halo rouge : 5 s en mode dev, 1 min en réel
   const smooth = map.getZoom() >= 16.5 || WALKERS.some((W) => W.huff && now - W.huff.t0 < (HUFF_RUN + 1) * 1000);
   const slow = ts - walkLast > 5000; if (slow) walkLast = ts;
-  for (const W of WALKERS) if (W.marker && (smooth || slow || W.motion)) { const q = W.id === "lion" ? smoothAdj(W, now) : walkerAt(W, now); W.marker.setLngLat([q.lon, q.lat]); } // le lion bouge à chaque image, quel que soit le zoom : mouvement continu, sans à-coups
+  for (const W of WALKERS) if (W.marker && (smooth || slow || W.motion)) { const q = W.id === "lion" ? smoothAdj(W, now) : walkerAt(W, now); W.marker.setLngLat([q.lon, q.lat]); } // le lion reste animé à tout zoom, avec moins de recalculs
   for (const W of WALKERS) if (W.heading && W.marker) { // le lion regarde là où il va : retourné (gauche/droite) et incliné selon la direction à l'écran
     const a = rawAt(W, now), b = rawAt(W, now + 700), pa = map.project([a.lon, a.lat]), pb = map.project([b.lon, b.lat]), dx = pb.x - pa.x, dy = pb.y - pa.y, n = Math.hypot(dx, dy);
     if (n > 0.04) { // à l'arrêt (posé) il garde son dernier cap
@@ -830,9 +1061,10 @@ function walkTick(ts) {
     }
     W.turnEl.style.transform = `rotate(${W.ang.toFixed(1)}deg)`; W.flipEl.classList.toggle("left", W.left);
   }
-  requestAnimationFrame(walkTick);
+  scheduleWalkTick();
 }
-Promise.all(WALKERS.map(startWalker)).then(() => requestAnimationFrame(walkTick));
+Promise.all(WALKERS.map(startWalker)).then(() => { walkersReady = true; scheduleWalkTick(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopWalkTick(); else scheduleWalkTick(); });
 if (DEV) { window.__walkTick = walkTick; window.__doge = () => walkerAt(WALKERS[0]); window.__monte = () => walkerAt(WALKERS[1]); window.__walkerAt = (i, t) => walkerAt(WALKERS[i], t); window.__WK = WALKERS; window.__marc = () => walkerAt(WALKERS[2]); window.__lion = () => walkerAt(WALKERS[4]); window.__gond = () => walkerAt(WALKERS[3]); }
 const pinEls = {};
 // Icônes dessinées à la place de la pastille photo (fond transparent) ; w = largeur en px (à régler ici), ratio = largeur/hauteur de l'image.
@@ -981,7 +1213,6 @@ function updateMaskMarkers() {
     el.hidden = !JEU || zoom < 14 || state === "done";
     el.classList.toggle("mask-distant", zoom < 15);
     el.style.setProperty("--mask-size", size + "px");
-    el.style.setProperty("--mask-star-size", (zoom < 15 ? 5 : Math.round(Math.max(7, Math.min(12, size * .23)))) + "px");
     el.classList.toggle("is-gem", state === "gem");
     if (img.getAttribute("src") !== src) img.src = src;
     el.setAttribute("aria-label", state === "gem" ? "Attraper la gemme du carnaval" : "Découvrir un masque vénitien");
@@ -992,12 +1223,21 @@ map.on("moveend", updateMaskMarkers);
 const maskFix = () => {
   if (DEV && pos) return Promise.resolve(pos);
   return new Promise((resolve) => {
-    if (!navigator.geolocation) { resolve(null); return; }
-    navigator.geolocation.getCurrentPosition(
-      (fix) => resolve({ lat: fix.coords.latitude, lon: fix.coords.longitude, acc: fix.coords.accuracy }),
-      () => resolve(null),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 18000 }
-    );
+    if (!navigator.geolocation || document.hidden) { resolve(null); return; }
+    beginPreciseFix();
+    let id, timer, finished = false;
+    const done = (fix) => {
+      if (finished) return;
+      finished = true;
+      if (id != null) navigator.geolocation.clearWatch(id);
+      clearTimeout(timer); document.removeEventListener("visibilitychange", onHidden);
+      endPreciseFix();
+      resolve(document.hidden || !fix ? null : { lat: fix.coords.latitude, lon: fix.coords.longitude, acc: fix.coords.accuracy });
+    };
+    const onHidden = () => { if (document.hidden) done(null); };
+    document.addEventListener("visibilitychange", onHidden);
+    timer = setTimeout(() => done(null), 18000);
+    id = navigator.geolocation.watchPosition(done, () => done(null), { enableHighAccuracy: true, maximumAge: 0, timeout: 18000 });
   });
 };
 function maskRain(cx, cy) {
@@ -1025,18 +1265,10 @@ async function bloomMask(img) {
     { transform: "translate(0,0) scale(1)", opacity: 1 },
     { transform: final, opacity: 1 },
   ], { duration: 760, easing: "cubic-bezier(.18,.7,.18,1)", fill: "forwards" }).finished.catch(() => {});
-  const orbit = document.createElement("span"); orbit.className = "mask-victory-orbit";
-  orbit.style.cssText = `left:${cx}px;top:${cy}px;--mask-orbit-radius:${size * .59}px`;
-  for (let i = 0; i < 8; i++) {
-    const star = document.createElement("i"); star.textContent = i % 3 ? "✦" : "✧";
-    star.style.setProperty("--angle", `${i * 45}deg`); orbit.appendChild(star);
-  }
-  document.body.appendChild(orbit);
   await sleep(1550);
-  return { cx, cy, ghost, orbit };
+  return { cx, cy, ghost };
 }
-async function evaporateMask({ cx, cy, ghost, orbit }) {
-  orbit?.remove();
+async function evaporateMask({ cx, cy, ghost }) {
   if (!ghost?.isConnected) return;
   for (let i = 0; i < 14; i++) {
     const particle = document.createElement("span"); particle.className = "mask-vapor-star";
@@ -1115,9 +1347,6 @@ function makeMaskMarker(site) {
   const el = document.createElement("button"); el.type = "button"; el.className = "mask-marker";
   const index = Number(site.id.slice(1)) - 1, maskImage = MASK_IMAGES[index % MASK_IMAGES.length];
   const img = document.createElement("img"); img.src = maskImage; img.alt = ""; img.draggable = false; el.appendChild(img);
-  const orbit = document.createElement("span"); orbit.className = "mask-orbit"; orbit.setAttribute("aria-hidden", "true");
-  for (let star = 0; star < 3; star++) { const spark = document.createElement("i"); spark.textContent = "★"; orbit.appendChild(spark); }
-  el.appendChild(orbit);
   const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([site.lon, site.lat]).addTo(map);
   const record = { el, img, maskImage, marker, busy: false };
   el.addEventListener("pointerdown", (event) => event.stopPropagation());
@@ -1186,24 +1415,51 @@ if (LOCAL_DEV && Object.keys(PLACE_ICONS).length) {
 function renderHud() {
   const pts = pointsOf(meIdx()), li = level(pts), cur = LEVELS[li], nx = LEVELS[li + 1];
   renderProfileBar();
-  $("#hud-kids").innerHTML = `<span class="mb-av">${PROFILE && meIdx() === 0 ? profileHtml() : me().avatar}</span><small>${esc(myName())}</small>`;
+  $("#hud-kids").innerHTML = `<span class="mb-av">${profileHtml()}</span><small>${esc(myName())}</small>`;
   if (!scoreAnim) $("#hud-score").innerHTML = `<span class="sc-n"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.75 5.8 6.35.85-4.65 4.4 1.15 6.3L12 17l-5.6 3.15 1.15-6.3L2.9 9.45l6.35-.85z" fill="#F2B51C" stroke="#F2B51C" stroke-width="1.4" stroke-linejoin="round"/></svg><b>${pts}</b></span>`; // seulement l'étoile et le décompte, sans pastille
 }
 // Toucher sa photo ou son pictogramme permet de les modifier (nouveau pictogramme, nouvelle photo, nouveau nom).
 $("#hud-kids").onclick = () => setTab(lastTab);
 function renderProfileBar() {
   const pts = pointsOf(meIdx()), cur = LEVELS[level(pts)];
-  $("#up-me").innerHTML = `<span class="mb-av${PROFILE?.photo && meIdx() === 0 ? " up-avatar-frame" : ""}">${meIdx() !== 0 ? me().avatar : PROFILE?.photo ? `<span class="me ph up-avatar">${profileHtml()}</span>` : PROFILE ? profileHtml() : me().avatar}</span><span class="up-n"><b>${esc(myName())}</b><small>${cur.name}</small></span>`; // photo du profil uniquement pour son joueur
+  const photo = PROFILE?.photo;
+  $("#up-me").innerHTML = `<span class="mb-av${photo ? " up-avatar-frame" : ""}">${photo ? `<span class="me ph up-avatar">${profileHtml()}</span>` : profileHtml()}</span><span class="up-n"><b>${esc(myName())}</b><small>${cur.name}</small></span>`;
 }
 $("#up-me").onclick = async () => {
-  if (!PROFILE || meIdx() !== 0) { showPlayers(); return; }
-  const p = await editProfile(PROFILE); if (!p) return;
-  if (p.photo && p.photo === PROFILE.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitOverlayHat = PROFILE.outfitOverlayHat; p.outfitOverlayBody = PROFILE.outfitOverlayBody; p.outfitLayout = PROFILE.outfitLayout; p.outfitOverlayVersion = PROFILE.outfitOverlayVersion; p.outfitShift = PROFILE.outfitShift; } // nouvelle photo = plus de tenue
+  if (ADMIN_CONTEXT) return;
+  const cur = { ...PROFILE, name: myName(), avatar: me().avatar };
+  let others = [], switchTo = null;
+  const [boardResult, pairResult] = await Promise.allSettled([
+    fetch("api/board", { headers: apiHeaders() }),
+    fetch("api/player/switch", { headers: apiHeaders() }),
+  ]);
+  try { const r = boardResult.value; if (r?.ok) others = ((await r.json()).players || []).filter((p) => !p.mine).map((p) => ({ ...p, grade: LEVELS[level(p.points)].name })); } catch {}
+  try { const r = pairResult.value; if (r?.ok) { switchTo = (await r.json()).player; if (switchTo?.id) switchTo.photo = loadProfileFor(switchTo.id)?.photo || null; } } catch {}
+  const p = await editProfile(cur, { others, switchTo, onDownload: downloadOfflinePack }); if (!p) return;
+  if (p.switchPlayerId) { await switchPlayer(p.switchPlayerId); return; }
+  if (p.photo && p.photo === PROFILE?.photo) { p.outfit = PROFILE.outfit; p.outfitPhoto = PROFILE.outfitPhoto; p.outfitOverlay = PROFILE.outfitOverlay; p.outfitOverlayHat = PROFILE.outfitOverlayHat; p.outfitOverlayBody = PROFILE.outfitOverlayBody; p.outfitLayout = PROFILE.outfitLayout; p.outfitOverlayVersion = PROFILE.outfitOverlayVersion; p.outfitShift = PROFILE.outfitShift; }
   applyProfile(p);
 };
+async function switchPlayer(targetId) {
+  try {
+    const pairResponse = await fetch("api/player/switch", { headers: apiHeaders() });
+    if (!pairResponse.ok || (await pairResponse.json()).player?.id !== targetId) throw new Error("Ce changement de joueur n’est pas autorisé.");
+    await sync();
+    if (retiringPlayer) return;
+    const stateResponse = await fetch("api/state", { headers: { ...apiHeaders(), "X-Player": targetId } });
+    if (!stateResponse.ok) throw new Error("Le profil de l’autre joueur est indisponible.");
+    const remote = await stateResponse.json(), targetKey = `vq_player_state_v1:${targetId}`;
+    let next = remote;
+    try { const local = JSON.parse(localStorage.getItem(targetKey)); if (local?.done && (local.resetAt || 0) >= (remote.resetAt || 0)) next = mergeState(local, remote); } catch {}
+    localStorage.setItem(targetKey, JSON.stringify(next));
+    localStorage.setItem(PLAYER_KEY, targetId);
+    syncEpoch++; clearTimeout(syncTimer);
+    location.reload();
+  } catch (error) { toast(error.message || "Impossible de changer de joueur pour le moment."); }
+}
 function applyProfile(p) {
   PROFILE = p; saveProfile(p);
-  S.kids = [{ name: p.name, avatar: p.avatar || (S.kids[0] && S.kids[0].avatar) || "🦁" }]; S.cfgT = Date.now(); save();
+  S.kids[0] = { ...S.kids[0], name: p.name, avatar: p.avatar || S.kids[0]?.avatar || "🦁" }; S.cfgT = Date.now(); save();
   renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
 };
 $("#hud-score").onclick = () => { if (DEV && !openId && !$(".wq") && !$(".cer")) devStarMenu(); };
@@ -1256,6 +1512,7 @@ async function openPlace(id, originRect) {
   if (tab !== "map") return; // un toucher de macaron peut arriver juste avant l'ouverture du menu
   const p = place(id);
   if (!p) return;
+  if (ADMIN_CONTEXT && !pos) { toast("Clique d'abord sur la carte pour placer ta position."); return; }
   if (!DEV && !geoReady) { showGeoGate(); return; }
   const request = ++placeOpening;
   const needsWelcome = !(arrived(p.id) && !complete(p)) && !(p.chapters && complete(p));
@@ -1364,17 +1621,25 @@ const FAKE = DEV ? QS.get("fake") : null;
 function getFix(ms = 4000) {
   if (FAKE || devPinned) return Promise.resolve(!!pos);
   return new Promise((res) => {
-    if (!navigator.geolocation) { res(false); return; }
-    const S = []; let id, tm;
+    if (!navigator.geolocation || document.hidden) { res(false); return; }
+    beginPreciseFix();
+    const S = []; let id, tm, finished = false;
     const done = () => {
-      navigator.geolocation.clearWatch(id); clearTimeout(tm);
-      if (!S.length) { res(false); return; }
+      if (finished) return;
+      finished = true;
+      if (id != null) navigator.geolocation.clearWatch(id);
+      clearTimeout(tm); document.removeEventListener("visibilitychange", onHidden);
+      if (document.hidden) { endPreciseFix(); res(false); return; }
+      if (!S.length) { endPreciseFix(); res(false); return; }
       const good = S.filter((c) => c.accuracy <= 100), use = good.length ? good : S;
       let sw = 0, la = 0, lo = 0, minA = Infinity;
       for (const c of use) { const w = 1 / Math.max(c.accuracy, 5) ** 2; sw += w; la += c.latitude * w; lo += c.longitude * w; minA = Math.min(minA, c.accuracy); }
       onPos(la / sw, lo / sw, Math.max(Math.sqrt(1 / sw), 0.6 * minA));
+      endPreciseFix();
       res(true);
     };
+    const onHidden = () => { if (document.hidden) done(); };
+    document.addEventListener("visibilitychange", onHidden);
     tm = setTimeout(done, ms);
     id = navigator.geolocation.watchPosition((e) => S.push(e.coords), (err) => { if (err && err.code === 1) done(); }, { enableHighAccuracy: true, maximumAge: 0, timeout: ms }); // localisation refusée : inutile d'attendre
   });
@@ -1634,12 +1899,26 @@ function openBridgeCeremony(b, intro) {
     if (!alive()) return;
     sh.onclick = null;
     const current = ++serial, index = order[cursor], fact = list[index];
-    answers.hidden = false; next.hidden = true;
+    answers.hidden = true; next.hidden = true;
     words.textContent = fact.q;
     const choices = shuffle(fact.c.map((text, i) => ({ text, correct: i === 0 })));
     answers.innerHTML = choices.map((choice, i) => `<button type="button" data-choice="${i}">${esc(choice.text)}</button>`).join("");
+    answers.scrollTop = 0;
+    const buttons = $$('button', answers);
+    buttons.forEach((button) => { button.disabled = true; });
+    // WebKit peut laisser un ancien calque du panneau à l'écran jusqu'au premier toucher.
+    // On révèle les choix sur une nouvelle image, puis on autorise les clics sur la suivante.
+    requestAnimationFrame(() => {
+      if (!alive() || serial !== current) return;
+      answers.hidden = false;
+      void answers.offsetHeight;
+      requestAnimationFrame(() => {
+        if (!alive() || serial !== current) return;
+        buttons.forEach((button) => { button.disabled = false; });
+      });
+    });
     let answered = false;
-    $$("button", answers).forEach((button) => button.onclick = () => {
+    buttons.forEach((button) => button.onclick = () => {
       if (answered) return;
       const choice = choices[Number(button.dataset.choice)];
       if (!choice.correct) { button.disabled = true; button.classList.add("wrong"); buzz(); return; }
@@ -1778,7 +2057,7 @@ function bindTasks(p, sh, after = () => renderSheet(), redraw = () => renderShee
   $$(".task[data-i]", sh).forEach((el) => {
     const i = +el.dataset.i, t = p.tasks[i];
     if (taskDone(p.id, i)) return;
-    const win = (extra) => { const pt = t.pts ?? POINTS.task; award(`t:${p.id}:${i}`, pt, meIdx()); save(); chime(); confetti(70); toast(`+${pt} ⭐ Bravo ${myName()} !`); if (extra) extra(); refreshAll(); after(i); };
+    const win = (extra) => { const pt = t.pts ?? POINTS.task, player = meIdx(); award(`t:${p.id}:${i}`, pt, player); const gained = applyConfiguredGrants(); save(); chime(); confetti(70); toast(`+${pt} ⭐ Bravo ${myName()} !`); announceConfiguredGrants(gained, player); if (extra) extra(); refreshAll(); after(i); };
     $$(".opt", el).forEach((b) => (b.onclick = () => {
       if (+b.dataset.j === t.a) { b.classList.add("right"); win(); } else { b.classList.add("bad"); b.disabled = true; }
     }));
@@ -1926,7 +2205,7 @@ async function chapEnd(p, replay, preview = false) {
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
   const hasSecret = !!(p.reward || p.musicChallenge);
-  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? endSecret(p) : "", plan: "Ouvre le plan de l'église." };
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? endSecret(p) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
@@ -1936,9 +2215,9 @@ async function chapEnd(p, replay, preview = false) {
   fitChapTalk();
   if (!preview && p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
   let planButton = null, photoButton = null;
-  if (p.plan || MONTAGES[p.id]) {
+  if (p.plan || p.musicChallenge || MONTAGES[p.id]) {
     const actions = document.createElement("div"); actions.className = "chap-end-actions" + (MONTAGES[p.id] ? " has-photo" : ""); bt.appendChild(actions);
-    if (p.plan) { planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "chap-end-plan"; planButton.textContent = defaults.plan; actions.appendChild(planButton); }
+    if (p.plan || p.musicChallenge) { planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "chap-end-plan"; planButton.textContent = p.plan ? defaults.plan : "Découvrir le fragment de musique"; actions.appendChild(planButton); }
     if (MONTAGES[p.id]) { photoButton = document.createElement("button"); photoButton.type = "button"; photoButton.className = "chap-end-photo"; photoButton.setAttribute("aria-label", "Prendre une photo souvenir"); photoButton.innerHTML = CAM_SVG; photoButton.onclick = () => openMontage(p.id); actions.appendChild(photoButton); }
     fitChapTalk();
   }
@@ -1946,10 +2225,11 @@ async function chapEnd(p, replay, preview = false) {
   const routePlanButton = () => {
     if (!planButton) return;
     const M = p.musicChallenge;
-    if (M && has(`music:${M.entry}:found`)) {
+    if (M && musicFoundFor(M.entry)) {
       planButton.textContent = "Revoir le morceau de partition";
       planButton.onclick = () => openMusicFragmentReveal(M.entry, p);
-    } else planButton.onclick = () => openPlanPanel(p.plan, p, routePlanButton, preview);
+    } else if (p.plan) planButton.onclick = () => openPlanPanel(p.plan, p, routePlanButton, preview);
+    else if (M) planButton.onclick = () => openMusicFragmentReveal(M.entry, p);
   };
   routePlanButton();
   const stage = (delay, action) => setTimeout(() => { if (emblem.isConnected) action(); }, delay);
@@ -1976,7 +2256,8 @@ function showLocBtn(bubbleEl, loc) {
   const btn = document.createElement("button"); btn.type = "button"; btn.className = "loc-btn"; btn.textContent = "📍 Où ?"; btn.style.top = (sh.classList.contains("chap") ? 66 : bb.bottom - sr.top + 8) + "px"; sh.appendChild(btn);
   btn.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 400 });
   const ui = (locUI = { els: [btn], map: null, panel: null, t: null, loc });
-  const hide = () => { clearInterval(ui.t); try { ui.map && ui.map.remove(); } catch {} ui.map = null; if (ui.panel) { ui.panel.remove(); ui.els = ui.els.filter((e) => e !== ui.panel); ui.panel = null; } btn.classList.remove("on"); btn.hidden = false; };
+  const hide = () => { clearInterval(ui.t); ui.t = null; try { ui.map && ui.map.remove(); } catch {} ui.map = null; if (ui.panel) { ui.panel.remove(); ui.els = ui.els.filter((e) => e !== ui.panel); ui.panel = null; } btn.classList.remove("on"); btn.hidden = false; };
+  ui.hide = hide;
   btn.onclick = () => {
     if (ui.panel) { hide(); return; }
     btn.hidden = true;
@@ -2108,7 +2389,7 @@ async function runChapters(p, replay = false) {
         const pts = x.pts ?? 10, r = await bridgeChoose(ch, replay ? 0 : pts, cf); closeLoc();
         if (r.skip) break outer;
         sh.classList.add("chap-reveal"); // seule l'image de fond se floute pendant la révélation
-        if (!replay) { award(`t:${p.id}:${x.idx}`, r.first ? pts : 0, meIdx()); save(); refreshAll(); }
+        if (!replay) { const player = meIdx(); award(`t:${p.id}:${x.idx}`, r.first ? pts : 0, player); const gained = applyConfiguredGrants(); save(); refreshAll(); announceConfiguredGrants(gained, player); }
         if (r.first && !replay) confetti(30);
         let wonWork = null, cleared = false;
         if (x.work && !workFound(x.work)) {
@@ -2185,16 +2466,22 @@ function returnToMap() {
 }
 function setTab(t) {
   if (t === "trophies") t = "map";
+  if (!ADMIN_CONTEXT && (t === "settings" || t === "dev" || t === "rewards")) t = "map";
+  if ((t === "settings" || t === "dev" || t === "rewards") && !adminUnlocked) { requestAdminAccess(t); return; }
+  if (!ADMIN_CONTEXT && t !== "settings" && t !== "dev" && t !== "rewards" && adminUnlocked) {
+    adminUnlocked = false; adminPlayers = []; adminRewards = {}; adminCode = "";
+    $("#v-settings").replaceChildren(); $("#v-dev").replaceChildren(); $("#v-rewards").replaceChildren();
+  }
   tab = t; if (t !== "map") lastTab = t;
   if (t !== "map" && !menuOpen) { menuOpen = true; if (!menuReturnPending) { try { history.pushState({ vqMenu: 1 }, ""); } catch {} } } if (t === "map") menuOpen = false;
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   const onTab = $("#up-bar .up-tabs button.on"); if (onTab && onTab.scrollIntoView) setTimeout(() => onTab.scrollIntoView({ inline: "center", block: "nearest" }), 30);
   $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; document.body.classList.toggle("menu-open", t !== "map"); { const ms = $("#menu-say"); if (ms) ms.hidden = t === "map"; } if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
-  ["days", "objects", "bridges", "photos", "works", "music", "settings", "dev"].forEach((v) => ($("#v-" + v).hidden = v !== t));
-  $("#tab-dev").hidden = t !== "dev";
+  ["days", "objects", "bridges", "photos", "works", "music", "settings", "dev", "rewards"].forEach((v) => ($("#v-" + v).hidden = v !== t));
+  if ($("#tab-dev")) $("#tab-dev").hidden = t !== "dev";
   $("#bridge-btn").hidden = t !== "map";
-  if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "music") renderMusicCollection(); if (t === "settings") renderSettings(); if (t === "dev") renderDev();
+  if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "music") renderMusicCollection(); if (t === "settings") renderSettings(); if (t === "dev") renderDev(); if (t === "rewards") renderRewardEditor();
   if (t === "map") { setTimeout(() => map.resize(), 50); renderNext(); } else $("#next").hidden = true;
   if (t !== "map") closeSheetKeep();
   scheduleGeoSync();
@@ -2226,6 +2513,9 @@ function setTab(t) {
 })();
 function closeSheetKeep() { /* la fiche reste ouverte par-dessus les vues */ }
 $$("#up-bar .up-tabs button").forEach((b) => (b.onclick = () => setTab(b.dataset.tab)));
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && (tab === "settings" || tab === "dev" || tab === "rewards")) setTab("map");
+});
 
 /* ───────── Montage « doge » : la tête de l'enfant, découpée façon papier, collée sur un portrait de doge ───────── */
 // Un tableau d'époque par lieu : l'ovale (cx, cy, rx, ry, rot) marque le visage à remplacer, en pixels de l'image.
@@ -2262,8 +2552,10 @@ function ovalCam() {
     cam.innerHTML = `<video autoplay playsinline muted></video><div class="oc-oval"></div><p class="oc-t">Ton visage dans l'ovale</p><p class="oc-e" hidden></p>
       <div class="oc-bar"><button type="button" class="oc-cancel" data-x aria-label="Annuler">×</button><button type="button" class="oc-shot" data-shot aria-label="Prendre la photo"></button><label class="oc-import" aria-label="Choisir une photo"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="2"/><circle cx="8" cy="9" r="2"/><path d="m3 18 6-6 4 4 3-3 5 5"/></svg><input type="file" accept="image/*" capture="user" hidden data-file></label></div>`;
     document.body.appendChild(cam);
-    const video = $("video", cam), oval = $(".oc-oval", cam), err = $(".oc-e", cam); let stream = null;
-    const done = (v) => { try { stream && stream.getTracks().forEach((t) => t.stop()); } catch {} cam.remove(); resolve(v); };
+    const video = $("video", cam), oval = $(".oc-oval", cam), err = $(".oc-e", cam); let stream = null, closed = false;
+    const done = (v) => { if (closed) return; closed = true; document.removeEventListener("visibilitychange", onHidden); try { stream && stream.getTracks().forEach((t) => t.stop()); } catch {} cam.remove(); resolve(v); };
+    const onHidden = () => { if (document.hidden) done(null); };
+    document.addEventListener("visibilitychange", onHidden);
     $("[data-x]", cam).onclick = () => done(null);
     $("[data-shot]", cam).onclick = () => {
       if (!video.videoWidth) return;
@@ -2280,7 +2572,7 @@ function ovalCam() {
     };
     const fail = (t) => { err.textContent = t; err.hidden = false; $("[data-shot]", cam).hidden = true; };
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1440 } }, audio: false }).then((st) => { stream = st; video.srcObject = st; }).catch(() => fail("Je n'ai pas accès à la caméra. Tu peux choisir une photo, ou annuler."));
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1440 } }, audio: false }).then((st) => { if (closed || document.hidden) { st.getTracks().forEach((t) => t.stop()); return; } stream = st; video.srcObject = st; }).catch(() => { if (!closed) fail("Je n'ai pas accès à la caméra. Tu peux choisir une photo, ou annuler."); });
     } else fail("La caméra n'est pas disponible ici. Choisis une photo.");
   });
 }
@@ -2441,15 +2733,15 @@ function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {}
     const at = place(); if (!at) return;
     const fx = (n) => 0.15 + 0.7 * (((hash(p.id + pt.id) * (n + 3) * 37) % 100) / 100), fy = (n) => 0.12 + 0.7 * (((hash(pt.id + p.id) * (n + 5) * 53) % 100) / 100);
     const put = (cls, text, x, y, onTap) => { const e = document.createElement("button"); e.type = "button"; e.className = cls; e.textContent = text; const [l, t] = at(x, y); e.style.left = l + "px"; e.style.top = t + "px"; e.onclick = (ev) => { ev.stopPropagation(); onTap(e); }; photo.appendChild(e); e.animate([{ opacity: 0, transform: "translate(-50%,-50%) scale(.3)" }, { opacity: 1, transform: "translate(-50%,-50%) scale(1)" }], { duration: 600, delay: 400 }); return e; };
-    const M = p.musicChallenge, musicHere = M && M.point === pt.id;
+    const M = p.musicChallenge, musicHere = M && M.point === pt.id && rewardTarget(`music:${M.entry}`) === "default";
     if (!musicHere) [0, 1].forEach((k) => { const key = `st:${p.id}:${pt.id}:${k}`; if (!has(key)) put("hid-star", "⭐", fx(k), fy(k), (e) => { award(key, 2, meIdx()); save(); refreshAll(); starBurst(e, 2, true); toast("+2 ⭐"); e.remove(); }); });
     const R = p.reward;
-    if (!musicHere && R && R.point === pt.id && !has("tr:" + p.id)) put("hid-trophy", R.emoji, R.at[0], R.at[1], (e) => {
+    if (!musicHere && R && R.point === pt.id && rewardTarget(`object:${p.id}`) === "default" && !objectFoundFor(p.id)) put("hid-trophy", R.emoji, R.at[0], R.at[1], (e) => {
       e.disabled = true;
-      award("tr:" + p.id, 0, meIdx()); save(); refreshAll(); confetti(120); toast(`${R.emoji} Tu as trouvé : ${R.name} !`);
+      award(grantKey(meIdx(), `object:${p.id}`), 0, meIdx()); save(); refreshAll(); confetti(120); toast(`${R.emoji} Tu as trouvé : ${R.name} !`);
       e.animate([{ transform: "translate(-50%,-50%) scale(1.4)" }, { transform: "translate(-50%,-50%) scale(.2)", opacity: 0 }], { duration: 700, fill: "forwards" }).finished.then(() => { e.remove(); onClaim(); });
     });
-    if (musicHere && !has(`music:${M.entry}:won`)) {
+    if (musicHere && !musicWonFor(M.entry)) {
       const fragment = document.createElement("button"); fragment.type = "button"; fragment.className = "hid-music-fragment";
       fragment.setAttribute("aria-label", "Attraper le morceau de partition");
       fragment.innerHTML = `<img src="img/music/${esc(M.entry)}-parchemin.png" alt="">`;
@@ -2457,7 +2749,7 @@ function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {}
       const stop = floatMusicFragment(photo, im, fragment, at(M.at[0], M.at[1]));
       fragment.onclick = (ev) => {
         ev.stopPropagation(); stop(); fragment.disabled = true;
-        if (!has(`music:${M.entry}:found`)) { award(`music:${M.entry}:found`, 0, meIdx()); save(); }
+        if (!musicFoundFor(M.entry)) { award(grantKey(meIdx(), `music:${M.entry}`), 0, meIdx()); save(); }
         onMusic(M.entry, fragment.getBoundingClientRect());
       };
     }
@@ -2469,7 +2761,7 @@ let musicCatalogPromise = null;
 let musicOpening = false;
 const musicCatalog = () => (musicCatalogPromise ||= fetch("data/music-challenges.json").then((r) => { if (!r.ok) throw new Error("Bibliothèque musicale indisponible"); return r.json(); }).then((items) => {
   const ids = new Set();
-  items.forEach((item) => { if (ids.has(item.id) || place(item.place)?.musicChallenge?.entry !== item.id) throw new Error("Correspondance musicale invalide"); ids.add(item.id); });
+  items.forEach((item) => { const places = item.places || [item.place]; if (ids.has(item.id) || !places.length || places.some((id) => place(id)?.musicChallenge?.entry !== item.id)) throw new Error("Correspondance musicale invalide"); ids.add(item.id); });
   return items;
 }).catch((e) => { musicCatalogPromise = null; throw e; }));
 // Un toucher après la découverte fait monter le fragment et lance les questions musicales.
@@ -2480,7 +2772,7 @@ function openMusicFragmentReveal(id, p, rect = null) {
   overlay.innerHTML = `<img class="mu-found-fragment" src="img/music/${esc(id)}-parchemin.png" alt="Morceau de la partition des Vêpres"><div class="mu-found-stars" aria-hidden="true">${Array.from({ length: 12 }, () => "<i>✦</i>").join("")}</div><div class="mu-found-message" aria-live="polite"><strong>Extraordinaire !</strong><span>Tu as trouvé un morceau de la partition des Vêpres.</span></div>`;
   document.body.appendChild(overlay); scheduleGeoSync();
   const fragment = $(".mu-found-fragment", overlay);
-  musicCatalog().then((items) => { const entry = items.find((item) => item.id === id && item.place === p.id); if (entry?.fragment && overlay.isConnected) fragment.src = entry.fragment; }).catch(() => {});
+  musicCatalog().then((items) => { const entry = items.find((item) => item.id === id && (item.places || [item.place]).includes(p.id)); if (entry?.fragment && overlay.isConnected) fragment.src = entry.fragment; }).catch(() => {});
   const continueToQuestions = () => {
     if (!overlay.classList.contains("message") || overlay.classList.contains("flow")) return;
     const r = fragment.getBoundingClientRect(), fromX = r.left + r.width / 2, fromY = r.top + r.height / 2;
@@ -2593,7 +2885,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
   if ($(".music-quest") || musicOpening) return;
   musicOpening = true;
   let entry;
-  try { entry = (await musicCatalog()).find((item) => item.id === id && item.place === p.id); } catch { musicOpening = false; toast("Le défi musical n'est pas disponible pour l'instant."); return; }
+  try { entry = (await musicCatalog()).find((item) => item.id === id && (item.places || [item.place]).includes(p.id)); } catch { musicOpening = false; toast("Le défi musical n'est pas disponible pour l'instant."); return; }
   if (!entry) { musicOpening = false; toast("Ce fragment musical est introuvable."); return; }
   const overlay = document.createElement("section"); overlay.className = "music-quest music-flow-quest"; overlay.setAttribute("aria-label", "Défi musical");
   overlay.style.setProperty("--music-flow-bg", `url("${pic(p.id)}")`);
@@ -2618,12 +2910,12 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     const shape = entry.waveform;
     const heights = Array.isArray(shape) && shape.length ? shape : Array.from({ length: 56 }, (_, i) => 30 + 45 * Math.abs(Math.sin(i * .7)));
     const bars = heights.map((height) => `<i style="height:${Math.max(9, Math.min(100, Number(height) || 9))}%"></i>`).join("");
-    body.innerHTML = `<div class="mq-final-listen"><p>Si tu le souhaites, écoute le morceau en entier.</p><div class="mq-listen-player"><button type="button" class="mq-play-toggle" aria-label="Lire le morceau en entier">▶</button><div class="mq-wave-track" role="progressbar" aria-label="Avancement de l’écoute" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="--progress:0%"><div class="mq-wave-bars">${bars}</div><div class="mq-wave-bars mq-wave-filled">${bars}</div></div></div><p class="mq-listen-status" aria-live="polite"></p></div><div class="mq-final-ending"><p>L’épreuve est terminée. Avant de partir, souhaites-tu faire une petite photo souvenir ?</p><button type="button" class="mq-photo-button" aria-label="Faire une photo souvenir">${CAM_SVG}</button></div>`;
+    body.innerHTML = `<div class="mq-final-listen"><p>${esc(entry.completeLabel || "Si tu le souhaites, écoute le morceau en entier.")}</p><div class="mq-listen-player"><button type="button" class="mq-play-toggle" aria-label="Lire l’écoute prolongée">▶</button><div class="mq-wave-track" role="progressbar" aria-label="Avancement de l’écoute" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="--progress:0%"><div class="mq-wave-bars">${bars}</div><div class="mq-wave-bars mq-wave-filled">${bars}</div></div></div><p class="mq-listen-status" aria-live="polite"></p></div><div class="mq-final-ending"><p>L’épreuve est terminée. Avant de partir, souhaites-tu faire une petite photo souvenir ?</p><button type="button" class="mq-photo-button" aria-label="Faire une photo souvenir">${CAM_SVG}</button></div>`;
     const listen = $(".mq-play-toggle", body), wave = $(".mq-wave-track", body), status = $(".mq-listen-status", body);
     clip = new Audio(entry.complete);
     const progress = () => { const amount = Number.isFinite(clip.duration) && clip.duration > 0 ? Math.min(100, clip.currentTime / clip.duration * 100) : 0; wave.style.setProperty("--progress", amount + "%"); wave.setAttribute("aria-valuenow", String(Math.round(amount))); };
     clip.ontimeupdate = progress;
-    clip.onended = () => { progress(); listen.textContent = "↻"; listen.setAttribute("aria-label", "Réécouter le morceau en entier"); };
+    clip.onended = () => { progress(); listen.textContent = "↻"; listen.setAttribute("aria-label", "Réécouter l’extrait prolongé"); };
     listen.onclick = () => {
       if (!clip.paused) { clip.pause(); listen.textContent = "▶"; listen.setAttribute("aria-label", "Reprendre l’écoute"); return; }
       if (clip.ended) clip.currentTime = 0;
@@ -2640,8 +2932,8 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
   };
   const victory = async () => {
     stopQuestionLayout(); stopMusicEditor(); stopClip();
-    const firstWin = !has(`music:${id}:won`);
-    if (firstWin) { award(`music:${id}:won`, 100, meIdx()); save(); refreshAll(); onWon(); }
+    const firstWin = !musicWonFor(id);
+    if (firstWin) { award(grantKey(meIdx(), `music-won:${id}`), 100, meIdx()); save(); refreshAll(); onWon(); }
     body.className = "mq-body mq-victory";
     body.innerHTML = `<h2 class="mq-victory-title" aria-live="polite">Félicitations, ${esc(gradeLc())} !</h2>`;
     if (!firstWin) { overlay.classList.add("mq-victory-active"); showFragmentFound(); return; }
@@ -2713,7 +3005,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     let wrong = 0, answered = false, advanced = false;
     const advance = () => {
       if (advanced) return; advanced = true; footer.remove();
-      if (index === 1 && entry.duo) transitionToDuo(); else showQuestion(index + 1);
+      if (index === 1 && (entry.second?.audio || entry.duo)) transitionToDuo(); else showQuestion(index + 1);
     };
     choices.forEach((button) => button.onclick = () => {
       if (answered) return;
@@ -2733,17 +3025,17 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     stopQuestionLayout(); stopMusicEditor(); stopClip();
     const isDuo = phase === "duo";
     body.className = "mq-body mq-listening";
-    const shape = isDuo ? entry.duoWaveform : entry.waveform;
+    const shape = isDuo ? (entry.second?.waveform || entry.duoWaveform) : entry.waveform;
     const heights = Array.isArray(shape) && shape.length ? shape : Array.from({ length: 56 }, (_, i) => 30 + 45 * Math.abs(Math.sin(i * .7)));
     const bars = heights.map((height) => `<i style="height:${Math.max(9, Math.min(100, Number(height) || 9))}%"></i>`).join("");
     const defaults = isDuo
-      ? { lead: "Plus loin dans la musique, une seconde voix rejoint la première…", invitation: "Écoute-les se répondre, se croiser, puis chanter ensemble." }
-      : { lead: "Les quelques notes dessinées sur cette portée font naître une mélodie unique et mystérieuse, qui a traversé les siècles jusqu’à toi…", invitation: "Ouvre grand tes oreilles et écoute !" };
+      ? { lead: entry.second?.lead || "Plus loin dans la musique, une seconde voix rejoint la première…", invitation: entry.second?.invitation || "Écoute-les se répondre, se croiser, puis chanter ensemble." }
+      : { lead: entry.lead || "Les quelques notes dessinées sur cette portée font naître une mélodie unique et mystérieuse, qui a traversé les siècles jusqu’à toi…", invitation: entry.invitation || "Ouvre grand tes oreilles et écoute !" };
     body.innerHTML = `<div class="mq-listen-center"><p class="mq-listen-lead" data-music-edit="lead">${esc(defaults.lead)}</p><p class="mq-listen-invitation" data-music-edit="invitation">${esc(defaults.invitation)}</p><div class="mq-listen-player" data-music-edit="player"><button type="button" class="mq-play-toggle" aria-label="Lire l’extrait">▶</button><div class="mq-wave-track" role="progressbar" aria-label="Avancement de l’écoute" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="--progress:0%"><div class="mq-wave-bars">${bars}</div><div class="mq-wave-bars mq-wave-filled">${bars}</div></div></div><p class="mq-listen-status" aria-live="polite"></p><button type="button" class="mq-listen-next" hidden>${isDuo ? "Suivant" : "Continuer"} <span aria-hidden="true">→</span></button></div>${credit}`;
     stopMusicEditor = musicListeningEditor(overlay, p, { lead: $(".mq-listen-lead", body), invitation: $(".mq-listen-invitation", body), player: $(".mq-listen-player", body) }, defaults, phase);
     const listen = $(".mq-play-toggle", body), wave = $(".mq-wave-track", body), next = $(".mq-listen-next", body), status = $(".mq-listen-status", body);
     if (DEV) next.hidden = false; // mode développeur : passer l'écoute sans attendre la fin
-    clip = new Audio(isDuo ? entry.duo : entry.short);
+    clip = new Audio(isDuo ? (entry.second?.audio || entry.duo) : entry.short);
     let finished = false;
     const progress = () => { const amount = Number.isFinite(clip.duration) && clip.duration > 0 ? Math.min(100, clip.currentTime / clip.duration * 100) : 0; wave.style.setProperty("--progress", amount + "%"); wave.setAttribute("aria-valuenow", String(Math.round(amount))); };
     clip.ontimeupdate = progress;
@@ -2786,11 +3078,11 @@ async function renderMusicCollection() {
   let items;
   try { items = await musicCatalog(); } catch { v.textContent = "La bibliothèque musicale est momentanément indisponible."; return; }
   if (tab !== "music") return;
-  const discovered = items.filter((item) => has(`music:${item.id}:found`) || has(`music:${item.id}:won`));
-  v.innerHTML = discovered.length ? discovered.map((item) => `<article class="music-fragment"><img src="${esc(item.fragment)}" alt="Fragment de ${esc(item.title)}"><h2>${esc(item.title)}</h2><p>${has(`music:${item.id}:won`) ? "Fragment gagné" : "Défi musical à terminer"}</p><button type="button" data-music="${esc(item.id)}">${has(`music:${item.id}:won`) ? "Écouter le mouvement" : "Reprendre le défi"}</button></article>`).join("") : `<p class="music-empty">Les fragments de partition que tu découvriras apparaîtront ici.</p>`;
+  const discovered = items.filter((item) => musicFoundFor(item.id));
+  v.innerHTML = discovered.length ? discovered.map((item) => `<article class="music-fragment"><img src="${esc(item.fragment)}" alt="Fragment de ${esc(item.title)}"><h2>${esc(item.title)}</h2><p>${musicWonFor(item.id) ? "Fragment gagné" : "Défi musical à terminer"}</p><button type="button" data-music="${esc(item.id)}">${musicWonFor(item.id) ? "Réécouter le passage" : "Reprendre le défi"}</button></article>`).join("") : `<p class="music-empty">Les fragments de partition que tu découvriras apparaîtront ici.</p>`;
   $$("[data-music]", v).forEach((button) => button.onclick = () => {
     const item = items.find((x) => x.id === button.dataset.music); if (!item) return;
-    if (has(`music:${item.id}:won`)) startMusicWalk(item); else openMusicChallenge(item.id, place(item.place), () => renderMusicCollection());
+    if (musicWonFor(item.id)) startMusicWalk(item); else openMusicChallenge(item.id, place(item.place), () => renderMusicCollection());
   });
 }
 // Grille des ponts : un disque gris par pont de Venise ; les ponts trouvés se révèlent dans l'ordre où l'enfant les a découverts.
@@ -2863,13 +3155,17 @@ const OBJECTS = [
   { id: "ruban-soie", name: "Le ruban de soie", img: "ruban-soie.svg", key: "o:ruban-soie" },
   { id: "lanterne", name: "La lanterne secrète", img: "lanterne.svg", key: "o:lanterne" },
 ];
+const objectFoundFor = (id, player = meIdx()) => {
+  const item = OBJECTS.find((o) => o.id === id);
+  return !!item && (has(grantKey(player, `object:${id}`)) || (has(item.key) && S.done[item.key].w === player));
+};
 const maskGemObjects = () => Object.keys(S.done).filter((key) => /^o:mask-gem:\d+:m\d+$/.test(key) && has(key) && S.done[key].w === meIdx()).map((key) => ({ id: key.replace(/[^a-z0-9-]/g, "-"), name: "Gemme du carnaval", img: "diamant.svg", key }));
-const objectList = () => [...OBJECTS, ...maskGemObjects()].map((o) => ({ ...o, img: "img/objets/" + o.img, found: has(o.key) && S.done[o.key].w === meIdx() }));
+const objectList = () => [...OBJECTS, ...maskGemObjects()].map((o) => ({ ...o, img: "img/objets/" + o.img, found: objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
-const HELD_KEY = "vq_held", HELD_SIZE = 88;
+const HELD_KEY = `vq_held:${PLAYER_ID}`, HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
 const saveHeld = () => { try { heldId ? localStorage.setItem(HELD_KEY, heldId) : localStorage.removeItem(HELD_KEY); } catch {} };
-const HELD_POS = "vq_held_pos";
+const HELD_POS = `vq_held_pos:${PLAYER_ID}`;
 const clampHeld = (p) => {
   const size = Math.max(1, Math.min(p.size || HELD_SIZE, innerWidth - 8, innerHeight - 8));
   return { left: Math.max(4, Math.min(innerWidth - size - 4, p.left)), top: Math.max(4, Math.min(innerHeight - size - 4, p.top)), size, docked: !!p.docked };
@@ -2913,7 +3209,7 @@ function storeHeld(el) {
   el.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${zr ? zr.left + zr.width / 2 - (r.left + r.width / 2) : 0}px, ${zr ? zr.top + zr.height / 2 - (r.top + r.height / 2) : 0}px) scale(.2)`, opacity: 0 }], { duration: 340, easing: "ease-in", fill: "forwards" }).onfinish = () => el.remove();
 }
 // L'objet en main n'est visible que sur la carte nue et dans l'onglet Objets (jamais dans une fiche, un défi, une conversation, un autre onglet…)
-setInterval(() => {
+visibleInterval(() => {
   if (!heldEl) return;
   const bare = tab === "map" && $("#sheet").hidden && $("#quest").hidden && $("#modal").hidden && !document.body.classList.contains("corto-talk") && !document.body.classList.contains("intro-open") && !document.querySelector(".cer,.wview,.pview,.mont,.finale,.doge-msg:not(.menu-say),.pf,.cam,.ocam,.wq,.in2,.plan-photo");
   heldEl.style.visibility = bare || tab === "objects" ? "" : "hidden";
@@ -3291,7 +3587,7 @@ function checkCeremony() {
   let hit = null; for (let j = +last + 1; j <= li; j++) if (OUTFIT_LEVELS[j]) hit = j;
   if (hit !== null) ceremony(OUTFIT_LEVELS[hit], hit);
 }
-setInterval(checkCeremony, 2500);
+visibleInterval(checkCeremony, 2500);
 if (DEV) { window.__ceremony = (key, li) => ceremony(key, li);
 window.__compose = (...a) => composeOutfit(...a); window.__metrics = (i, c) => headMetrics(i, c); }
 // Remet les lieux choisis dans l'état « jamais visités », sans toucher au profil ni aux ponts.
@@ -3319,6 +3615,7 @@ async function resetPlaceProgress(places) {
 }
 async function renderDev() {
   const v = $("#v-dev");
+  if (!adminUnlocked) { v.replaceChildren(); return; }
   v.innerHTML = `<h2>🔧 Développement</h2><div class="card"><label class="chk"><input type="checkbox" id="dev-switch" ${DEV ? "checked" : ""}> <span>Activer le mode développeur</span></label><p class="muted">${DEV ? "Les outils de test sont actifs." : "Mode jeu réel : les lieux et les ponts exigent la localisation."}</p></div>`;
   $("#dev-switch", v).onchange = (e) => { try { localStorage.setItem("vq_dev_enabled_v2", e.target.checked ? "1" : "0"); } catch {} location.reload(); };
   if (!DEV) { menuSay("La localisation est nécessaire pour jouer, matelot."); return; }
@@ -3358,13 +3655,56 @@ async function renderDev() {
   $$("[data-wk]", v).forEach((b) => (b.onclick = async () => { const ids = await window.__works.all(); if (b.dataset.wk === "one") { const left = ids.filter((id) => !workFound(id)); if (!left.length) { toast("Toutes les toiles sont déjà trouvées"); return; } await findWork(left[Math.floor(Math.random() * left.length)]); } else if (b.dataset.wk === "all") { for (const id of ids) await findWork(id, { silent: true }); toast("Toutes les toiles sont débloquées"); } else { await window.__works.reset(); toast("Toiles verrouillées"); } }));
   paint();
 }
+let rewardEditorChoice = { playerId: "", reward: "" };
+async function renderRewardEditor() {
+  const v = $("#v-rewards");
+  if (!adminUnlocked) { v.replaceChildren(); return; }
+  if (!adminPlayers.length) { v.innerHTML = '<h2>🎁 Cachettes</h2><p>Aucun joueur enregistré.</p><button class="btn ghost" id="reward-back">Retour aux réglages</button>'; $("#reward-back", v).onclick = () => setTab("settings"); return; }
+  if (!adminPlayers.some((p) => p.id === rewardEditorChoice.playerId)) rewardEditorChoice.playerId = adminPlayers[0].id;
+  const player = adminPlayers.find((p) => p.id === rewardEditorChoice.playerId);
+  let fragments = [];
+  try { fragments = await musicCatalog(); } catch {}
+  if (tab !== "rewards" || !adminUnlocked) return;
+  const rewards = [...fragments.map((m) => ({ id: `music:${m.id}`, name: `🎼 ${m.title || "Fragment de partition"}` })), ...OBJECTS.map((o) => ({ id: `object:${o.id}`, name: `🎁 ${o.name}` }))];
+  if (!rewards.some((r) => r.id === rewardEditorChoice.reward)) rewardEditorChoice.reward = rewards[0]?.id || "";
+  const current = adminRewards[player.id] || {};
+  const target = current[rewardEditorChoice.reward] || "default";
+  const tasks = PLACES.flatMap((p) => (p.tasks || []).map((task, i) => ({ key: `t:${p.id}:${task.idx ?? i}`, label: `${p.name} · Épreuve ${i + 1}${task.q ? ` · ${String(task.q).replace(/<[^>]*>/g, "").slice(0, 55)}` : ""}` })));
+  const hasOriginalPlacement = (key) => key.startsWith("music:") || ["object:frari", "object:miracoli", "object:basilique"].includes(key);
+  const taskName = (key) => tasks.find((t) => t.key === key)?.label || key;
+  v.innerHTML = `<h2>🎁 Cachettes des récompenses</h2><button type="button" class="btn ghost" id="reward-back">← Réglages</button>
+    <p class="muted">Choisis un joueur, une récompense et l'épreuve qui la débloque. Chaque joueur progresse à son rythme.</p>
+    <div class="card reward-editor"><label>Joueur<select id="reward-player">${adminPlayers.map((p) => `<option value="${esc(p.id)}" ${p.id === player.id ? "selected" : ""}>${esc(p.name)} · ⭐ ${p.points}</option>`).join("")}</select></label>
+    <label>Fragment ou objet<select id="reward-item">${rewards.map((r) => `<option value="${esc(r.id)}" ${r.id === rewardEditorChoice.reward ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select></label>
+    <label>Cachette<select id="reward-target"><option value="default" ${target === "default" ? "selected" : ""}>${hasOriginalPlacement(rewardEditorChoice.reward) ? "Emplacement prévu dans le jeu" : "Pas encore placé"}</option><option value="none" ${target === "none" ? "selected" : ""}>Ne pas placer</option>${tasks.map((t) => `<option value="${esc(t.key)}" ${target === t.key ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select></label>
+    <button type="button" class="btn blue wide" id="reward-save">Enregistrer ce placement</button><p id="reward-status" role="status" class="muted"></p></div>
+    <h3>Placements de ${esc(player.name)}</h3><div class="card reward-summary">${rewards.map((r) => `<div><b>${esc(r.name)}</b><span>${esc(current[r.id] === "none" ? "Non placé" : current[r.id] ? taskName(current[r.id]) : hasOriginalPlacement(r.id) ? "Emplacement prévu" : "Pas encore placé")}</span></div>`).join("")}</div>
+    <p class="muted">Les récompenses déjà obtenues restent dans la collection si tu changes leur cachette.</p>`;
+  $("#reward-back", v).onclick = () => setTab("settings");
+  $("#reward-player", v).onchange = (e) => { rewardEditorChoice.playerId = e.target.value; renderRewardEditor(); };
+  $("#reward-item", v).onchange = (e) => { rewardEditorChoice.reward = e.target.value; renderRewardEditor(); };
+  $("#reward-save", v).onclick = async () => {
+    const button = $("#reward-save", v), status = $("#reward-status", v), selectedTarget = $("#reward-target", v).value;
+    button.disabled = true; status.textContent = "Enregistrement…";
+    try {
+      const r = await fetch("api/admin/reward", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ code: adminCode, playerId: player.id, reward: rewardEditorChoice.reward, target: selectedTarget }) });
+      const data = await r.json(); if (!r.ok || !data.ok) throw new Error(data.error || "Échec de l'enregistrement");
+      adminRewards[player.id] = data.placements;
+      if (PLAYER_ID === player.id) { rewardPlacements = data.placements; try { localStorage.setItem(REWARD_CACHE + PLAYER_ID, JSON.stringify(rewardPlacements)); } catch {} applyConfiguredGrants(); }
+      renderRewardEditor(); const next = $("#reward-status", v); if (next) next.textContent = "✅ Placement enregistré sur le serveur.";
+    } catch (e) { status.textContent = `Impossible d'enregistrer : ${e.message}`; button.disabled = false; }
+  };
+}
 function renderSettings() {
   const v = $("#v-settings");
+  if (!adminUnlocked) { v.replaceChildren(); return; }
+  const roster = adminPlayers.map((player) => `<div class="admin-player"><span class="admin-player-avatar">${esc(player.avatar || "🙂")}</span><span class="admin-player-name">${esc(player.name)}</span><b>⭐ ${Number(player.points) || 0}</b><button type="button" class="admin-player-delete" data-delete-player="${esc(player.id)}" aria-label="Supprimer ${esc(player.name)}">Supprimer</button></div>`).join("");
   menuSay("Ici, c'est la salle des machines : demande à tes parents avant de toucher à quelque chose !");
   v.innerHTML = `<h2>⚙️ Réglages</h2>
-    <h3>👫 Les joueurs</h3>${S.kids.map((k, i) => `<div class="card"><input class="t" data-name="${i}" placeholder="Prénom du joueur ${i + 1}" value="${esc(k.name)}"><div class="avs" data-av="${i}">${AVATARS.map((a) => `<button class="${a === k.avatar ? "on" : ""}" data-a="${a}">${a}</button>`).join("")}</div></div>`).join("")}${S.kids.length < 6 ? '<button class="btn ghost" id="addp">➕ Ajouter un joueur</button>' : ""}
-    <h3>🗺️ Carte hors-ligne</h3><div class="card"><p class="muted">Télécharge la carte de Venise avant de partir pour qu'elle marche sans réseau (environ 12 Mo : mieux vaut être en Wi-Fi).</p><button class="btn blue wide" id="dl" style="margin-top:8px">⬇️ Télécharger la carte</button><div class="bar" style="margin-top:8px"><i id="dlbar" style="width:0"></i></div><p class="muted" id="dltxt"></p></div>
-    <h3>☁️ Équipe et synchronisation</h3><div class="card"><p><b>${esc(S.teamName || (TEAM && TEAM.team) || "")}</b></p><p>${esc(syncStatus)}</p><button class="btn ghost" id="chteam" style="margin:0 6px 6px 0">Changer d'équipe ou de code</button><button class="btn ghost" id="syncnow" style="margin-top:6px">Synchroniser maintenant</button></div>
+    <h3>👥 Joueurs de la partie</h3><div class="card admin-roster">${roster || '<p class="muted">Aucun joueur enregistré pour le moment.</p>'}</div>
+    <div class="card"><h3>🎁 Fragments et objets</h3><p class="muted">Choisir dans quelle épreuve chaque joueur trouve ses récompenses.</p><button type="button" class="btn blue wide" id="reward-entry">Configurer les cachettes</button></div>
+    <div class="card"><b>Mon profil</b><p>${esc(myName())} · ⭐ ${pointsOf(0)} · ${esc(LEVELS[level(pointsOf(0))].name)}</p><p class="muted">Touche ton portrait dans le livre pour changer ton nom ou ta photo.</p></div>
+    <h3>☁️ Synchronisation</h3><div class="card"><p>${esc(syncStatus)}</p><button class="btn ghost" id="syncnow">Synchroniser maintenant</button></div>
     <h3>🔋 Mode éco</h3><div class="card"><p class="muted">Les personnages bougent à 20 images par seconde au lieu de 60 : moins de batterie, plus de fluidité sur un vieux téléphone ou iPad. Le reste ne change pas.</p><button class="btn ghost" id="eco"></button></div>
     <h3>🖥️ Plein écran</h3><div class="card"><p class="muted">Cache les barres du téléphone (dont la barre blanche du bas). Glisse depuis le bord de l'écran pour les revoir un instant.</p><button class="btn ghost" id="fs"></button></div>
     <h3>📲 Installer l'appli</h3><div class="card">${installHtml()}</div>
@@ -3377,20 +3717,29 @@ function renderSettings() {
     if (!de.requestFullscreen && !de.webkitRequestFullscreen) { fb.disabled = true; fb.textContent = "Plein écran indisponible sur cet appareil"; }
     else { const lab = () => (fb.textContent = fsPref() ? "Plein écran : activé (toucher pour désactiver)" : "Plein écran : désactivé (toucher pour activer)"); lab();
       fb.onclick = () => { try { if (fsPref()) { localStorage.setItem("vq_fs", "0"); if (document.fullscreenElement) document.exitFullscreen(); } else { localStorage.removeItem("vq_fs"); enterFs(); } } catch {} lab(); }; } } }
-  $$("[data-name]", v).forEach((i) => (i.oninput = () => { S.kids[+i.dataset.name].name = i.value; S.cfgT = Date.now(); save(); renderHud(); }));
-  $$("[data-av]", v).forEach((g) => $$("button", g).forEach((b) => (b.onclick = () => { S.kids[+g.dataset.av].avatar = b.dataset.a; S.cfgT = Date.now(); save(); renderHud(); renderSettings(); })));
   fetch("img/ponts/credits.json").then((r) => r.json()).then((c) => { const el = $("#credits", v); if (el) el.insertAdjacentHTML("beforeend", `<p style="margin:10px 0 4px"><b>Ponts</b></p>` + Object.values(c).map((x) => `<p style="margin:4px 0">${esc(x.name)} : ${esc(x.author)} · ${esc(x.license)} · <a href="${esc(x.url)}" target="_blank" rel="noopener">source</a></p>`).join("")); }).catch(() => {});
   fetch("img/places/credits.json").then((r) => r.json()).then((c) => { const el = $("#credits", v); if (el) el.insertAdjacentHTML("afterbegin", Object.entries(c).map(([id, x]) => `<p style="margin:6px 0"><b>${esc(place(id)?.name || id)}</b> : ${esc(x.author)} · ${esc(x.license)} · <a href="${esc(x.url)}" target="_blank" rel="noopener">source</a></p>`).join("")); }).catch(() => {});
-  const ad = $("#addp", v);
-  if (ad) ad.onclick = () => { S.kids.push({ name: "", avatar: AVATARS[S.kids.length % AVATARS.length] }); S.cfgT = Date.now(); save(); renderSettings(); };
-  $("#dl", v).onclick = downloadTiles;
+  $$('[data-delete-player]', v).forEach((button) => button.onclick = async () => {
+    const playerId = button.dataset.deletePlayer, name = adminPlayers.find((p) => p.id === playerId)?.name || "ce joueur";
+    if (!confirm(`Supprimer ${name} et son score ? Ses photos locales seront effacées quand son appareil se reconnectera.`)) return;
+    button.disabled = true;
+    try {
+      const r = await fetch("api/admin/player/delete", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ code: adminCode, playerId }) });
+      const data = await r.json(); if (!r.ok || !data.ok) throw new Error(data.error || "suppression impossible");
+      adminPlayers = data.players; delete adminRewards[playerId];
+      if (playerId === PLAYER_ID) { await retireDeletedPlayer(); return; }
+      renderSettings(); toast("Joueur supprimé");
+    } catch (e) { button.disabled = false; toast(e.message); }
+  });
+  $("#reward-entry", v).onclick = () => setTab("rewards");
   const inst = $("#inst", v); if (inst) inst.onclick = async () => { deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall = null; renderSettings(); };
   $("#syncnow", v).onclick = sync;
-  $("#chteam", v).onclick = async () => { try { localStorage.removeItem(TEAMKEY); } catch {} TEAM = null; await joinGame(); await sync(); if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); } refreshAll(); renderSettings(); };
   $("#intro", v).hidden = meIdx() !== 0;
   $("#intro", v).onclick = async () => { if (meIdx() !== 0) return; setTab("map"); const p = await runIntro({ replay: true, name: PROFILE && PROFILE.name, profile: PROFILE, ...BOAT_OPTS }); if (p) applyProfile(p); }; // « Revoir l'histoire » : la nouvelle introduction en 7 écrans
   $("#dev-entry", v).onclick = () => setTab("dev");
+  if (ADMIN_CONTEXT) $("#reset", v).hidden = true;
   $("#reset", v).onclick = async () => {
+    if (ADMIN_CONTEXT) { toast("Choisis un joueur dans le tableau de bord administrateur."); return; }
     if (!confirm("Effacer toute la progression, le profil et toutes les photos enregistrées dans le jeu sur cet appareil ?")) return;
     if (!confirm("Vraiment tout ? Cette action est définitive.")) return;
     syncEpoch++; clearTimeout(syncTimer);
@@ -3402,10 +3751,10 @@ function renderSettings() {
     catch { try { localStorage.setItem(PHOTO_SESSION_KEY, previousPhotoSession); } catch {} toast("Réinitialisation annulée : impossible d'effacer toutes les photos."); return; }
     try { localStorage.removeItem("vq_active"); localStorage.removeItem(HELD_KEY); localStorage.removeItem(HELD_POS); localStorage.removeItem("vq_dev_enabled_v2"); } catch {}
     if (typeof viewClose === "function") viewClose();
-    active = 0; heldId = null; heldEl?.remove(); heldEl = null; objectAssembly.clear(); dgPhoto = null;
+    heldId = null; heldEl?.remove(); heldEl = null; objectAssembly.clear(); dgPhoto = null;
     Object.keys(pendingPhoto).forEach((key) => delete pendingPhoto[key]);
     for (const k of Object.keys(S.done)) unaward(k);
-    S.kids = [{ name: "", avatar: "🦁" }]; S.teamName = ""; S.cfgT = Date.now();
+    S.kids = [{ name: "", avatar: "🦁" }]; S.cfgT = Date.now();
     S.onboarded = false; clearProfile(); PROFILE = null; renderBadge();
     save(); clearTimeout(syncTimer); refreshAll(); setTab("map"); await sync();
     if (DEV) { location.reload(); return; }
@@ -3414,49 +3763,83 @@ function renderSettings() {
   };
 }
 
-/* ───────── Carte hors-ligne ───────── */
+/* ───────── Préparation des contenus et de la carte sur le téléphone ───────── */
 const lon2x = (lon, z) => Math.floor(((lon + 180) / 360) * 2 ** z);
 const lat2y = (lat, z) => Math.floor(((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * 2 ** z);
-// Zones à télécharger : [sud, ouest, nord, est] et niveaux de zoom (l'aquarelle s'arrête au zoom 16, les tuiles vectorielles au 14).
 const OFFLINE_BOXES = [
-  { b: [45.425, 12.315, 45.450, 12.360], z: [13, 16] },     // centre historique
-  { b: [45.400, 12.300, 45.505, 12.430], z: [12, 14] },     // lagune, îles, Lido
-  { b: [45.4565, 12.3495, 45.4605, 12.3560], z: [15, 16] }, // Murano
-  { b: [45.4835, 12.4130, 45.4875, 12.4205], z: [15, 16] }, // Burano
-  { b: [45.4965, 12.4160, 45.5000, 12.4215], z: [15, 16] }, // Torcello
-  { b: [45.4050, 12.3600, 45.4150, 12.3760], z: [14, 16] }, // Lido
+  { b: [45.425, 12.315, 45.450, 12.360], z: [13, 16] },
+  { b: [45.400, 12.300, 45.505, 12.430], z: [11, 14] },
+  { b: [45.4530, 12.3480, 45.4620, 12.3580], z: [15, 16] },
+  { b: [45.4835, 12.4130, 45.4875, 12.4205], z: [15, 16] },
+  { b: [45.4965, 12.4160, 45.5000, 12.4215], z: [15, 16] },
+  { b: [45.4050, 12.3600, 45.4150, 12.3760], z: [14, 16] },
 ];
-function tilesFor(template, zmax) {
-  const out = new Set();
-  for (const { b, z } of OFFLINE_BOXES) for (let zz = z[0]; zz <= Math.min(z[1], zmax); zz++) {
-    for (let x = lon2x(b[1], zz); x <= lon2x(b[3], zz); x++) for (let y = lat2y(b[2], zz); y <= lat2y(b[0], zz); y++) out.add(template.replace("{z}", zz).replace("{x}", x).replace("{y}", y));
+const OFFLINE_VECTOR_BOXES = OFFLINE_BOXES.map((box, index) => ({ b: box.b, z: index === 1 ? [11, 13] : index === 0 ? [13, 14] : [14, 14] }));
+function tilesFor(template, zmax, boxes = OFFLINE_BOXES) {
+  const urls = new Set();
+  for (const { b, z } of boxes) for (let zoom = z[0]; zoom <= Math.min(z[1], zmax); zoom++) {
+    for (let x = lon2x(b[1], zoom); x <= lon2x(b[3], zoom); x++) for (let y = lat2y(b[2], zoom); y <= lat2y(b[0], zoom); y++) urls.add(template.replace("{z}", zoom).replace("{x}", x).replace("{y}", y));
   }
-  return [...out];
+  return [...urls];
 }
-async function offlineUrls() {
-  const urls = tilesFor(useStamen ? WC_URL : OSM_URL, useStamen ? 16 : 17);
-  try {
-    const tj = await (await fetch(OFM_TILEJSON)).json();
-    urls.push(OFM_TILEJSON, ...tilesFor(tj.tiles[0], 14));
-  } catch {}
-  for (const f of FONTS) for (const r of ["0-255", "256-511"]) urls.push(`https://tiles.openfreemap.org/fonts/${encodeURIComponent(f)}/${r}.pbf`);
-  return urls;
-}
-async function downloadTiles() {
-  const bar = $("#dlbar"), txt = $("#dltxt"), btn = $("#dl");
-  btn.disabled = true; txt.textContent = "Préparation…";
-  const urls = await offlineUrls(), total = urls.length; let n = 0, fail = 0;
-  const cache = await caches.open("vq-tiles");
-  const worker = async () => {
-    while (urls.length) {
-      const u = urls.pop();
-      try { if (!(await cache.match(u))) { const r = await fetch(u, { mode: "cors" }); if (!r.ok) throw 0; await cache.put(u, r); } } catch { fail++; }
-      n++; if (bar) { bar.style.width = (n / total) * 100 + "%"; txt.textContent = `${n}/${total}`; }
-    }
-  };
-  await Promise.all([worker(), worker(), worker(), worker()]);
-  txt.textContent = fail ? `Terminé, ${fail} éléments manquants (réessaie avec du réseau).` : "✅ Carte prête pour le hors-ligne !";
-  btn.disabled = false;
+let offlineDownload = null, offlineAbort = null;
+function downloadOfflinePack(report) {
+  if (offlineDownload) return offlineDownload;
+  if (document.hidden) return Promise.reject(new Error("Rouvre le jeu pour préparer les contenus."));
+  const controller = new AbortController(); offlineAbort = controller;
+  offlineDownload = (async () => {
+    if (!('caches' in window)) throw new Error("Le stockage hors connexion n’est pas disponible sur ce téléphone.");
+    report("Inventaire des contenus…", 0);
+    const response = await fetch("api/offline-assets", { cache: "no-store", signal: controller.signal });
+    if (!response.ok) throw new Error("Impossible de préparer les fichiers du jeu.");
+    const manifest = await response.json();
+    if (!Array.isArray(manifest.files) || !manifest.files.length) throw new Error("La liste des fichiers du jeu est vide.");
+    if (!useStamen) throw new Error("La carte aquarelle n’est pas disponible sur ce téléphone.");
+    const shell = await caches.open("vq-shell-v2.325.0"), tiles = await caches.open("vq-tiles");
+    const jobs = manifest.files.map((path) => ({ url: new URL(path, location.origin + "/").href, cache: shell, kind: "game" }));
+    jobs.push(...tilesFor(OFM_TILES, 14, OFFLINE_VECTOR_BOXES).map((url) => ({ url, cache: shell, kind: "ofm" })));
+    for (const font of FONTS) for (const range of ["0-255", "256-511"]) jobs.push({ url: OFM_GLYPHS.replace("{fontstack}", encodeURIComponent(font)).replace("{range}", range), cache: shell, kind: "ofm" });
+    jobs.push(...tilesFor(WC_URL, 16).map((url) => ({ url, cache: tiles, kind: "stadia" })));
+    const count = jobs.length, size = Math.ceil((manifest.bytes || 0) / 1000000);
+    let done = 0, failed = 0, quota = false, limit = false, next = 0, stadiaBytes = 0, ofmBytes = 0;
+    report(`Environ ${size} Mo de contenus, plus la carte. ${count} fichiers à vérifier…`, 0);
+    const worker = async () => {
+      while (next < count && !quota && !limit && !controller.signal.aborted) {
+        const { url, cache, kind } = jobs[next++];
+        try {
+          if (!(await cache.match(url, { ignoreSearch: true }))) {
+            const file = await fetch(url, { mode: "cors", signal: controller.signal });
+            if (!file.ok || file.type === "opaque") throw new Error("fichier indisponible");
+            if (kind === "stadia" && /no-store/i.test(file.headers.get("Cache-Control") || "")) throw new Error("cache interdit");
+            if (kind === "stadia" || kind === "ofm") {
+              const bytes = (await file.clone().blob()).size;
+              if (kind === "stadia") { stadiaBytes += bytes; if (stadiaBytes > 100_000_000) { limit = true; throw new Error("limite Stadia"); } }
+              else { ofmBytes += bytes; if (ofmBytes > 50_000_000) { limit = true; throw new Error("limite OpenFreeMap"); } }
+            }
+            if (kind === "stadia") {
+              const headers = new Headers(file.headers);
+              headers.delete("Content-Encoding"); headers.delete("Content-Length");
+              headers.set("X-VQ-Cached-At", String(Date.now()));
+              await cache.put(url, new Response(file.body, { status: file.status, headers }));
+            } else await cache.put(url, file);
+          }
+        } catch (error) {
+          if (controller.signal.aborted) break;
+          failed++;
+          if (error?.name === "QuotaExceededError") quota = true;
+        }
+        done++;
+        report(`${done}/${count} fichiers préparés${failed ? ` · ${failed} manquant${failed > 1 ? "s" : ""}` : ""}`, done / count);
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    if (controller.signal.aborted) throw new Error("Préparation interrompue pendant la mise en veille. Rouvre le jeu pour réessayer.");
+    if (quota) throw new Error("Espace insuffisant sur ce téléphone. Libère de la place puis réessaie.");
+    if (limit) throw new Error("La limite de téléchargement de la carte est atteinte. Contacte l’administrateur.");
+    if (failed) throw new Error(`${failed} fichiers n’ont pas pu être enregistrés. Réessaie en Wi-Fi.`);
+    report("✅ Carte des zones du jeu, images et sons prêts sur ce téléphone. La progression se synchronisera quand le réseau sera disponible.", 1);
+  })().finally(() => { offlineDownload = null; if (offlineAbort === controller) offlineAbort = null; });
+  return offlineDownload;
 }
 
 /* ───────── Installation (PWA) ───────── */
@@ -3477,26 +3860,14 @@ const PLACES_TOTAL = PLACES.filter((p) => !p.final).length;
 async function renderBoard() {
   const el = $("#board"); if (!el) return;
   try {
-    const r = await fetch("api/board", { headers: apiHeaders() });
-    if (!r.ok) throw new Error(r.status);
-    const { teams } = await r.json();
-    if (!teams.length) { el.innerHTML = `<p class="muted">Aucune équipe pour l'instant.</p>`; return; }
-    const mine = TEAM && TEAM.team;
-    el.innerHTML = teams.map((t, i) => {
-      const best = Math.max(0, ...t.players.map((p) => p.points)), lv = LEVELS[level(best)];
-      return `<div class="brow ${t.team === mine ? "mine" : ""}"><div class="rk">${i + 1}</div><div class="grow"><div class="row"><b class="grow">${esc(t.name)}${t.team === mine ? " (nous)" : ""}</b><b>⭐ ${t.points}</b></div>
-        <div class="muted">${t.players.map((p) => `${p.avatar} ${esc(p.name || "?")} ${p.points}`).join(" · ")}</div>
-        <div class="bar" style="margin:6px 0 2px"><i style="width:${(t.places / PLACES_TOTAL) * 100}%"></i></div>
-        <div class="muted">${t.places}/${PLACES_TOTAL} lieux · ${t.bridges} pont${t.bridges > 1 ? "s" : ""} · ${lv.emoji} ${lv.name}${t.finale ? " · 🗝️ finale !" : ""}</div></div></div>`;
+    const r = await fetch("api/board", { headers: apiHeaders() }); if (!r.ok) throw new Error(r.status);
+    const players = (await r.json()).players || [];
+    if (!players.length) { el.innerHTML = `<p class="muted">Aucun joueur pour l'instant.</p>`; return; }
+    el.innerHTML = players.map((p, i) => {
+      const lv = LEVELS[level(p.points)];
+      return `<div class="brow ${p.mine ? "mine" : ""}"><div class="rk">${i + 1}</div><div class="grow"><div class="row"><b class="grow">${esc(p.avatar)} ${esc(p.name)}${p.mine ? " (moi)" : ""}</b><b>⭐ ${p.points}</b></div><div class="muted">${lv.emoji} ${lv.name} · ${p.places}/${PLACES_TOTAL} lieux${p.finale ? " · 🗝️ finale !" : ""}</div></div></div>`;
     }).join("");
   } catch { el.innerHTML = `<p class="muted">Classement indisponible hors-ligne.</p>`; }
-}
-
-/* ───────── Joueurs ───────── */
-function showPlayers() {
-  const close = modal(`<h2>Qui joue ?</h2><div style="display:grid;gap:8px">${S.kids.map((k, i) => `<button class="opt ${i === meIdx() ? "good" : ""}" data-pl="${i}"><span style="font-size:30px">${k.avatar}</span> ${esc(k.name || "Joueur " + (i + 1))} <span style="float:right">⭐ ${pointsOf(i)} ${LEVELS[level(pointsOf(i))].emoji}</span></button>`).join("")}</div>
-    <p class="muted" style="text-align:center;margin-top:10px">Total de l'équipe : ⭐ ${points()}</p><button class="btn ghost" data-close>Fermer</button>`);
-  $$("[data-pl]", $("#modal")).forEach((b) => (b.onclick = () => { close(); setActive(+b.dataset.pl); }));
 }
 
 /* ───────── Intro ───────── */
@@ -3510,18 +3881,6 @@ function showIntro() {
   };
   step();
 }
-function onboarding() {
-  const close = modal(`<div class="em">🦁</div><h2>Bienvenue, Gardiens !</h2><p>Qui sont les deux explorateurs ?</p>
-    ${S.kids.map((k, i) => `<div style="text-align:left"><input class="t" data-n="${i}" placeholder="Prénom ${i + 1}" value="${esc(k.name)}"><div class="avs" data-g="${i}">${AVATARS.map((a) => `<button class="${a === k.avatar ? "on" : ""}" data-a="${a}">${a}</button>`).join("")}</div></div>`).join("")}
-    <button class="btn blue wide" id="go">Commencer l'aventure ➜</button>`);
-  const m = $("#modal");
-  $$("[data-g]", m).forEach((g) => $$("button", g).forEach((b) => (b.onclick = () => { S.kids[+g.dataset.g].avatar = b.dataset.a; $$("button", g).forEach((x) => x.classList.toggle("on", x === b)); })));
-  $("#go", m).onclick = () => {
-    $$("[data-n]", m).forEach((i) => (S.kids[+i.dataset.n].name = i.value.trim()));
-    S.onboarded = true; S.cfgT = Date.now(); save(); close(); setActive(0); startGeo(); showIntro();
-  };
-}
-
 /* ───────── Boot ───────── */
 let gradeSynced = false;
 function removeUnearnedOutfit() {
@@ -3534,7 +3893,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderHud(); renderMap(); updateMaskMarkers(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");
@@ -3550,55 +3909,57 @@ setTab("map");
   };
 }
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
-let pendingTeamName = "";
 startFlow();
+visibleInterval(() => { if (JEU && !ADMIN_CONTEXT) loadRewardPlacements(); }, 60000);
 async function startFlow() {
-  if (!DEV) startGeo(); // demande la localisation dès l’ouverture, avant toute étape de jeu
+  if (ADMIN_CONTEXT) { PROFILE = { name: "Administrateur", avatar: "🦁" }; S.kids = [{ name: "Administrateur", avatar: "🦁" }]; S.onboarded = true; renderBadge(); renderHud(); startGeo(); return; }
+  try { await migrateLegacyPhotos(); } catch (error) { console.warn("Migration des photos indisponible", error); }
+  if (!DEV) startGeo();
+  if (!PROFILE && S.onboarded) PROFILE = { name: myName(), avatar: me().avatar || "🙂" };
   if (!PROFILE) PROFILE = await runIntro(BOAT_OPTS); else ensureBoat();
-  if (PROFILE?.outfit && PROFILE.photo && (PROFILE.outfitOverlayVersion !== 3 || !PROFILE.outfitOverlayHat || !PROFILE.outfitOverlayBody)) { try { await wearOutfit(PROFILE.outfit, PROFILE.outfitShift); } catch {} } // migre la tenue en deux pièces sans déplacer la photo
+  if (!PROFILE) return;
+  if (PROFILE.outfit && PROFILE.photo && (PROFILE.outfitOverlayVersion !== 3 || !PROFILE.outfitOverlayHat || !PROFILE.outfitOverlayBody)) { try { await wearOutfit(PROFILE.outfit, PROFILE.outfitShift); } catch {} }
+  if (!S.onboarded) { S.kids = [{ name: PROFILE.name, avatar: PROFILE.avatar || "🦁" }]; S.onboarded = true; S.cfgT = Date.now(); save(); }
   renderBadge(); refreshUserMarker();
   if (JEU) renderHud();
   if (!JEU) { startGeo(); return; }
-  // Le nom donné à Corto devient le joueur ; il rejoint la partie sans autre écran.
-  if (!TEAM) { TEAM = { team: slug(PROFILE.name) || "joueur-" + Date.now().toString(36), league: LEAGUE }; try { localStorage.setItem(TEAMKEY, JSON.stringify(TEAM)); } catch {} }
-  const qs = new URLSearchParams(location.search);
-  if (qs.get("team")) { TEAM = { team: slug(qs.get("team")), league: qs.get("league") || "" }; try { localStorage.setItem(TEAMKEY, JSON.stringify(TEAM)); } catch {} }
-  if (!TEAM) await joinGame();
-  await sync();
+  await sync(); await loadRewardPlacements();
   gradeSynced = true;
   if (removeUnearnedOutfit()) { renderBadge(); renderHud(); refreshUserMarker(); }
-  if (pendingTeamName && !S.teamName) { S.teamName = pendingTeamName; S.cfgT = Date.now(); save(); }
-  if (S.onboarded && S.kids.length > 1 || S.kids[0].name !== PROFILE.name) S.onboarded = false;
-  if (!S.onboarded) { S.kids = [{ name: PROFILE.name, avatar: PROFILE.avatar || "🦁" }]; S.teamName = S.teamName || PROFILE.name; S.onboarded = true; S.cfgT = Date.now(); save(); renderHud(); renderMap(); startGeo(); }
-  else { startGeo(); let saved = null; try { saved = localStorage.getItem("vq_active"); } catch {} if (saved == null && S.kids.length > 1) showPlayers(); }
+  startGeo();
 }
-// Écran « Rejoindre la partie » : code de la partie (donné par l'organisateur) + nom de l'équipe.
-function joinGame(msg = "") {
-  return new Promise(async (resolve) => {
-    let needCode = true;
-    try { needCode = (await (await fetch("api/ping")).json()).league; } catch {}
-    const close = modal(`<div class="em">🦁</div><h2>Rejoindre la partie</h2>
-      <p class="muted" style="text-align:center">Fables de Venise se joue en équipes qui se mesurent entre elles.</p>
-      ${needCode ? `<div style="text-align:left"><label class="muted">Code de la partie</label><input class="t" id="j-code" autocomplete="off" autocapitalize="off" placeholder="Code donné par l'organisateur" value="${esc((TEAM && TEAM.league) || "")}"></div>` : ""}
-      <div style="text-align:left;margin-top:8px"><label class="muted">Nom de ton équipe</label><input class="t" id="j-team" autocomplete="off" placeholder="Par exemple : Les Dupont" value="${esc(S.teamName || "")}"></div>
-      <p class="muted" style="text-align:left">Plusieurs téléphones d'une même équipe tapent le même nom pour partager leur progression.</p>
-      <p id="j-err" style="color:#b4472f;font-weight:800">${esc(msg)}</p>
-      <button class="btn blue wide" id="j-go">Rejoindre</button>`);
-    const m = $("#modal");
-    $("#j-go", m).onclick = async () => {
-      const name = $("#j-team", m).value.trim(), code = needCode ? $("#j-code", m).value.trim() : "";
-      if (slug(name).length < 2) { $("#j-err", m).textContent = "Choisis un nom d'équipe (2 lettres au moins)."; return; }
-      const t = { team: slug(name), league: code };
-      try {
-        const r = await fetch("api/state", { headers: { "X-Team": t.team, "X-League": t.league } });
-        if (r.status === 403) { $("#j-err", m).textContent = "Ce code de la partie n'est pas le bon."; return; }
-      } catch {}
-      TEAM = t; try { localStorage.setItem(TEAMKEY, JSON.stringify(TEAM)); } catch {}
-      pendingTeamName = name;
-      close(); resolve();
-    };
-  });
-}
-setInterval(sync, 45000);
+visibleInterval(sync, 45000);
 addEventListener("online", sync);
-document.addEventListener("visibilitychange", () => { syncGeoWatch(); if (!document.hidden) sync(); });
+let pausedMedia = [], pausedAudioContexts = [];
+function suspendBackgroundWork() {
+  document.documentElement.classList.add("vq-background");
+  lastGeoSample = 0;
+  stopGeoWatch(); stopBoatTick(); stopWalkTick();
+  clearTimeout(syncTimer); syncTimer = null;
+  syncAbort?.abort(); offlineAbort?.abort();
+  locUI?.hide?.();
+  for (const timer of audioFadeTimers) clearInterval(timer);
+  audioFadeTimers.clear();
+  pausedMedia = [...new Set([...activeMedia, ...document.querySelectorAll("audio,video")])].filter((media) => !media.paused);
+  for (const media of pausedMedia) media.pause();
+  for (const video of document.querySelectorAll("video")) {
+    const stream = video.srcObject;
+    if (stream instanceof MediaStream) { stream.getTracks().forEach((track) => track.stop()); video.srcObject = null; }
+  }
+  pausedAudioContexts = [actx, maskAudioContext].filter((context) => context?.state === "running");
+  for (const context of pausedAudioContexts) context.suspend().catch(() => {});
+  try { map.stop(); } catch {}
+  try { navigator.vibrate?.(0); } catch {}
+}
+function resumeForegroundWork() {
+  document.documentElement.classList.remove("vq-background");
+  for (const context of pausedAudioContexts) context.resume().catch(() => {});
+  pausedAudioContexts = [];
+  for (const media of pausedMedia) if (media.isConnected || media instanceof Audio) media.play().catch(() => {});
+  pausedMedia = [];
+  syncGeoWatch(); scheduleBoatTick(); scheduleWalkTick(); sync();
+  if (JEU && !ADMIN_CONTEXT) loadRewardPlacements();
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) suspendBackgroundWork(); else resumeForegroundWork(); });
+addEventListener("pagehide", suspendBackgroundWork);
+addEventListener("pageshow", () => { if (!document.hidden && document.documentElement.classList.contains("vq-background")) resumeForegroundWork(); });

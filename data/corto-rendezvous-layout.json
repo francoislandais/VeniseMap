@@ -44,8 +44,8 @@
      "line": 1.42
     },
     "painting": {
-     "x": 66.3,
-     "y": 20.92,
+     "x": 66.25,
+     "y": 20.95,
      "size": 1
     },
     "head": {
@@ -62,7 +62,7 @@
   "2": {
    "elements": {
     "painting": {
-     "x": 47,
+     "x": 46.99,
      "y": 26,
      "size": 1
     },
@@ -75,16 +75,16 @@
      "line": 1.42
     },
     "paragraph-1": {
-     "x": -0.86,
-     "y": 20.22,
+     "x": -0.43,
+     "y": 29.24,
      "size": 1,
      "width": 100,
      "gap": 18,
      "line": 1.42
     },
     "paragraph-0": {
-     "x": 0.58,
-     "y": -18.89,
+     "x": 0.54,
+     "y": -25.67,
      "size": 1,
      "width": 100,
      "gap": 18,
@@ -102,7 +102,7 @@
      "x": 0,
      "y": 0,
      "size": 1,
-     "width": 88,
+     "width": 100,
      "gap": 18,
      "line": 1.42
     },
@@ -113,22 +113,27 @@
      "width": 100,
      "gap": 18,
      "line": 1.42
+    },
+    "painting": {
+     "x": 50,
+     "y": 24,
+     "size": 1
     }
    }
   },
   "4": {
    "elements": {
     "paragraph-0": {
-     "x": 0,
-     "y": 5,
+     "x": 0.37,
+     "y": 1.84,
      "size": 1,
      "width": 100,
      "gap": 18,
      "line": 1.42
     },
     "paragraph-1": {
-     "x": 0,
-     "y": 5,
+     "x": -1.07,
+     "y": 28.51,
      "size": 1,
      "width": 100,
      "gap": 18,
@@ -150,7 +155,12 @@
      "gap": 18,
      "line": 1.42
     }
-   }
+   },
+   "text": [
+    null,
+    "Une chose est certaine : les fragments de la partition ont disparu. Il faut absolument les retrouver avant le grand concert qui doit avoir lieu cette semaine.",
+    ""
+   ]
   },
   "5": {
    "elements": {
@@ -163,16 +173,16 @@
      "line": 1.42
     },
     "paragraph-0": {
-     "x": 0,
-     "y": 0,
+     "x": -1.36,
+     "y": -56.71,
      "size": 1,
      "width": 100,
      "gap": 18,
      "line": 1.42
     },
     "paragraph-1": {
-     "x": 0,
-     "y": 0,
+     "x": -0.91,
+     "y": -7.47,
      "size": 1,
      "width": 100,
      "gap": 18,
@@ -180,15 +190,15 @@
     },
     "copy": {
      "x": 1.17,
-     "y": -13,
+     "y": 30.36,
      "size": 1,
      "width": 100,
      "gap": 18,
      "line": 1.42
     },
     "head": {
-     "x": 0.57,
-     "y": 48,
+     "x": -6.07,
+     "y": 23.67,
      "size": 1
     },
     "painting": {
@@ -196,7 +206,11 @@
      "y": 24,
      "size": 1
     }
-   }
+   },
+   "text": [
+    null,
+    ""
+   ]
   },
   "6": {
    "elements": {
@@ -223,6 +237,24 @@
      "width": 100,
      "gap": 18,
      "line": 1.42
+    }
+   }
+  },
+  "8": {
+   "elements": {
+    "painting": {
+     "x": 50,
+     "y": 24,
+     "size": 1
+    }
+   }
+  },
+  "9": {
+   "elements": {
+    "painting": {
+     "x": 50,
+     "y": 24,
+     "size": 1
     }
    }
   }

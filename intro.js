@@ -4,9 +4,22 @@ import { AVATARS } from "./data.js";
 const PKEY = "vq_profile";
 let stopDepartureMusic = null;
 export const silenceIntroDeparture = () => { stopDepartureMusic?.(); };
-export const loadProfile = () => { try { const p = JSON.parse(localStorage.getItem(PKEY)); return p && p.name ? p : null; } catch { return null; } };
-export const saveProfile = (p) => { try { localStorage.setItem(PKEY, JSON.stringify(p)); } catch {} };
-export const clearProfile = () => { try { localStorage.removeItem(PKEY); } catch {} };
+let profilePlayerId = null, migrateLegacyProfile = true;
+export const setProfilePlayerId = (id, { migrateLegacy = true } = {}) => { profilePlayerId = id; migrateLegacyProfile = migrateLegacy; };
+const profileKey = (id = profilePlayerId) => id ? `${PKEY}:${id}` : PKEY;
+export const loadProfileFor = (id) => { try { const p = JSON.parse(localStorage.getItem(profileKey(id))); return p && p.name ? p : null; } catch { return null; } };
+export const loadProfile = () => {
+  const current = loadProfileFor(profilePlayerId);
+  if (current) { if (profilePlayerId && migrateLegacyProfile) try { localStorage.removeItem(PKEY); } catch {} return current; }
+  if (!migrateLegacyProfile) return null;
+  try {
+    const old = JSON.parse(localStorage.getItem(PKEY));
+    if (old?.name && profilePlayerId) { localStorage.setItem(profileKey(), JSON.stringify(old)); localStorage.removeItem(PKEY); return old; }
+  } catch {}
+  return null;
+};
+export const saveProfile = (p) => { try { localStorage.setItem(profileKey(), JSON.stringify(p)); } catch {} };
+export const clearProfile = () => { try { localStorage.removeItem(profileKey()); localStorage.removeItem(PKEY); } catch {} };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -142,9 +155,11 @@ export function selfie() {
       <div class="cam-bar" data-ok hidden><button class="cam-btn" data-again>Refaire</button><button class="cam-go" data-use>C'est moi !</button></div>`;
     document.body.appendChild(cam);
     const video = cam.querySelector("video"), prev = cam.querySelector(".cam-prev"), err = cam.querySelector(".cam-err");
-    let stream = null, result = null;
+    let stream = null, result = null, closed = false;
     const stop = () => { try { stream && stream.getTracks().forEach((t) => t.stop()); } catch {} };
-    const done = (v) => { stop(); cam.remove(); resolve(v); };
+    const done = (v) => { if (closed) return; closed = true; document.removeEventListener("visibilitychange", onHidden); stop(); cam.remove(); resolve(v); };
+    const onHidden = () => { if (document.hidden) done(null); };
+    document.addEventListener("visibilitychange", onHidden);
     const show = async (srcEl) => {
       cam.querySelector(".cam-t").textContent = "Je prépare ton portrait…"; cam.classList.add("busy");
       const fr = frameShot(srcEl); try { result = { photo: await cutoutFramed(fr), cut: true, frame: frameSpec() }; } catch (e) { result = { photo: framedFallback(fr), cut: true, frame: frameSpec() }; } // repli : visage et buste conservés, bords adoucis
@@ -167,8 +182,8 @@ export function selfie() {
     };
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 960 } }, audio: false })
-        .then((s) => { stream = s; video.srcObject = s; })
-        .catch(() => { err.textContent = "Je n'ai pas accès à la caméra. Tu peux choisir une photo, ou annuler."; err.hidden = false; cam.querySelector("[data-shot]").hidden = true; });
+        .then((s) => { if (closed || document.hidden) { s.getTracks().forEach((t) => t.stop()); return; } stream = s; video.srcObject = s; })
+        .catch(() => { if (closed) return; err.textContent = "Je n'ai pas accès à la caméra. Tu peux choisir une photo, ou annuler."; err.hidden = false; cam.querySelector("[data-shot]").hidden = true; });
     } else { err.textContent = "La caméra n'est pas disponible ici. Choisis une photo."; err.hidden = false; cam.querySelector("[data-shot]").hidden = true; }
   });
 }
@@ -295,7 +310,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const restore = () => { if (meta) meta.content = metaOld; };
     // Ambiance sonore de l'introduction : la mer (vagues et appels de sternes, CC0, voir audio/credits.txt) dès le début ; l'« Ave maris stella » de Monteverdi, très doucement, à l'entrée de Corto (écran de présentation).
     // Tout s'éteint progressivement pendant la finale (le bateau et la carte).
-    const fadeA = (a, to, ms, done) => { clearInterval(a._t); const v0 = a.volume, t0 = Date.now(); a._t = setInterval(() => { const k = Math.min(1, (Date.now() - t0) / ms); a.volume = Math.max(0, Math.min(1, v0 + (to - v0) * k)); if (k >= 1) { clearInterval(a._t); done && done(); } }, 60); };
+    const fadeA = (a, to, ms, done) => { clearInterval(a._t); if (document.hidden) { a.pause(); return; } const v0 = a.volume, t0 = Date.now(); a._t = setInterval(() => { if (document.hidden) { clearInterval(a._t); a.pause(); return; } const k = Math.min(1, (Date.now() - t0) / ms); a.volume = Math.max(0, Math.min(1, v0 + (to - v0) * k)); if (k >= 1) { clearInterval(a._t); done && done(); } }, 60); };
     const amb = new Audio("audio/mer-mouettes.mp3"); amb.loop = true; amb.volume = 0; amb.preload = "auto";
     const mus = new Audio("audio/ave-maris-stella-intro.mp3"); mus.volume = 0; mus.preload = "auto"; let musOn = false;
     let ambDead = false; const AMB_VOL = 0.34, MUS_VOL = 0.42;
@@ -312,6 +327,16 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       fadeA(dep, 0, ms, () => { dep.pause(); dep.src = ""; if (stopDepartureMusic === stopDep) stopDepartureMusic = null; });
     };
     stopDepartureMusic = stopDep;
+    let pausedIntroAudio = [];
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        pausedIntroAudio = [amb, mus, dep].filter((audio) => !audio.paused);
+        for (const audio of [amb, mus, dep]) { clearInterval(audio._t); audio.pause(); }
+      } else if (!ambDead) {
+        for (const audio of pausedIntroAudio) audio.play().catch(() => {});
+        pausedIntroAudio = [];
+      }
+    });
     const depStart = () => { if (depOn || ambDead) return; depOn = true; fadeA(mus, 0, 1500, () => mus.pause()); dep.play().then(() => { if (!ambDead) fadeA(dep, DEP_VOL, 2000); }).catch(() => {}); };
     const ambStop = (ms, keepDep) => { if (ambDead) return; ambDead = true; for (const a of keepDep && depOn ? [amb, mus] : [amb, mus, dep]) fadeA(a, 0, ms, () => { a.pause(); a.src = ""; }); };
     ambStart();
@@ -598,22 +623,37 @@ export function cortoSays(text) {
 }
 
 /* ───────── Modifier son profil : nom, pictogramme ou nouvelle photo ───────── */
-export function editProfile(cur) {
+export function editProfile(cur, { others = [], switchTo = null, onDownload = null } = {}) {
   return new Promise((resolve) => {
     let photo = cur.photo || null, cutP = !!cur.cut, frameP = cur.frame || null, avatar = cur.avatar || null;
     const root = document.createElement("div"); root.className = "pf";
-    root.innerHTML = `<div class="pf-card"><h3>Ton profil</h3><div class="pf-cur" id="pf-cur"></div>
+    const switchHtml = switchTo ? `<button type="button" class="pf-switch" data-switch><span class="pf-switch-avatar">${switchTo.photo ? `<img src="${esc(switchTo.photo)}" alt="">` : esc(switchTo.avatar || "🙂")}</span><span>Jouer avec <b>${esc(switchTo.name)}</b></span><span aria-hidden="true">→</span></button>` : "";
+    root.innerHTML = `<div class="pf-card"><h3>Ton profil</h3><div class="pf-cur" id="pf-cur" ${switchTo ? `role="button" tabindex="0" aria-label="Passer à ${esc(switchTo.name)}"` : ""}></div>
+      ${switchTo ? `<p class="pf-switch-hint">Touche ta photo ou celle de ${esc(switchTo.name)} pour changer de joueur.</p>` : ""}${switchHtml}
       <input class="t" id="pf-name" maxlength="30" autocomplete="off" value="${esc(cur.name)}" placeholder="Ton nom">
-      <p class="pf-l">Choisis un pictogramme</p><div class="in-grid">${AVATARS.map((a) => `<button type="button" data-a="${a}">${a}</button>`).join("")}</div>
-      <button type="button" class="in-photo" data-photo>📷 Prendre une nouvelle photo</button>
+      <button type="button" class="in-photo" data-photo>📷 ${photo ? "Changer ma photo" : "Ajouter ma photo"}</button>
+      ${onDownload ? '<div class="pf-offline"><button type="button" class="pf-offline-button" data-offline>⬇️ Préparer le jeu hors connexion</button><small>Carte des zones du jeu, images et sons : plus de 120 Mo. À faire en Wi-Fi avant de partir. Cela peut prendre plusieurs minutes.</small><p role="status" aria-live="polite" data-offline-status></p><div class="pf-offline-track" hidden><i data-offline-bar></i></div></div>' : ""}
+      <div class="pf-others"><h4>Les autres joueurs</h4>${others.length ? others.map((p) => `<div class="pf-other"><span class="pf-other-avatar">${esc(p.avatar || "🙂")}</span><span><b>${esc(p.name)}</b><small>${esc(p.grade)}</small></span><strong>⭐ ${Number(p.points) || 0}</strong></div>`).join("") : '<p class="muted">Aucun autre joueur pour le moment.</p>'}</div>
       <div class="pf-bar"><button type="button" class="cam-btn" data-x>Annuler</button><button type="button" class="cam-go" data-ok>Valider</button></div></div>`;
     document.body.appendChild(root);
     const cur$ = root.querySelector("#pf-cur"), name = root.querySelector("#pf-name");
     const show = () => { cur$.innerHTML = photo ? `<img class="in-ph${cutP ? " cut" : ""}${frameP ? " frame" : ""}" src="${photo}" alt="">` : `<span class="pf-em">${avatar || "🙂"}</span>`; };
     show();
-    root.querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => { avatar = b.dataset.a; photo = null; show(); }));
     root.querySelector("[data-photo]").onclick = async () => { const p = await selfie(); if (p) { photo = p.photo; cutP = p.cut; frameP = p.frame || null; show(); } };
+    if (onDownload) root.querySelector("[data-offline]").onclick = async () => {
+      const button = root.querySelector("[data-offline]"), status = root.querySelector("[data-offline-status]"), track = root.querySelector(".pf-offline-track"), bar = root.querySelector("[data-offline-bar]");
+      button.disabled = true; track.hidden = false;
+      try { await onDownload((message, fraction) => { status.textContent = message; bar.style.width = `${Math.max(0, Math.min(100, Math.round(fraction * 100)))}%`; }); }
+      catch (error) { status.textContent = error.message || "Téléchargement interrompu. Réessaie avec du réseau."; }
+      finally { button.disabled = false; }
+    };
     const done = (v) => { root.remove(); resolve(v); };
+    if (switchTo) {
+      const switchPlayer = () => done({ switchPlayerId: switchTo.id });
+      cur$.onclick = switchPlayer;
+      cur$.onkeydown = (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); switchPlayer(); } };
+      root.querySelector("[data-switch]").onclick = switchPlayer;
+    }
     root.querySelector("[data-x]").onclick = () => done(null);
     root.querySelector("[data-ok]").onclick = () => { const n = name.value.trim(); if (!n) { name.focus(); return; } const p = { name: n }; if (photo) { p.photo = photo; if (cutP) p.cut = true; if (frameP) p.frame = true; } else p.avatar = avatar || "🙂"; done(p); };
   });

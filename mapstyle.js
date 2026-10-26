@@ -6,7 +6,8 @@ const isLocal = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 export const useStamen = !!STADIA_KEY || isLocal;
 export const WC_URL = `https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}@2x.jpg${STADIA_KEY ? "?api_key=" + STADIA_KEY : ""}`;
 export const OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-export const OFM_TILEJSON = "https://tiles.openfreemap.org/planet";
+export const OFM_TILES = `${location.origin}/map/ofm/tiles/{z}/{x}/{y}.pbf`;
+export const OFM_GLYPHS = `${location.origin}/map/ofm/fonts/{fontstack}/{range}.pbf`;
 export const FONTS = ["Noto Sans Bold", "Noto Sans Italic"];
 
 const INK = "#6b4535", WATER = "#2f7fae";
@@ -90,12 +91,12 @@ export function createMap(container, { center, zoom, minZoom = 11, maxZoom = 19 
   const map = new maplibregl.Map({
     container, center, zoom, minZoom, maxZoom, maxBounds: [[12.24, 45.36], [12.47, 45.55]], dragRotate: false, pitchWithRotate: false, touchPitch: false, attributionControl: false,
     style: {
-      version: 8, glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+      version: 8, glyphs: OFM_GLYPHS,
       sources: {
         wc: useStamen
           ? { type: "raster", tiles: [WC_URL], tileSize: 256, maxzoom: 16, attribution: "Stamen Design (CC BY 4.0) · © OpenStreetMap" }
           : { type: "raster", tiles: [OSM_URL], tileSize: 256, maxzoom: 19, attribution: "© OpenStreetMap" },
-        ofm: { type: "vector", url: OFM_TILEJSON, attribution: "OpenFreeMap © OpenMapTiles" },
+        ofm: { type: "vector", tiles: [OFM_TILES], minzoom: 0, maxzoom: 14, attribution: "OpenFreeMap © OpenMapTiles" },
         petits: { type: "geojson", data: "data/petits-canaux.json" },
       },
       layers,
