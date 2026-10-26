@@ -937,12 +937,13 @@ const maskKey = (id, player = meIdx()) => `mask:${player}:${id}`;
 const maskGemKey = (id, player = meIdx()) => `o:mask-gem:${player}:${id}`;
 const maskState = (id, player = meIdx()) => !has(maskKey(id, player)) ? "mask" : S.done[maskKey(id, player)].kind === "gem" && !has(maskGemKey(id, player)) ? "gem" : "done";
 function updateMaskMarkers() {
-  const zoom = map.getZoom(), size = Math.round(Math.min(56, Math.max(10, 17 * 1.45 ** (zoom - 15))));
+  const zoom = map.getZoom(), size = Math.round(Math.min(56, Math.max(14, 17 * 1.45 ** (zoom - 15))));
   for (const [id, { el, img, maskImage }] of maskMarkers) {
     const state = maskState(id), src = state === "gem" ? MASK_GEM_IMAGE : maskImage;
-    el.hidden = !JEU || zoom < 15 || state === "done";
+    el.hidden = !JEU || zoom < 14 || state === "done";
+    el.classList.toggle("mask-distant", zoom < 15);
     el.style.setProperty("--mask-size", size + "px");
-    el.style.setProperty("--mask-star-size", Math.round(Math.max(7, Math.min(12, size * .23))) + "px");
+    el.style.setProperty("--mask-star-size", (zoom < 15 ? 5 : Math.round(Math.max(7, Math.min(12, size * .23)))) + "px");
     el.classList.toggle("is-gem", state === "gem");
     if (img.getAttribute("src") !== src) img.src = src;
     el.setAttribute("aria-label", state === "gem" ? "Attraper la gemme du carnaval" : "Découvrir un masque vénitien");
@@ -1022,7 +1023,10 @@ async function tapMask(site, record) {
   }
   const distance = dist(fix.lat, fix.lon, site.lat, site.lon);
   if (distance > MASK_RADIUS + Math.min(fix.acc, 20)) {
-    record.busy = false; toast(`Ce masque est encore à ${fmtD(distance)}. Approche-toi !`); return;
+    record.busy = false;
+    clearTimeout(toastT); $("#toast").hidden = true;
+    cortoSays(`Ce masque est encore à ${fmtD(distance)}. Approche-toi, matelot !`);
+    return;
   }
   el.classList.add("is-blooming");
   const { cx, cy } = await bloomMask(img);

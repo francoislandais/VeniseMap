@@ -367,6 +367,7 @@ img.full{width:100%;border-radius:14px}
 .mask-orbit i:nth-child(1){top:-1px;left:calc(50% - 4px)}
 .mask-orbit i:nth-child(2){top:58%;right:-2px}
 .mask-orbit i:nth-child(3){bottom:12%;left:-2px}
+.mask-marker.mask-distant .mask-orbit{inset:-3px;opacity:.75}
 .mask-marker.is-searching .mask-orbit{animation-duration:1.2s}
 .mask-marker.is-blooming .mask-orbit{visibility:hidden}
 @keyframes maskOrbit{to{transform:rotate(360deg)}}
