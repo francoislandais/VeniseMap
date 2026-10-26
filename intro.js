@@ -2,6 +2,8 @@
 import { AVATARS } from "./data.js";
 
 const PKEY = "vq_profile";
+let stopDepartureMusic = null;
+export const silenceIntroDeparture = () => { stopDepartureMusic?.(); };
 export const loadProfile = () => { try { const p = JSON.parse(localStorage.getItem(PKEY)); return p && p.name ? p : null; } catch { return null; } };
 export const saveProfile = (p) => { try { localStorage.setItem(PKEY, JSON.stringify(p)); } catch {} };
 export const clearProfile = () => { try { localStorage.removeItem(PKEY); } catch {} };
@@ -304,6 +306,12 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     const seaTo = (i) => { if (ambDead) return; const v = SEA[Math.min(i, SEA.length - 1)]; if (v > 0 && amb.paused) amb.play().catch(() => {}); fadeA(amb, v, 3000, () => { if (v === 0) amb.pause(); }); };
     // « Oui, je suis prêt » : l'Ave maris stella s'efface et les Vêpres de Monteverdi (1 min, applaudissements retirés) partent ; elles accompagnent la fin de l'intro puis la carte, avant un fondu de sortie
     const dep = new Audio("audio/vepres-depart.mp3"); dep.volume = 0; dep.preload = "auto"; let depOn = false; const DEP_VOL = 0.55;
+    let depStopTimer = null;
+    const stopDep = (ms = 350) => {
+      clearTimeout(depStopTimer);
+      fadeA(dep, 0, ms, () => { dep.pause(); dep.src = ""; if (stopDepartureMusic === stopDep) stopDepartureMusic = null; });
+    };
+    stopDepartureMusic = stopDep;
     const depStart = () => { if (depOn || ambDead) return; depOn = true; fadeA(mus, 0, 1500, () => mus.pause()); dep.play().then(() => { if (!ambDead) fadeA(dep, DEP_VOL, 2000); }).catch(() => {}); };
     const ambStop = (ms, keepDep) => { if (ambDead) return; ambDead = true; for (const a of keepDep && depOn ? [amb, mus] : [amb, mus, dep]) fadeA(a, 0, ms, () => { a.pause(); a.src = ""; }); };
     ambStart();
@@ -428,7 +436,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         bt.animate([{ translate: `${tx}px ${ty}px` }, { translate: `${tx + (s1 - s0) * bt.offsetWidth / 2}px ${ty + (s1 - s0) * bt.offsetHeight / 2}px` }], k);
         m.easeTo({ center: B.lngLat, zoom: 15, offset: [px - W / 2, py - H / 2], duration: D, easing: (t) => t * t * (3 - 2 * t) });
         await sleep(D + 80);
-        setTimeout(() => fadeA(dep, 0, 5000, () => { dep.pause(); dep.src = ""; }), 3500); // la carte est là : la musique continue un peu, puis s'éteint
+        depStopTimer = setTimeout(() => stopDep(5000), 3500); // la carte est là : la musique continue un peu, puis s'éteint
         B.ensure(); // le bateau devient un repère de la carte, exactement au même endroit et à la même taille
         bt.style.visibility = "hidden";
       } catch (e) { try { B.ensure(); } catch {} }

@@ -1,6 +1,7 @@
 // La première rencontre se relit depuis le bateau de Corto quand le joueur en est proche.
 import { createCortoEditor } from "./corto-rendezvous-editor.js";
 import { createCortoSoundtrack } from "./corto-sound.js";
+import { silenceIntroDeparture } from "./intro.js";
 
 const isLocal = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 let canEdit = false;
@@ -144,6 +145,7 @@ const PAGES = [
 
 export async function openCortoRendezvous() {
   if (opening || document.querySelector(".corto-rendezvous")) return;
+  silenceIntroDeparture();
   opening = true;
   const sound = createCortoSoundtrack();
   const layout = await layoutPromise;
@@ -156,7 +158,7 @@ export async function openCortoRendezvous() {
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-label", "Conversation avec Corto");
   overlay.tabIndex = -1;
-  overlay.innerHTML = '<div class="cr-stage"></div><button class="cr-close" type="button" aria-label="Fermer la rencontre">×</button><button class="cr-sound" type="button" aria-label="Couper l’ambiance sonore"></button><button class="cr-prev" type="button" aria-label="Page précédente" hidden>‹ Précédent</button>';
+  overlay.innerHTML = '<div class="cr-stage"></div><button class="cr-close" type="button" aria-label="Fermer la rencontre">×</button><button class="cr-sound" type="button" aria-label="Couper le bruit du vent"></button><button class="cr-prev" type="button" aria-label="Page précédente" hidden>‹ Précédent</button>';
   document.body.appendChild(overlay);
   document.body.classList.add("corto-rendezvous-open");
   let index = 0;
