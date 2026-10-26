@@ -5,3 +5,9 @@ Licence : CC0 (domaine public), utilisation libre sans attribution. Montage : bo
 ave-maris-stella-intro.mp3 — extrait (150 premières secondes, MP3 64 kbit/s, fondu final de 6 s) de « Ave maris stella », Vespro della Beata Vergine (Claudio Monteverdi, 1610). L'œuvre est dans le domaine public ; l'enregistrement a été fourni par l'auteur du projet (droits de l'enregistrement à vérifier avant toute diffusion publique large).
 
 vepres-depart.mp3 — extrait (61 s, MP3 112 kbit/s, fondu d'entrée 0,5 s et fondu final de 4 s) des « Vêpres de la Vierge » de Claudio Monteverdi (1610), enregistrement fourni par l'auteur du projet (interprètes : Leonardo García Alarcón, Mariana Flores…) ; applaudissements et silence initiaux supprimés. L'œuvre est dans le domaine public ; droits de l'enregistrement à vérifier avant toute diffusion publique large.
+
+Rencontre avec Corto — fond musical : audio/music/02-long.mp3, extrait de « Deus in adiutorium » des Vêpres de Monteverdi, interprété par Cantica Symphonia sous la direction de Giuseppe Maletto, enregistré par Guido Magnano (Turin, 2000). Source : https://commons.wikimedia.org/wiki/File:Deus_in_adiutorium.ogg ; licence de l'enregistrement et de l'extrait : CC BY-SA 3.0, https://creativecommons.org/licenses/by-sa/3.0/ ; extrait raccourci, fondu final et transcodage MP3 (voir audio/music/credits.txt). Lecture douce en boucle, volume réduit pendant la tempête.
+
+corto-wind.mp3 — vent de la tempête, depuis « Howling wind.ogg », Tvabutzku1234, https://commons.wikimedia.org/wiki/File:Howling_wind.ogg ; CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/ ; filtrage, fondu d'entrée, conversion mono MP3 64 kbit/s.
+
+corto-thunder.mp3 — pluie et tonnerre, depuis « Rain and thunder.ogg », Caesar, https://commons.wikimedia.org/wiki/File:Rain_and_thunder.ogg ; domaine public ; fondus d'entrée et de sortie, conversion mono MP3 72 kbit/s.

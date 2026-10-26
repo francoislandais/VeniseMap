@@ -1202,18 +1202,21 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .cr-corto{position:absolute;top:calc(env(safe-area-inset-top,0px) + 22px);right:max(3vw,12px);height:min(39dvh,370px);width:auto;max-width:60vw;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,.5))}
 .cr-head{position:absolute;z-index:1;top:calc(env(safe-area-inset-top,0px) + 64px);width:clamp(100px,29vw,150px);height:auto;max-height:25dvh;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.65));pointer-events:none;-webkit-mask-image:linear-gradient(to bottom,#000 75%,transparent);mask-image:linear-gradient(to bottom,#000 75%,transparent)}
 .cr-head-right{right:18px}.cr-head-left{left:18px;transform:scaleX(-1)}
-.cr-scroll{position:absolute;z-index:1;inset:0;overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 52px) clamp(20px,6vw,48px) calc(82px + env(safe-area-inset-bottom,0px))}
+.cr-scroll{position:absolute;z-index:1;inset:0;overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 52px) clamp(20px,6vw,48px) calc(82px + env(safe-area-inset-bottom,0px) + 45dvh)}
 .cr-art-storm .cr-scroll,.cr-art-gondolier .cr-scroll{padding-top:min(37dvh,310px)}
 .cr-art-corto .cr-scroll{padding-top:min(41dvh,350px)}
 .cr-art-plain.cr-has-head .cr-scroll{padding-top:min(27dvh,230px)}
 .cr-copy{max-width:660px;margin:auto;font-size:clamp(18px,4.6vw,22px);line-height:1.42;text-shadow:0 2px 7px rgba(0,0,0,.9)}
-.cr-copy p{margin:0 0 var(--cr-gap,18px)}.cr-copy p:last-child{margin-bottom:0}
+.cr-paragraph{display:block;box-sizing:border-box;min-width:0;max-width:100%;margin:0 0 var(--cr-gap,18px);white-space:normal;overflow-wrap:anywhere;background:none;border:0;color:#fff}
+.cr-paragraph:last-child{margin-bottom:0!important}
 .cr-copy em{font-style:italic}.cr-copy strong{font-weight:900;color:#fff}
+.cr-sound{position:absolute;z-index:3;top:calc(env(safe-area-inset-top,0px) + 8px);right:64px;width:44px;height:44px;border:1px solid rgba(255,255,255,.28);border-radius:50%;background:rgba(10,25,44,.55);color:#fff;font:26px/1 Georgia,serif;cursor:pointer}
 .cr-close{position:absolute;z-index:3;top:calc(env(safe-area-inset-top,0px) + 8px);right:12px;border:0;background:rgba(10,25,44,.72);color:#fff;border-radius:50%;width:44px;height:44px;font:32px/1 Arial,sans-serif;cursor:pointer}
 .cr-prev{position:absolute;z-index:3;left:14px;bottom:calc(12px + env(safe-area-inset-bottom,0px));min-height:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:rgba(9,21,35,.38);color:rgba(255,255,255,.72);font:inherit;font-size:15px;cursor:pointer}
 .cr-prev[hidden]{display:none}
-.cr-prev:focus-visible,.cr-close:focus-visible{outline:2px solid #fff;outline-offset:2px}
-.cr-editor{position:absolute;z-index:5;top:calc(env(safe-area-inset-top,0px) + 8px);left:10px;width:min(300px,calc(100vw - 76px));font:14px/1.3 system-ui,sans-serif}
+.cr-prev:focus-visible,.cr-close:focus-visible,.cr-sound:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.cr-editor{position:absolute;z-index:5;top:calc(env(safe-area-inset-top,0px) + 8px);left:10px;width:min(300px,calc(100vw - 76px));font:14px/1.3 system-ui,sans-serif;pointer-events:none}
+.cr-edit-toggle,.cr-edit-collapse,.cr-edit-panel{pointer-events:auto}
 .cr-editor.cr-editor-bottom{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
 .cr-edit-toggle{min-height:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.45);border-radius:12px;background:rgba(9,21,35,.8);color:#fff;font:600 14px system-ui,sans-serif;cursor:pointer}
 .cr-edit-collapse{min-height:44px;margin-left:5px;padding:8px;border:1px solid rgba(255,255,255,.3);border-radius:12px;background:rgba(9,21,35,.8);color:#fff;font:600 12px system-ui,sans-serif;cursor:pointer}
@@ -1235,7 +1238,7 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .cr-edit-status{min-height:1.2em;color:#c3e5bd}
 .cr-editing .cr-stage{touch-action:none}
 .cr-editing .cr-scroll{pointer-events:none}
-.cr-editing .cr-copy,.cr-editing .cr-head,.cr-editing .cr-corto,.cr-editing .cr-painting{pointer-events:auto}
+.cr-editing .cr-paragraph,.cr-editing .cr-head,.cr-editing .cr-corto,.cr-editing .cr-painting{pointer-events:auto}
 .cr-editing .cr-selected{outline:2px dashed #a9d8ff;outline-offset:5px}
 .cr-editing .cr-prev{display:none}
 @media (min-width:700px){.cr-corto{right:max(calc((100vw - 900px)/2),10vw);height:min(55dvh,520px)}.cr-art-corto .cr-scroll{padding-top:min(50dvh,490px)}.cr-art-storm .cr-scroll,.cr-art-gondolier .cr-scroll{padding-top:min(48dvh,430px)}}
