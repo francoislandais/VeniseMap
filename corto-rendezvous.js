@@ -168,7 +168,7 @@ export async function openCortoRendezvous() {
   const prev = overlay.querySelector(".cr-prev");
   const closeButton = overlay.querySelector(".cr-close");
   const soundButton = overlay.querySelector(".cr-sound");
-  const syncSoundButton = () => { soundButton.textContent = sound.muted ? "♪̸" : "♪"; soundButton.setAttribute("aria-label", sound.muted ? "Activer l’ambiance sonore" : "Couper l’ambiance sonore"); };
+  const syncSoundButton = () => { soundButton.textContent = sound.muted ? "🔇" : "🔊"; soundButton.setAttribute("aria-label", sound.muted ? "Activer le bruit du vent" : "Couper le bruit du vent"); };
   syncSoundButton();
   soundButton.onclick = () => { sound.toggle(); syncSoundButton(); };
   const close = () => {
