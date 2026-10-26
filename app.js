@@ -928,6 +928,112 @@ function renderTrees(points) {
 }
 map.on("zoom", updateTreeSize);
 fetch("data/arbres.json").then((r) => { if (!r.ok) throw new Error("Repères d’arbres indisponibles"); return r.json(); }).then((data) => renderTrees(data.points || [])).catch((e) => console.warn(e.message));
+
+/* Masques de carnaval cachés sur les promenades : chacun se gagne une fois par enfant. */
+const MASK_IMAGE = "img/masque-venitien-transparent.png", MASK_GEM_IMAGE = "img/objets/diamant.svg";
+const MASK_STARS = 5, MASK_RADIUS = 55, maskMarkers = new Map();
+const maskKey = (id, player = meIdx()) => `mask:${player}:${id}`;
+const maskGemKey = (id, player = meIdx()) => `o:mask-gem:${player}:${id}`;
+const maskState = (id, player = meIdx()) => !has(maskKey(id, player)) ? "mask" : S.done[maskKey(id, player)].kind === "gem" && !has(maskGemKey(id, player)) ? "gem" : "done";
+function updateMaskMarkers() {
+  const zoom = map.getZoom(), size = Math.round(Math.min(52, Math.max(8, 12 * 2 ** (zoom - 15.5))));
+  for (const [id, { el, img }] of maskMarkers) {
+    const state = maskState(id), src = state === "gem" ? MASK_GEM_IMAGE : MASK_IMAGE;
+    el.hidden = !JEU || zoom < 15 || state === "done";
+    el.style.setProperty("--mask-size", size + "px");
+    el.classList.toggle("is-gem", state === "gem");
+    if (img.getAttribute("src") !== src) img.src = src;
+    el.setAttribute("aria-label", state === "gem" ? "Attraper la gemme du carnaval" : "Découvrir un masque vénitien");
+  }
+}
+map.on("zoom", updateMaskMarkers);
+const maskFix = () => {
+  if (DEV && pos) return Promise.resolve(pos);
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (fix) => resolve({ lat: fix.coords.latitude, lon: fix.coords.longitude, acc: fix.coords.accuracy }),
+      () => resolve(null),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 18000 }
+    );
+  });
+};
+function maskRain(cx, cy) {
+  for (let i = 0; i < 20; i++) {
+    const star = document.createElement("span"); star.className = "mask-rain-star"; star.textContent = i % 3 ? "✦" : "✧";
+    star.style.left = cx + "px"; star.style.top = cy + "px"; document.body.appendChild(star);
+    const dx = (Math.random() - .5) * 180, fall = 80 + Math.random() * 150;
+    star.animate([
+      { transform: "translate(-50%,-50%) scale(.3)", opacity: 0 },
+      { transform: `translate(calc(-50% + ${dx * .35}px),calc(-50% - 35px)) scale(1.2)`, opacity: 1, offset: .25 },
+      { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${fall}px)) scale(.6)`, opacity: 0 },
+    ], { duration: 850 + Math.random() * 450, delay: Math.random() * 230, easing: "ease-in", fill: "forwards" }).finished.finally(() => star.remove());
+  }
+}
+async function collectMaskGem(site, record) {
+  const player = meIdx(), key = maskGemKey(site.id, player);
+  if (record.busy || has(key) || !mapWorkVisible()) return;
+  record.busy = true;
+  const { el, img } = record, r = img.getBoundingClientRect(), target = $("#home-btn")?.getBoundingClientRect();
+  const ghost = img.cloneNode(); ghost.className = "mask-gem-flight";
+  ghost.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`; document.body.appendChild(ghost);
+  award(key, 0, player); save(); refreshAll();
+  if (target) {
+    const dx = target.left + target.width / 2 - (r.left + r.width / 2), dy = target.top + target.height / 2 - (r.top + r.height / 2);
+    await ghost.animate([{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.5)", opacity: 1, offset: .3 }, { transform: `translate(${dx}px,${dy}px) scale(.15)`, opacity: 0 }], { duration: 1050, easing: "cubic-bezier(.3,0,.4,1)", fill: "forwards" }).finished.catch(() => {});
+  }
+  ghost.remove(); record.busy = false;
+  toast("Gemme du carnaval rangée dans tes objets !");
+}
+async function tapMask(site, record) {
+  if (maskState(site.id) === "gem") { await collectMaskGem(site, record); return; }
+  if (record.busy || maskState(site.id) !== "mask" || !mapWorkVisible()) return;
+  record.busy = true;
+  const player = meIdx(), { el, img } = record, started = performance.now();
+  const turn = img.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], { duration: 900, iterations: Infinity });
+  let frame = 0;
+  const accelerate = (now) => { turn.playbackRate = Math.min(7, 1 + (now - started) / 450); frame = requestAnimationFrame(accelerate); };
+  frame = requestAnimationFrame(accelerate);
+  const [fix] = await Promise.all([maskFix(), sleep(1000)]);
+  cancelAnimationFrame(frame); turn.cancel();
+  if (!el.isConnected || player !== meIdx()) { record.busy = false; return; }
+  if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.acc) || fix.acc > 80) {
+    record.busy = false; toast("Je ne parviens pas à vérifier ta position. Réessaie près du masque."); return;
+  }
+  const distance = dist(fix.lat, fix.lon, site.lat, site.lon);
+  if (distance > MASK_RADIUS + Math.min(fix.acc, 20)) {
+    record.busy = false; toast(`Ce masque est encore à ${fmtD(distance)}. Approche-toi !`); return;
+  }
+  const r = img.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  if (Math.random() < .1) {
+    award(maskKey(site.id, player), 0, player); S.done[maskKey(site.id, player)].kind = "gem"; save();
+    await img.animate([{ transform: "scale(1) rotate(0deg)", opacity: 1 }, { transform: "scale(1.7) rotate(360deg)", opacity: 0 }], { duration: 650, fill: "forwards" }).finished.catch(() => {});
+    img.src = MASK_GEM_IMAGE; el.classList.add("is-gem");
+    await img.animate([{ transform: "scale(.3)", opacity: 0 }, { transform: "scale(1.4)", opacity: 1, offset: .6 }, { transform: "scale(1)", opacity: 1 }], { duration: 650, fill: "forwards" }).finished.catch(() => {});
+    updateMaskMarkers(); toast("Une gemme ! Touche-la pour la ranger dans tes objets.");
+  } else {
+    await img.animate([{ transform: "scale(1) rotate(0deg)", opacity: 1 }, { transform: "scale(1.85) rotate(360deg)", opacity: 0 }], { duration: 700, fill: "forwards" }).finished.catch(() => {});
+    maskRain(cx, cy);
+    award(maskKey(site.id, player), MASK_STARS, player); S.done[maskKey(site.id, player)].kind = "stars"; save(); refreshAll();
+    starsToCounter(cx, cy, MASK_STARS, true);
+  }
+  record.busy = false;
+}
+function renderMasks(points) {
+  for (const site of points) {
+    if (!site.id || !Number.isFinite(site.lat) || !Number.isFinite(site.lon) || maskMarkers.has(site.id)) continue;
+    const el = document.createElement("button"); el.type = "button"; el.className = "mask-marker";
+    const img = document.createElement("img"); img.src = MASK_IMAGE; img.alt = ""; img.draggable = false; el.appendChild(img);
+    const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([site.lon, site.lat]).addTo(map);
+    const record = { el, img, marker, busy: false };
+    el.addEventListener("pointerdown", (event) => event.stopPropagation());
+    el.addEventListener("click", (event) => { event.stopPropagation(); tapMask(site, record); });
+    maskMarkers.set(site.id, record);
+  }
+  updateMaskMarkers();
+}
+fetch("data/masques.json").then((r) => { if (!r.ok) throw new Error("Masques indisponibles"); return r.json(); }).then((data) => renderMasks(data.points || [])).catch((e) => console.warn(e.message));
+
 $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientRect());
 // Pastille de Corto (en bas à gauche, toujours visible) : un toucher fait parler Corto — pour l'instant il salue seulement ; plus tard il donnera ici ses indices.
 $("#corto-btn").onclick = () => cortoSays("Bonjour matelot, comment ça va ?");
@@ -2666,7 +2772,8 @@ const OBJECTS = [
   { id: "ruban-soie", name: "Le ruban de soie", img: "ruban-soie.svg", key: "o:ruban-soie" },
   { id: "lanterne", name: "La lanterne secrète", img: "lanterne.svg", key: "o:lanterne" },
 ];
-const objectList = () => OBJECTS.map((o) => ({ ...o, img: "img/objets/" + o.img, found: has(o.key) && S.done[o.key].w === meIdx() }));
+const maskGemObjects = () => Object.keys(S.done).filter((key) => /^o:mask-gem:\d+:m\d+$/.test(key) && has(key) && S.done[key].w === meIdx()).map((key) => ({ id: key.replace(/[^a-z0-9-]/g, "-"), name: "Gemme du carnaval", img: "diamant.svg", key }));
+const objectList = () => [...OBJECTS, ...maskGemObjects()].map((o) => ({ ...o, img: "img/objets/" + o.img, found: has(o.key) && S.done[o.key].w === meIdx() }));
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = "vq_held", HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
@@ -3336,7 +3443,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderHud(); renderMap(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (openId) renderSheet();
+  renderHud(); renderMap(); updateMaskMarkers(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");

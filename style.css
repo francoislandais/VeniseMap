@@ -358,6 +358,14 @@ img.full{width:100%;border-radius:14px}
 .maplibregl-marker.tree-marker{z-index:2;width:var(--tree-size,48px);height:var(--tree-size,48px);padding:0;border:0;background:none;box-shadow:none;cursor:pointer;touch-action:manipulation}
 .tree-marker img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(20,35,26,.35))}
 .tree-marker:focus-visible{outline:2px solid #174e6b;outline-offset:3px;border-radius:4px}
+/* Les masques deviennent lisibles au zoom du quartier et restent des cibles tactiles. */
+.maplibregl-marker.mask-marker{z-index:3;width:var(--mask-size,32px);height:var(--mask-size,32px);min-width:0;min-height:0;padding:0;border:0;background:none;box-shadow:none;cursor:pointer;touch-action:manipulation}
+.mask-marker[hidden],body:not(.jeu) .maplibregl-marker.mask-marker{display:none!important}
+.mask-marker img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(16,19,47,.5))}
+.mask-marker.is-gem img{filter:drop-shadow(0 0 8px #ffe090) drop-shadow(0 2px 4px #251649)}
+.mask-marker:focus-visible{outline:2px solid #ffe096;outline-offset:3px;border-radius:50%}
+.mask-rain-star{position:fixed;z-index:1750;pointer-events:none;color:#fff3b4;text-shadow:0 0 7px #fff,0 0 14px #ffc445;font:25px/1 Georgia,serif}
+.mask-gem-flight{position:fixed;z-index:1900;object-fit:contain;pointer-events:none;filter:drop-shadow(0 0 12px #ffe090)}
 .maplibregl-marker.pin:not(.mep){z-index:5}
 .maplibregl-ctrl-top-right{top:64px}
 .maplibregl-ctrl-attrib{font-size:10px}
