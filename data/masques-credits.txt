@@ -1,0 +1,1 @@
+Masques de carnaval : 50 emplacements initiaux conservés ; nouveaux emplacements choisis sur les voies piétonnes de Venise et des îles de la lagune à partir des données © contributeurs OpenStreetMap (https://www.openstreetmap.org/copyright), licence ODbL 1.0. Données consultées le 26 octobre 2026 via Overpass API (https://overpass-api.de/).

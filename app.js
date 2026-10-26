@@ -933,11 +933,40 @@ fetch("data/arbres.json").then((r) => { if (!r.ok) throw new Error("Repères d�
 const MASK_IMAGES = ["img/masque-venitien-transparent.png", ...[1, 2, 3, 4, 5].map((n) => `img/masque-carnaval-${n}.webp`)];
 const MASK_GEM_IMAGE = "img/objets/diamant.svg";
 const MASK_STARS = 5, MASK_RADIUS = 55, maskMarkers = new Map();
+let maskSites = [];
 const maskKey = (id, player = meIdx()) => `mask:${player}:${id}`;
 const maskGemKey = (id, player = meIdx()) => `o:mask-gem:${player}:${id}`;
 const maskState = (id, player = meIdx()) => !has(maskKey(id, player)) ? "mask" : S.done[maskKey(id, player)].kind === "gem" && !has(maskGemKey(id, player)) ? "gem" : "done";
+let maskAudioContext, maskAudioPromise;
+function armMaskSound() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    maskAudioContext ||= new AudioContextClass();
+    maskAudioContext.resume().catch(() => {}); // Le toucher déverrouille l'audio avant la réponse GPS.
+    maskAudioPromise ||= fetch("audio/mask-triumph.mp3")
+      .then((r) => { if (!r.ok) throw new Error("Son du masque indisponible"); return r.arrayBuffer(); })
+      .then((data) => maskAudioContext.decodeAudioData(data)).catch(() => null);
+  } catch (_) { /* Un navigateur sans audio garde l'animation. */ }
+}
+function playMaskSound() {
+  maskAudioPromise?.then((buffer) => {
+    if (!buffer || !maskAudioContext || maskAudioContext.state !== "running") return;
+    const source = maskAudioContext.createBufferSource(), gain = maskAudioContext.createGain();
+    source.buffer = buffer; gain.gain.value = .28;
+    source.connect(gain); gain.connect(maskAudioContext.destination); source.start();
+  }).catch(() => {});
+}
 function updateMaskMarkers() {
   const zoom = map.getZoom(), size = Math.round(Math.min(56, Math.max(14, 17 * 1.45 ** (zoom - 15))));
+  const bounds = map.getBounds(), pad = .0025;
+  const visible = (site) => zoom >= 14 && site.lon >= bounds.getWest() - pad && site.lon <= bounds.getEast() + pad && site.lat >= bounds.getSouth() - pad && site.lat <= bounds.getNorth() + pad;
+  for (const site of maskSites) {
+    const record = maskMarkers.get(site.id), state = maskState(site.id);
+    if ((!visible(site) || state === "done" || !JEU) && record && !record.busy) {
+      record.marker.remove(); maskMarkers.delete(site.id);
+    } else if (visible(site) && state !== "done" && JEU && !record) makeMaskMarker(site);
+  }
   for (const [id, { el, img, maskImage }] of maskMarkers) {
     const state = maskState(id), src = state === "gem" ? MASK_GEM_IMAGE : maskImage;
     el.hidden = !JEU || zoom < 14 || state === "done";
@@ -950,6 +979,7 @@ function updateMaskMarkers() {
   }
 }
 map.on("zoom", updateMaskMarkers);
+map.on("moveend", updateMaskMarkers);
 const maskFix = () => {
   if (DEV && pos) return Promise.resolve(pos);
   return new Promise((resolve) => {
@@ -974,21 +1004,44 @@ function maskRain(cx, cy) {
   }
 }
 async function bloomMask(img) {
-  const r = img.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const r = img.getBoundingClientRect(), startX = r.left + r.width / 2, startY = r.top + r.height / 2;
+  const cx = innerWidth / 2, cy = innerHeight / 2;
+  const size = Math.min(310, innerWidth * .7, innerHeight * .58);
   const ghost = img.cloneNode(); ghost.className = "mask-bloom";
   ghost.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
   document.body.appendChild(ghost); img.style.visibility = "hidden";
-  const dx = innerWidth / 2 - cx, dy = innerHeight / 2 - cy;
-  const scale = 1.2 * Math.max((innerWidth + 80) / Math.max(r.width, 16), (innerHeight + 80) / Math.max(r.height, 16));
-  const full = `translate(${dx}px,${dy}px) scale(${scale})`;
+  const final = `translate(${cx - startX}px,${cy - startY}px) scale(${size / Math.max(r.width, 1)})`;
+  playMaskSound();
   await ghost.animate([
-    { transform: "translate(0,0) scale(1)", opacity: 1, offset: 0 },
-    { transform: full, opacity: 1, offset: .62 },
-    { transform: full, opacity: 1, offset: .88 },
-    { transform: full, opacity: 0, offset: 1 },
-  ], { duration: 1750, easing: "ease-in-out", fill: "forwards" }).finished.catch(() => {});
+    { transform: "translate(0,0) scale(1)", opacity: 1 },
+    { transform: final, opacity: 1 },
+  ], { duration: 760, easing: "cubic-bezier(.18,.7,.18,1)", fill: "forwards" }).finished.catch(() => {});
+  const orbit = document.createElement("span"); orbit.className = "mask-victory-orbit";
+  orbit.style.cssText = `left:${cx}px;top:${cy}px;--mask-orbit-radius:${size * .59}px`;
+  for (let i = 0; i < 8; i++) {
+    const star = document.createElement("i"); star.textContent = i % 3 ? "✦" : "✧";
+    star.style.setProperty("--angle", `${i * 45}deg`); orbit.appendChild(star);
+  }
+  document.body.appendChild(orbit);
+  await sleep(1550);
+  return { cx, cy, ghost, orbit };
+}
+async function evaporateMask({ cx, cy, ghost, orbit }) {
+  orbit?.remove();
+  if (!ghost?.isConnected) return;
+  for (let i = 0; i < 14; i++) {
+    const particle = document.createElement("span"); particle.className = "mask-vapor-star";
+    particle.textContent = i % 2 ? "✦" : "✧";
+    particle.style.cssText = `left:${cx + (Math.random() - .5) * 110}px;top:${cy + (Math.random() - .5) * 130}px`;
+    document.body.appendChild(particle);
+    const dx = (Math.random() - .5) * 160, dy = -45 - Math.random() * 120;
+    particle.animate([{ transform: "scale(.5)", opacity: 0 }, { transform: "scale(1)", opacity: 1, offset: .2 }, { transform: `translate(${dx}px,${dy}px) scale(.1)`, opacity: 0 }], { duration: 550 + Math.random() * 330, easing: "ease-out", fill: "forwards" }).finished.finally(() => particle.remove());
+  }
+  await ghost.animate([
+    { transform: getComputedStyle(ghost).transform, opacity: 1, filter: "blur(0px)" },
+    { transform: getComputedStyle(ghost).transform, opacity: 0, filter: "blur(16px)" },
+  ], { duration: 650, easing: "ease-in", fill: "forwards" }).finished.catch(() => {});
   ghost.remove();
-  return { cx: innerWidth / 2, cy: innerHeight / 2 };
 }
 async function collectMaskGem(site, record) {
   const player = meIdx(), key = maskGemKey(site.id, player);
@@ -1009,6 +1062,7 @@ async function tapMask(site, record) {
   if (maskState(site.id) === "gem") { await collectMaskGem(site, record); return; }
   if (record.busy || maskState(site.id) !== "mask" || !mapWorkVisible()) return;
   record.busy = true;
+  armMaskSound();
   const player = meIdx(), { el, img } = record, started = performance.now();
   el.classList.add("is-searching");
   const turn = img.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], { duration: 900, iterations: Infinity });
@@ -1029,11 +1083,13 @@ async function tapMask(site, record) {
     return;
   }
   el.classList.add("is-blooming");
-  const { cx, cy } = await bloomMask(img);
+  const celebration = await bloomMask(img);
+  const { cx, cy } = celebration;
   el.classList.remove("is-blooming");
-  if (player !== meIdx()) { img.style.visibility = ""; record.busy = false; return; }
+  if (player !== meIdx()) { await evaporateMask(celebration); img.style.visibility = ""; record.busy = false; return; }
   if (Math.random() < .1) {
     award(maskKey(site.id, player), 0, player); S.done[maskKey(site.id, player)].kind = "gem"; save();
+    await evaporateMask(celebration);
     img.src = MASK_GEM_IMAGE; img.style.visibility = ""; el.classList.add("is-gem");
     await img.animate([{ transform: "scale(.3)", opacity: 0 }, { transform: "scale(1.4)", opacity: 1, offset: .6 }, { transform: "scale(1)", opacity: 1 }], { duration: 650, fill: "forwards" }).finished.catch(() => {});
     updateMaskMarkers(); toast("Une gemme ! Touche-la pour la ranger dans tes objets.");
@@ -1041,25 +1097,26 @@ async function tapMask(site, record) {
     maskRain(cx, cy);
     award(maskKey(site.id, player), MASK_STARS, player); S.done[maskKey(site.id, player)].kind = "stars"; save(); refreshAll();
     starsToCounter(cx, cy, MASK_STARS, true);
+    await evaporateMask(celebration);
     img.style.visibility = "";
   }
   record.busy = false;
 }
+function makeMaskMarker(site) {
+  const el = document.createElement("button"); el.type = "button"; el.className = "mask-marker";
+  const index = Number(site.id.slice(1)) - 1, maskImage = MASK_IMAGES[index % MASK_IMAGES.length];
+  const img = document.createElement("img"); img.src = maskImage; img.alt = ""; img.draggable = false; el.appendChild(img);
+  const orbit = document.createElement("span"); orbit.className = "mask-orbit"; orbit.setAttribute("aria-hidden", "true");
+  for (let star = 0; star < 3; star++) { const spark = document.createElement("i"); spark.textContent = "★"; orbit.appendChild(spark); }
+  el.appendChild(orbit);
+  const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([site.lon, site.lat]).addTo(map);
+  const record = { el, img, maskImage, marker, busy: false };
+  el.addEventListener("pointerdown", (event) => event.stopPropagation());
+  el.addEventListener("click", (event) => { event.stopPropagation(); tapMask(site, record); });
+  maskMarkers.set(site.id, record);
+}
 function renderMasks(points) {
-  points.forEach((site, index) => {
-    if (!site.id || !Number.isFinite(site.lat) || !Number.isFinite(site.lon) || maskMarkers.has(site.id)) return;
-    const el = document.createElement("button"); el.type = "button"; el.className = "mask-marker";
-    const maskImage = MASK_IMAGES[index % MASK_IMAGES.length];
-    const img = document.createElement("img"); img.src = maskImage; img.alt = ""; img.draggable = false; el.appendChild(img);
-    const orbit = document.createElement("span"); orbit.className = "mask-orbit"; orbit.setAttribute("aria-hidden", "true");
-    for (let star = 0; star < 3; star++) { const spark = document.createElement("i"); spark.textContent = "★"; orbit.appendChild(spark); }
-    el.appendChild(orbit);
-    const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([site.lon, site.lat]).addTo(map);
-    const record = { el, img, maskImage, marker, busy: false };
-    el.addEventListener("pointerdown", (event) => event.stopPropagation());
-    el.addEventListener("click", (event) => { event.stopPropagation(); tapMask(site, record); });
-    maskMarkers.set(site.id, record);
-  });
+  maskSites = points.filter((site) => site.id && Number.isFinite(site.lat) && Number.isFinite(site.lon));
   updateMaskMarkers();
 }
 fetch("data/masques.json").then((r) => { if (!r.ok) throw new Error("Masques indisponibles"); return r.json(); }).then((data) => renderMasks(data.points || [])).catch((e) => console.warn(e.message));

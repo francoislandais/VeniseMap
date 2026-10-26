@@ -11,3 +11,5 @@ Rencontre avec Corto — fond musical : audio/music/02-long.mp3, extrait de « D
 corto-wind.mp3 — vent de la tempête, depuis « Howling wind.ogg », Tvabutzku1234, https://commons.wikimedia.org/wiki/File:Howling_wind.ogg ; CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/ ; filtrage, fondu d'entrée, conversion mono MP3 64 kbit/s.
 
 corto-thunder.mp3 — pluie et tonnerre, depuis « Rain and thunder.ogg », Caesar, https://commons.wikimedia.org/wiki/File:Rain_and_thunder.ogg ; domaine public ; fondus d'entrée et de sortie, conversion mono MP3 72 kbit/s.
+
+mask-triumph.mp3 — extrait de 3,1 s de « Ceremonial Fanfare » (Jari Villanueva), interprété par le United States Air Force Heritage of America Band (2005). Source : https://commons.wikimedia.org/wiki/File:Ceremonial_Fanfare_-_Concert_Band_-_United_States_Air_Force_Heritage_of_America_Band.mp3 ; composition, interprétation et enregistrement dans le domaine public selon la source. Extrait raccourci, fondus et volume réduit.

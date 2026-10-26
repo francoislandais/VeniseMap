@@ -375,6 +375,10 @@ img.full{width:100%;border-radius:14px}
 .mask-marker.is-gem img{filter:drop-shadow(0 0 8px #ffe090) drop-shadow(0 2px 4px #251649)}
 .mask-marker:focus-visible{outline:2px solid #ffe096;outline-offset:3px;border-radius:50%}
 .mask-bloom{position:fixed;z-index:2450;display:block;object-fit:contain;pointer-events:none;transform-origin:center;filter:drop-shadow(0 0 16px rgba(255,229,150,.8));will-change:transform,opacity}
+.mask-victory-orbit{position:fixed;z-index:2451;width:0;height:0;pointer-events:none;animation:maskVictoryOrbit 1.55s linear infinite}
+.mask-victory-orbit i{position:absolute;left:0;top:0;color:#fff2a9;text-shadow:0 0 6px #fff,0 0 13px #ffce54;font:28px/1 Georgia,serif;transform:rotate(var(--angle)) translateX(var(--mask-orbit-radius)) rotate(calc(-1 * var(--angle)))}
+@keyframes maskVictoryOrbit{to{transform:rotate(360deg)}}
+.mask-vapor-star{position:fixed;z-index:2452;pointer-events:none;color:#ffe7a2;text-shadow:0 0 8px #fff,0 0 16px #ffd76c;font:20px/1 Georgia,serif}
 .mask-rain-star{position:fixed;z-index:1750;pointer-events:none;color:#fff3b4;text-shadow:0 0 7px #fff,0 0 14px #ffc445;font:25px/1 Georgia,serif}
 .mask-gem-flight{position:fixed;z-index:1900;object-fit:contain;pointer-events:none;filter:drop-shadow(0 0 12px #ffe090)}
 .maplibregl-marker.pin:not(.mep){z-index:5}
