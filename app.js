@@ -720,7 +720,7 @@ function devCompleteChapter(p, fromMapButton = false) {
   const steps = p.chapters.flatMap((c) => c.steps.filter((s) => !s.pending).flatMap(chainOf));
   new Set(steps.map((s) => s.work).filter(Boolean)).forEach((id) => { if (!workFound(id)) award("w:" + id, POINTS.work, meIdx()); });
   if (has("fin:" + p.id)) unaward("fin:" + p.id);
-  if (p.id === "murano" && has("o:coquillage-murano")) unaward("o:coquillage-murano");
+  if (p.id === "murano") for (const key of ["o:coquillage-murano", "bonus:murano-shell", "o:cle-gondolier"]) if (has(key)) unaward(key);
   if (has("tr:" + p.id)) unaward("tr:" + p.id);
   Object.keys(S.done).filter((key) => has(key) && (key.startsWith(`st:${p.id}:`) || (p.musicChallenge && key.startsWith(`music:${p.musicChallenge.entry}:`)) || (p.id === "miracoli" && key.startsWith("music:02:")))).forEach(unaward);
   save(); closeSheet(); refreshAll(); openChapters(p, false, true);
@@ -990,8 +990,33 @@ function walkerTap(W) {
   const d = walkerAt(W), m = pos ? dist(pos.lat, pos.lon, d.lat, d.lon) : Infinity;
   if (m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
   if (W.id === "gondolier") {
-    openGondolierRendezvous(() => {
-      if (!has("story:gondolier:first")) { award("story:gondolier:first", 0, meIdx()); save(); }
+    openGondolierRendezvous({
+      onComplete: () => {
+        if (!has("story:gondolier:first")) { award("story:gondolier:first", 0, meIdx()); save(); }
+      },
+      getOwnedObjects: () => objectList().filter((item) => item.found).map(({ id, name, img }) => ({ id, name, img })),
+      hasKey: () => objectFoundFor("cle-gondolier"),
+      onTrade: (selectedIds) => {
+        if (objectFoundFor("cle-gondolier")) return { accepted: false, message: "Tu as déjà ma clé, moussaillon. Garde tes trésors !" };
+        if (!selectedIds.includes("coquillage-murano") || !objectFoundFor("coquillage-murano")) {
+          return { accepted: false, message: "Ce sont de beaux objets, moussaillon, mais je n'échangerai ma clé que contre le coquillage magique de Murano." };
+        }
+        const player = meIdx(), shellGrant = grantKey(player, `object:coquillage-murano`);
+        // La première version du coquillage portait les 50 étoiles sur l'objet lui-même.
+        // Les transférer au gain permanent avant de retirer l'objet évite une perte de grade.
+        const legacyPoints = has(MURANO_SHELL_KEY) ? Number(S.done[MURANO_SHELL_KEY].p) || 0 : 0;
+        if (legacyPoints && !has("bonus:murano-shell")) award("bonus:murano-shell", legacyPoints, player);
+        if (has(MURANO_SHELL_KEY)) unaward(MURANO_SHELL_KEY);
+        if (has(shellGrant)) unaward(shellGrant);
+        award("o:cle-gondolier", 0, player);
+        objectAssembly.delete("coquillage-murano");
+        if (heldId === "coquillage-murano") { heldId = null; heldEl?.remove(); heldEl = null; saveHeld(); }
+        save(); refreshAll();
+        if (!has("story:gondolier:first")) { award("story:gondolier:first", 0, player); save(); }
+        return { accepted: true, message: selectedIds.length > 1
+          ? "Ah, le coquillage magique de Murano ! Je ne prends que lui : garde tes autres trouvailles. En échange, voici ma clé !"
+          : "Ah, le coquillage magique de Murano ! C'est exactement ce que je cherchais. En échange, voici ma clé !" };
+      },
     });
     return;
   }
@@ -1498,7 +1523,7 @@ async function collectMuranoShell() {
   }
   const { cx, cy, ghost } = await bloomMask(record.img);
   if (player !== meIdx()) { await evaporateMask({ cx, cy, ghost }); record.img.style.visibility = ""; record.busy = false; return; }
-  award(MURANO_SHELL_KEY, 50, player); save(); refreshAll();
+  award(MURANO_SHELL_KEY, 0, player); award("bonus:murano-shell", 50, player); save(); refreshAll();
   maskRain(cx, cy); starsToCounter(cx, cy, 50, true);
   const from = ghost.getBoundingClientRect(), book = $("#home-btn")?.getBoundingClientRect();
   const flight = record.img.cloneNode(); flight.className = "mask-gem-flight murano-shell-flight";
@@ -3317,6 +3342,7 @@ const PREVIEW_OBJECTS = DEV;
 const OBJECTS = [
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
   { id: "coquillage-murano", name: "Le coquillage magique de Murano", img: "coquillage-murano.svg", key: MURANO_SHELL_KEY },
+  { id: "cle-gondolier", name: "La clé du gondolier", img: "cle-bronze.svg", key: "o:cle-gondolier" },
   { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
   { id: "basilique", name: "La plume de l’évangéliste", img: "plume.svg", key: "tr:basilique" },
   { id: "coffre-code", name: "Le coffret à code", img: "coffre-code.svg", key: "o:coffre-code" },
@@ -3779,7 +3805,7 @@ async function resetPlaceProgress(places) {
     if (key === "finale") return places.length === PLACES.length;
     const [kind, id] = key.split(":");
     const grant = /^grant:\d+:(object|music|music-won):(.+)$/.exec(key);
-    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (kind === "o" && id === "coquillage-murano" && ids.has("murano")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
+    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (["o:coquillage-murano", "bonus:murano-shell", "o:cle-gondolier"].includes(key) && ids.has("murano")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
   });
   keys.forEach(unaward);
   places.forEach((p) => { delete introSeen[p.id]; });
@@ -3898,7 +3924,7 @@ function renderSettings() {
       fb.onclick = () => { try { if (fsPref()) { localStorage.setItem("vq_fs", "0"); if (document.fullscreenElement) document.exitFullscreen(); } else { localStorage.removeItem("vq_fs"); enterFs(); } } catch {} lab(); }; } } }
   fetch("img/ponts/credits.json").then((r) => r.json()).then((c) => { const el = $("#credits", v); if (el) el.insertAdjacentHTML("beforeend", `<p style="margin:10px 0 4px"><b>Ponts</b></p>` + Object.values(c).map((x) => `<p style="margin:4px 0">${esc(x.name)} : ${esc(x.author)} · ${esc(x.license)} · <a href="${esc(x.url)}" target="_blank" rel="noopener">source</a></p>`).join("")); }).catch(() => {});
   fetch("img/places/credits.json").then((r) => r.json()).then((c) => { const el = $("#credits", v); if (el) el.insertAdjacentHTML("afterbegin", Object.entries(c).map(([id, x]) => `<p style="margin:6px 0"><b>${esc(place(id)?.name || id)}</b> : ${esc(x.author)} · ${esc(x.license)} · <a href="${esc(x.url)}" target="_blank" rel="noopener">source</a></p>`).join("")); }).catch(() => {});
-  fetch("img/q/credits.json").then((r) => r.json()).then((c) => { const el = $("#credits", v); if (el) el.insertAdjacentHTML("beforeend", `<p style="margin:10px 0 4px"><b>Épreuves · Torcello</b></p>` + Object.values(c).map((x) => `<p style="margin:4px 0">${esc(x.title)} : ${esc(x.author)} · ${esc(x.license)} · <a href="${esc(x.url)}" target="_blank" rel="noopener">source</a></p>`).join("")); }).catch(() => {});
+  fetch("img/q/credits.json").then((r) => r.json()).then((c) => { const el = $("#credits", v); if (!el) return; const groups = {}; Object.values(c).forEach((x) => ((groups[x.place || ""] ||= []).push(x))); const html = Object.entries(groups).map(([id, items]) => `<p style="margin:10px 0 4px"><b>${esc(place(id)?.name || id)}</b></p>` + items.map((x) => `<p style="margin:4px 0">${esc(x.title)} : ${esc(x.author)} · ${esc(x.license)} · <a href="${esc(x.url)}" target="_blank" rel="noopener">source</a></p>`).join("")).join(""); el.insertAdjacentHTML("beforeend", html); }).catch(() => {});
   $$('[data-delete-player]', v).forEach((button) => button.onclick = async () => {
     const playerId = button.dataset.deletePlayer, name = adminPlayers.find((p) => p.id === playerId)?.name || "ce joueur";
     if (!confirm(`Supprimer ${name} et son score ? Ses photos locales seront effacées quand son appareil se reconnectera.`)) return;
@@ -3975,7 +4001,7 @@ function downloadOfflinePack(report) {
     const manifest = await response.json();
     if (!Array.isArray(manifest.files) || !manifest.files.length) throw new Error("La liste des fichiers du jeu est vide.");
     if (!useStamen) throw new Error("La carte aquarelle n’est pas disponible sur ce téléphone.");
-    const shell = await caches.open("vq-shell-v2.328.3"), tiles = await caches.open("vq-tiles");
+    const shell = await caches.open("vq-shell-v2.328.5"), tiles = await caches.open("vq-tiles");
     const jobs = manifest.files.map((path) => ({ url: new URL(path, location.origin + "/").href, cache: shell, kind: "game" }));
     jobs.push(...tilesFor(OFM_TILES, 14, OFFLINE_VECTOR_BOXES).map((url) => ({ url, cache: shell, kind: "ofm" })));
     for (const font of FONTS) for (const range of ["0-255", "256-511"]) jobs.push({ url: OFM_GLYPHS.replace("{fontstack}", encodeURIComponent(font)).replace("{range}", range), cache: shell, kind: "ofm" });

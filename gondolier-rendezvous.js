@@ -1,8 +1,8 @@
 // Première rencontre : les paroles du gondolier, sans texte narratif ni récompense prématurée.
 const IMAGE = "img/narrative/corto-gondolier-fin.png";
 const STORM = "img/narrative/gondolier-debut-tempete.png";
-const SPEAKER = "img/narrative/gondolier-speaker.png";
 const KEY = "img/narrative/gondolier-gold-key.png";
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const LINES = [
   "Ah, cette fameuse nuit… Crois-moi, moussaillon, je ne suis pas près de l'oublier !",
   "Je naviguais dans un canal étroit, entre deux vieux palais. Il faisait nuit noire et le vent soufflait avec une violence incroyable !",
@@ -48,7 +48,7 @@ function typeLine(element) {
   return { get done() { return done; }, finish };
 }
 
-export function openGondolierRendezvous(onComplete) {
+export function openGondolierRendezvous({ onComplete, getOwnedObjects, hasKey, onTrade } = {}) {
   if (document.querySelector(".corto-rendezvous")) return;
   const previousFocus = document.activeElement;
   const overlay = document.createElement("div");
@@ -57,13 +57,14 @@ export function openGondolierRendezvous(onComplete) {
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-label", "Conversation avec le gondolier");
   overlay.tabIndex = -1;
-  overlay.innerHTML = `<img class="gr-painting" src="${IMAGE}" alt=""><img class="gr-storm" src="${STORM}" alt=""><div class="gr-shade"></div><div class="gr-stage"></div><img class="gr-speaker" src="${SPEAKER}" alt=""><button class="cr-close" type="button" aria-label="Fermer la rencontre">×</button><button class="cr-prev" type="button" aria-label="Page précédente" hidden>‹ Précédent</button>`;
+  overlay.innerHTML = `<img class="gr-painting" src="${IMAGE}" alt=""><img class="gr-storm" src="${STORM}" alt=""><div class="gr-shade"></div><div class="gr-stage"></div><button class="cr-close" type="button" aria-label="Fermer la rencontre">×</button><button class="cr-prev" type="button" aria-label="Page précédente" hidden>‹ Précédent</button>`;
   document.body.appendChild(overlay);
   document.body.classList.add("corto-rendezvous-open");
   new Image().src = KEY;
   new Image().src = STORM;
   const stage = overlay.querySelector(".gr-stage"), previous = overlay.querySelector(".cr-prev");
   let index = 0, scene = null, typing = null, pointerStart = null;
+  const selected = new Set();
   const close = (completed = false) => {
     typing?.finish();
     document.removeEventListener("keydown", onKey);
@@ -72,17 +73,56 @@ export function openGondolierRendezvous(onComplete) {
     previousFocus?.focus?.();
     if (completed) onComplete?.();
   };
+  const renderTrade = (host) => {
+    if (hasKey?.()) {
+      host.innerHTML = `<p class="gr-trade-answer">Ma clé est maintenant dans ton livre, moussaillon. Prends-en soin !</p>`;
+      return;
+    }
+    const offer = document.createElement("button"); offer.type = "button"; offer.className = "gr-trade-open"; offer.textContent = "Proposer un échange";
+    const panel = document.createElement("div"); panel.className = "gr-trade-panel"; panel.hidden = true;
+    host.append(offer, panel);
+    offer.onclick = () => {
+      offer.hidden = true; panel.hidden = false;
+      const owned = getOwnedObjects?.() || [];
+      const ids = new Set(owned.map((item) => item.id));
+      for (const id of selected) if (!ids.has(id)) selected.delete(id);
+      if (!owned.length) {
+        panel.innerHTML = `<p class="gr-trade-answer">Tu n'as encore aucun objet à proposer. Reviens me voir après tes découvertes !</p>`;
+      } else {
+        panel.innerHTML = `<p class="gr-trade-prompt">Choisis les objets que tu veux m'offrir.</p><div class="gr-trade-grid">${owned.map((item) => `<button type="button" class="gr-trade-item" data-item="${escapeHtml(item.id)}" aria-pressed="${selected.has(item.id)}"><img src="${escapeHtml(item.img)}" alt=""><span>${escapeHtml(item.name)}</span></button>`).join("")}</div><button type="button" class="gr-trade-submit" ${selected.size ? "" : "disabled"}>Proposer au gondolier</button><p class="gr-trade-answer" role="status" aria-live="polite"></p>`;
+        const submit = panel.querySelector(".gr-trade-submit"), answer = panel.querySelector(".gr-trade-answer");
+        panel.querySelectorAll(".gr-trade-item").forEach((button) => {
+          button.onclick = () => {
+            const id = button.dataset.item;
+            if (selected.has(id)) selected.delete(id); else selected.add(id);
+            button.setAttribute("aria-pressed", String(selected.has(id)));
+            submit.disabled = !selected.size;
+            answer.textContent = "";
+          };
+        });
+        submit.onclick = () => {
+          const result = onTrade?.([...selected]);
+          answer.textContent = result?.message || "L'échange n'a pas pu avoir lieu. Réessaie.";
+          if (!result?.accepted) return;
+          panel.innerHTML = `<div class="gr-trade-success"><img src="${KEY}" alt="Clé du gondolier"><p>${escapeHtml(result.message)}</p><button type="button" class="gr-trade-finish">Retour à la carte</button></div>`;
+          panel.querySelector(".gr-trade-finish").onclick = () => close(true);
+        };
+      }
+      panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    };
+  };
   const show = () => {
     typing?.finish();
     overlay.classList.toggle("gr-storm-active", index === 1 || index === 2);
     stage.querySelectorAll(".gr-exit").forEach((old) => old.remove());
     const next = document.createElement("div");
     next.className = `gr-scene${scene ? " gr-enter" : ""}`;
-    next.innerHTML = `${index === 5 || index === 6 ? `<img class="gr-key" src="${KEY}" alt="Clé d'or brillante">` : ""}<div class="gr-scroll"><div class="gr-copy">${LINES[index].replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div></div>`;
+    next.innerHTML = `${index === 5 || index === 6 ? `<img class="gr-key" src="${KEY}" alt="Clé d'or brillante">` : ""}<div class="gr-scroll"><div class="gr-copy">${LINES[index].replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>${index === LINES.length - 1 ? '<div class="gr-trade"></div>' : ""}</div>`;
     const old = scene;
     stage.appendChild(next);
     scene = next;
     typing = matchMedia("(prefers-reduced-motion: reduce)").matches ? null : typeLine(next.querySelector(".gr-copy"));
+    if (index === LINES.length - 1) renderTrade(next.querySelector(".gr-trade"));
     previous.hidden = index === 0;
     if (!old) return;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) { old.remove(); next.classList.remove("gr-enter"); return; }
@@ -94,15 +134,17 @@ export function openGondolierRendezvous(onComplete) {
   const back = () => { if (index > 0) { index--; show(); } };
   const onKey = (event) => {
     if (event.key === "Escape") close();
+    else if (event.target.closest?.(".gr-trade")) return;
     else if (event.key === "ArrowRight" || ((event.key === "Enter" || event.key === " ") && event.target === overlay)) { event.preventDefault(); advance(); }
     else if (event.key === "ArrowLeft") { event.preventDefault(); back(); }
   };
   document.addEventListener("keydown", onKey);
   stage.addEventListener("pointerdown", (event) => {
-    if (!event.isPrimary || event.button !== 0) return;
+    if (!event.isPrimary || event.button !== 0 || event.target.closest?.(".gr-trade")) return;
     pointerStart = { x: event.clientX, y: event.clientY, scroll: scene.querySelector(".gr-scroll")?.scrollTop || 0, time: Date.now() };
   });
   stage.addEventListener("pointerup", (event) => {
+    if (event.target.closest?.(".gr-trade")) { pointerStart = null; return; }
     const start = pointerStart; pointerStart = null;
     if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12 || Date.now() - start.time > 800) return;
     if (Math.abs((scene.querySelector(".gr-scroll")?.scrollTop || 0) - start.scroll) > 4) return;

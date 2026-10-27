@@ -1311,8 +1311,6 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .gondolier-rendezvous .gr-storm{position:absolute;top:0;left:-4%;width:108%;height:100%;object-fit:cover;object-position:50% 50%;opacity:0;pointer-events:none;transition:opacity .7s ease;animation:cr-watercolor-drift 20s ease-in-out infinite alternate}
 .gondolier-rendezvous.gr-storm-active .gr-storm{opacity:1}
 .gr-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(7,17,30,.6) 0%,rgba(7,17,30,.58) 48%,rgba(7,17,30,.2) 76%,rgba(7,17,30,.65) 100%)}
-.gr-speaker{position:absolute;z-index:3;right:14px;bottom:calc(72px + env(safe-area-inset-bottom,0px));width:clamp(82px,23vw,120px);height:auto;pointer-events:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.55));animation:gr-speaker-bob 4s ease-in-out infinite alternate}
-@keyframes gr-speaker-bob{from{transform:translateY(0)}to{transform:translateY(-5px)}}
 .gr-stage{position:absolute;z-index:1;inset:0;cursor:pointer;touch-action:pan-y}
 .gr-scene{position:absolute;inset:0;opacity:1;transition:opacity .48s ease}
 .gr-scene.gr-enter,.gr-scene.gr-exit{opacity:0}
@@ -1323,7 +1321,19 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .gr-scroll{position:absolute;z-index:2;inset:0;overflow-y:auto;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 17dvh) clamp(25px,7vw,55px) calc(85px + env(safe-area-inset-bottom,0px))}
 .gr-copy{max-width:620px;margin:0 auto;color:#fff;font-size:clamp(18px,4.8vw,25px);line-height:1.43;text-shadow:0 2px 8px rgba(0,0,0,.95);overflow-wrap:anywhere}
 .gr-copy strong{font-weight:900;color:#fff}
-@media (prefers-reduced-motion:reduce){.gondolier-rendezvous .gr-painting,.gondolier-rendezvous .gr-storm,.gr-speaker,.gr-key{animation:none}.gr-storm,.gr-scene{transition:none}.gr-key{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.gondolier-rendezvous .gr-painting,.gondolier-rendezvous .gr-storm,.gr-key{animation:none}.gr-storm,.gr-scene{transition:none}.gr-key{transform:translateX(-50%)}}
+.gr-trade{max-width:620px;margin:22px auto 0;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.9)}
+.gr-trade-open,.gr-trade-submit,.gr-trade-finish{display:block;min-height:44px;margin:0 auto;padding:10px 20px;border:1px solid rgba(209,237,244,.75);border-radius:999px;background:#102d49;color:#fff;font:700 15px/1.25 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,8,20,.38)}
+.gr-trade-submit{position:sticky;bottom:calc(6px + env(safe-area-inset-bottom,0px));z-index:4;margin-top:15px}
+.gr-trade-submit:disabled{opacity:.5}
+.gr-trade-prompt,.gr-trade-answer{margin:10px 0 14px;color:#fff;font:18px/1.35 Arial,sans-serif;text-align:center}
+.gr-trade-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:570px;margin:auto}
+.gr-trade-item{min-width:0;min-height:98px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:6px;border:1px solid rgba(219,236,232,.5);border-radius:13px;background:rgba(9,34,52,.78);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.gr-trade-item[aria-pressed="true"]{border:2px solid #ffe39b;background:rgba(28,69,81,.94);box-shadow:0 0 0 2px rgba(255,226,141,.4)}
+.gr-trade-item img{width:47px;height:47px;object-fit:contain}
+.gr-trade-item span{font:12px/1.16 Arial,sans-serif;text-align:center}
+.gr-trade-success{text-align:center}.gr-trade-success img{display:block;width:min(55vw,175px);height:150px;object-fit:contain;margin:0 auto 12px;filter:drop-shadow(0 0 12px #f6d978)}
+.gr-trade-success p{margin:0 0 18px;font:19px/1.35 Arial,sans-serif}
 
 /* Message final de Corto : plus bas (plus de « toucher pour continuer »), il laisse passer les touchers vers la carte */
 .in2-end{pointer-events:none;padding-top:70px;padding-bottom:calc(2px + var(--safe-b))}

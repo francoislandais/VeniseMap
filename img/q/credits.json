@@ -26,5 +26,33 @@
     "author": "Sailko",
     "license": "CC BY 3.0 · image redimensionnée et convertie en WebP",
     "url": "https://commons.wikimedia.org/wiki/File:Torcello,_ponte_del_diavolo_01.jpg"
+  },
+  "burano-lace.webp": {
+    "place": "burano",
+    "title": "Burano dentelliere.JPG",
+    "author": "abxbay",
+    "license": "domaine public · image redimensionnée et convertie en WebP",
+    "url": "https://commons.wikimedia.org/wiki/File:Burano_dentelliere.JPG"
+  },
+  "burano-galuppi.webp": {
+    "place": "burano",
+    "title": "Burano - Baldassare Galuppi.jpg",
+    "author": "Didier Descouens",
+    "license": "CC BY-SA 4.0 · image redimensionnée et convertie en WebP",
+    "url": "https://commons.wikimedia.org/wiki/File:Burano_-_Baldassare_Galuppi.jpg"
+  },
+  "burano-bussola.webp": {
+    "place": "burano",
+    "title": "Bussola Gebäck, Spezialität der Insel Burano in Venedig, Italien.jpg",
+    "author": "Naturpuur",
+    "license": "CC BY 4.0 · image redimensionnée et convertie en WebP",
+    "url": "https://commons.wikimedia.org/wiki/File:Bussola_Geb%C3%A4ck,_Spezialit%C3%A4t_der_Insel_Burano_in_Venedig,_Italien.jpg"
+  },
+  "buranotour-leaning.webp": {
+    "place": "buranotour",
+    "title": "The Leaning Tower of Burano.JPG",
+    "author": "Ethan Doyle White",
+    "license": "CC BY-SA 4.0 · image redimensionnée et convertie en WebP",
+    "url": "https://commons.wikimedia.org/wiki/File:The_Leaning_Tower_of_Burano.JPG"
   }
 }
