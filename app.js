@@ -720,6 +720,7 @@ function devCompleteChapter(p, fromMapButton = false) {
   const steps = p.chapters.flatMap((c) => c.steps.filter((s) => !s.pending).flatMap(chainOf));
   new Set(steps.map((s) => s.work).filter(Boolean)).forEach((id) => { if (!workFound(id)) award("w:" + id, POINTS.work, meIdx()); });
   if (has("fin:" + p.id)) unaward("fin:" + p.id);
+  if (p.id === "murano" && has("o:coquillage-murano")) unaward("o:coquillage-murano");
   if (has("tr:" + p.id)) unaward("tr:" + p.id);
   Object.keys(S.done).filter((key) => has(key) && (key.startsWith(`st:${p.id}:`) || (p.musicChallenge && key.startsWith(`music:${p.musicChallenge.entry}:`)) || (p.id === "miracoli" && key.startsWith("music:02:")))).forEach(unaward);
   save(); closeSheet(); refreshAll(); openChapters(p, false, true);
@@ -1451,6 +1452,65 @@ function renderMasks(points) {
   updateMaskMarkers();
 }
 fetch("data/masques.json").then((r) => { if (!r.ok) throw new Error("Masques indisponibles"); return r.json(); }).then((data) => renderMasks(data.points || [])).catch((e) => console.warn(e.message));
+
+// Le coquillage de Murano n'apparaît qu'après le secret révélé par Corto à la fin de l'épreuve.
+const MURANO_SHELL = { lat: 45.45848, lon: 12.34878, radius: 55, img: "img/objets/coquillage-murano.svg" };
+const MURANO_SHELL_KEY = "o:coquillage-murano";
+let muranoShellMarker = null;
+function updateMuranoShellMarker() {
+  const available = JEU && has("fin:murano") && !has(MURANO_SHELL_KEY) && !has(grantKey(meIdx(), `object:coquillage-murano`));
+  if (!available) {
+    if (muranoShellMarker && !muranoShellMarker.busy) { muranoShellMarker.marker.remove(); muranoShellMarker = null; }
+    return;
+  }
+  if (!muranoShellMarker) {
+    const el = document.createElement("button"); el.type = "button"; el.className = "murano-shell-marker";
+    el.setAttribute("aria-label", "Découvrir le coquillage magique de Murano");
+    const img = document.createElement("img"); img.src = MURANO_SHELL.img; img.alt = ""; img.draggable = false; el.appendChild(img);
+    const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([MURANO_SHELL.lon, MURANO_SHELL.lat]).addTo(map);
+    muranoShellMarker = { marker, el, img, busy: false };
+    el.addEventListener("pointerdown", (event) => event.stopPropagation());
+    el.addEventListener("click", (event) => { event.stopPropagation(); collectMuranoShell(); });
+  }
+  const zoom = map.getZoom();
+  muranoShellMarker.el.hidden = zoom < 14;
+  muranoShellMarker.el.style.setProperty("--murano-shell-size", Math.round(Math.min(64, Math.max(44, 34 * 1.38 ** (zoom - 15)))) + "px");
+}
+map.on("zoom", updateMuranoShellMarker);
+async function collectMuranoShell() {
+  const record = muranoShellMarker;
+  if (!record || record.busy || !mapWorkVisible() || !has("fin:murano") || has(MURANO_SHELL_KEY)) return;
+  record.busy = true; record.el.classList.add("is-searching"); armMaskSound();
+  const player = meIdx(), started = performance.now();
+  const turn = record.img.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], { duration: 900, iterations: Infinity });
+  let frame = 0;
+  const accelerate = (now) => { turn.playbackRate = Math.min(7, 1 + (now - started) / 450); frame = requestAnimationFrame(accelerate); };
+  frame = requestAnimationFrame(accelerate);
+  const [fix] = await Promise.all([maskFix(), sleep(1000)]);
+  cancelAnimationFrame(frame); turn.cancel(); record.el.classList.remove("is-searching");
+  if (!record.el.isConnected || player !== meIdx()) { record.busy = false; return; }
+  if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.acc) || fix.acc > 80) {
+    record.busy = false; toast("Je ne parviens pas à vérifier ta position. Réessaie près du coquillage."); return;
+  }
+  const distance = dist(fix.lat, fix.lon, MURANO_SHELL.lat, MURANO_SHELL.lon);
+  if (distance > MURANO_SHELL.radius + Math.min(fix.acc, 20)) {
+    record.busy = false; cortoSays(`Le coquillage est encore à ${fmtD(distance)}. Approche-toi, matelot !`); return;
+  }
+  const { cx, cy, ghost } = await bloomMask(record.img);
+  if (player !== meIdx()) { await evaporateMask({ cx, cy, ghost }); record.img.style.visibility = ""; record.busy = false; return; }
+  award(MURANO_SHELL_KEY, 50, player); save(); refreshAll();
+  maskRain(cx, cy); starsToCounter(cx, cy, 50, true);
+  const from = ghost.getBoundingClientRect(), book = $("#home-btn")?.getBoundingClientRect();
+  const flight = record.img.cloneNode(); flight.className = "mask-gem-flight murano-shell-flight";
+  flight.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px`;
+  document.body.appendChild(flight); ghost.remove();
+  if (book) {
+    const dx = book.left + book.width / 2 - (from.left + from.width / 2), dy = book.top + book.height / 2 - (from.top + from.height / 2);
+    await flight.animate([{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.1)", opacity: 1, offset: .2 }, { transform: `translate(${dx}px,${dy}px) scale(.12)`, opacity: 0 }], { duration: 1050, easing: "cubic-bezier(.3,0,.4,1)", fill: "forwards" }).finished.catch(() => {});
+  }
+  flight.remove(); record.busy = false; updateMuranoShellMarker();
+  toast("Coquillage magique rangé dans ton livre ! +50 ⭐", 5000);
+}
 
 $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientRect());
 // Pastille de Corto (en bas à gauche, toujours visible) : un toucher fait parler Corto — pour l'instant il salue seulement ; plus tard il donnera ici ses indices.
@@ -2254,7 +2314,7 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
 const endBravo = () => `Bravo, ${cortoAddress()} !`;
-const endSecret = (p) => p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
+const endSecret = (p) => p.id === "murano" ? "Un coquillage magique était caché sur cette île… et il vient d’apparaître ! Cherche-le sur ta carte, dans un coin tranquille de Murano, près de Santa Maria degli Angeli." : p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
 function conclusionEditor(sh, p, elements, defaults) {
   conclusionEditorAbort?.abort();
   const layout = (CONCLUSION_LAYOUT[p.id] ||= {});
@@ -2308,7 +2368,7 @@ async function chapEnd(p, replay, preview = false) {
   emblem.className = "chap-victory";
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
-  const hasSecret = !!(p.reward || p.musicChallenge);
+  const hasSecret = p.id === "murano" || !!(p.reward || p.musicChallenge);
   const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? endSecret(p) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
@@ -2317,7 +2377,9 @@ async function chapEnd(p, replay, preview = false) {
   bubble.classList.remove("typing");
   bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span>${hasSecret ? `<span class="chap-secret-clue">${esc(defaults.secret)}</span>` : ""}`;
   fitChapTalk();
-  if (!preview && p.reward && !has("fin:" + p.id)) { award("fin:" + p.id, 0, meIdx()); save(); }
+  if (!preview && (p.reward || p.id === "murano" && complete(p)) && !has("fin:" + p.id)) {
+    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker();
+  }
   let planButton = null, photoButton = null;
   if (p.plan || p.musicChallenge || MONTAGES[p.id]) {
     const actions = document.createElement("div"); actions.className = "chap-end-actions" + (MONTAGES[p.id] ? " has-photo" : ""); bt.appendChild(actions);
@@ -3254,6 +3316,7 @@ const BADGES = [
 const PREVIEW_OBJECTS = DEV;
 const OBJECTS = [
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
+  { id: "coquillage-murano", name: "Le coquillage magique de Murano", img: "coquillage-murano.svg", key: MURANO_SHELL_KEY },
   { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
   { id: "basilique", name: "La plume de l’évangéliste", img: "plume.svg", key: "tr:basilique" },
   { id: "coffre-code", name: "Le coffret à code", img: "coffre-code.svg", key: "o:coffre-code" },
@@ -3716,7 +3779,7 @@ async function resetPlaceProgress(places) {
     if (key === "finale") return places.length === PLACES.length;
     const [kind, id] = key.split(":");
     const grant = /^grant:\d+:(object|music|music-won):(.+)$/.exec(key);
-    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? ids.has(grant[2]) : musicIds.has(grant[2]));
+    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (kind === "o" && id === "coquillage-murano" && ids.has("murano")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
   });
   keys.forEach(unaward);
   places.forEach((p) => { delete introSeen[p.id]; });
@@ -4010,7 +4073,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");

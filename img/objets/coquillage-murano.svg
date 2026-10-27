@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Coquillage magique de Murano">
+  <defs>
+    <radialGradient id="shell" cx="50%" cy="82%" r="78%"><stop offset="0" stop-color="#fff0b5"/><stop offset=".48" stop-color="#7de0d5"/><stop offset="1" stop-color="#237e9a"/></radialGradient>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#a5f4e6"/><stop offset="1" stop-color="#397e9a"/></linearGradient>
+  </defs>
+  <ellipse cx="100" cy="188" rx="60" ry="6" fill="#173a54" opacity=".22"/>
+  <path d="M82 174 20 136Q13 119 31 116Q29 98 47 100Q50 82 67 89Q74 72 89 83Q100 68 111 83Q126 72 133 89Q150 82 153 100Q171 98 169 116Q187 119 180 136L118 174Z" fill="url(#shell)" stroke="#155474" stroke-width="3" stroke-linejoin="round"/>
+  <g fill="none" stroke-linecap="round"><g stroke="#145a77" stroke-opacity=".45" stroke-width="2"><path d="M100 169 21 136M100 169 31 116M100 169 47 100M100 169 67 89M100 169 89 83M100 169 111 83M100 169 133 89M100 169 153 100M100 169 169 116M100 169 180 136"/></g><g stroke="#e9fff2" stroke-opacity=".72" stroke-width="3"><path d="M100 166 31 130M100 166 44 111M100 166 60 99M100 166 80 92M100 166 100 90M100 166 121 92M100 166 140 100M100 166 157 113M100 166 169 130"/></g></g>
+  <path d="M74 174h52l7 12q-33 11-66 0Z" fill="url(#base)" stroke="#155474" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M47 107Q100 52 153 107" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="5" stroke-linecap="round"/>
+  <path d="m23 73 3 8 8 3-8 3-3 8-3-8-8-3 8-3Zm153-12 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" fill="#fff4ae"/>
+</svg>
