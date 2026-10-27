@@ -160,6 +160,7 @@ function applyConfiguredGrants() {
   const gained = [];
   for (const [reward, target] of Object.entries(rewardPlacements)) {
       const player = 0;
+      if (has(`trade:gondolier:spent:${reward}`)) continue;
       if (has("o:cle-gondolier") && (reward === "object:coquillage-murano" || reward === "object:diamant")) continue;
       if (!/^t:[a-z0-9-]+:[0-9]{1,3}$/.test(target) || !has(target) || has(grantKey(player, reward))) continue;
       award(grantKey(player, reward), 0, player); gained.push({ player, reward });
@@ -992,7 +993,7 @@ function farLine(W) {
 }
 function walkerTap(W) {
   const d = walkerAt(W), m = pos ? dist(pos.lat, pos.lon, d.lat, d.lon) : Infinity;
-  if (m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
+  if (W.id !== "gondolier" && m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
   if (W.id === "gondolier") {
     openGondolierRendezvous({
       editable: LOCAL_DEV,
@@ -1010,20 +1011,29 @@ function walkerTap(W) {
       },
       hasKey: () => !LOCAL_DEV && objectFoundFor("cle-gondolier"),
       onTrade: (selectedIds) => {
-        const diamond = selectedIds.find(id => id === "diamant" || (LOCAL_DEV && /^diamant-test-[1-3]$/.test(id)));
-        const validOffer = selectedIds.length === 2 && selectedIds.includes("coquillage-murano") && !!diamond;
+        const offered = [...new Set(selectedIds)].map(id => {
+          const item = objectList().find(object => object.id === id && (LOCAL_DEV || object.found));
+          if (item) return item;
+          if (LOCAL_DEV && /^diamant-test-[1-3]$/.test(id)) return { id, img: "img/objets/diamant.svg" };
+          return null;
+        });
+        const isShell = item => item && ["coquillage-murano", "frari"].includes(item.id);
+        const isDiamond = item => item && item.img === "img/objets/diamant.svg";
+        const validOffer = offered.length >= 2 && offered.every(item => isShell(item) || isDiamond(item))
+          && offered.some(isShell) && offered.some(isDiamond);
         const refusal = { accepted: false, message: "Quoi ? Juste ce vieux truc en échange de ma clé d'or ? Tu te moques de moi, moussaillon !" };
         if (LOCAL_DEV) return validOffer
           ? { accepted: true, message: "Voilà un échange qui me convient. Cette clé d'or est à toi." }
           : refusal;
         if (objectFoundFor("cle-gondolier")) return { accepted: false, message: "Tu as déjà ma clé, moussaillon. Garde tes trésors !" };
-        if (!validOffer || !objectFoundFor("coquillage-murano") || !objectFoundFor("diamant")) return refusal;
+        if (!validOffer) return refusal;
         const player = meIdx();
-        const given = ["coquillage-murano", "diamant"];
-        const keys = given.flatMap(id => [OBJECTS.find(item => item.id === id).key, grantKey(player, `object:${id}`)]);
+        const given = offered.map(item => item.id);
+        const keys = [...new Set(offered.flatMap(item => [item.key, grantKey(player, `object:${item.id}`)]))];
         const earnedPoints = keys.reduce((sum, key) => sum + (has(key) ? Number(S.done[key].p) || 0 : 0), 0);
         if (earnedPoints) award("bonus:trade:gondolier", earnedPoints, player);
         keys.forEach(key => { if (has(key)) unaward(key); });
+        given.forEach(id => award(`trade:gondolier:spent:object:${id}`, 0, player));
         award("o:cle-gondolier", 0, player);
         given.forEach(id => objectAssembly.delete(id));
         if (given.includes(heldId)) { heldId = null; heldEl?.remove(); heldEl = null; saveHeld(); }
