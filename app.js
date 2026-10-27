@@ -1186,7 +1186,7 @@ async function flyOliveToBook(button, icon) {
 function openOliveTree(tree) {
   closeOlivePanel();
   const panel = document.createElement("section"); panel.className = "olive-panel"; panel.setAttribute("role", "dialog"); panel.setAttribute("aria-modal", "true"); panel.setAttribute("aria-label", "L’olivier de Torcello");
-  panel.innerHTML = `<div class="olive-card"><button type="button" class="olive-close" aria-label="Retour à la carte">×</button><h2>L’olivier de Torcello</h2><div class="olive-photo"><img src="${tree.photo}" alt="Photographie de l’olivier près du trône de pierre à Torcello"></div><p class="olive-name">Son fruit : l’olive</p><p class="olive-hint">Touche les trois olives qui scintillent dans son feuillage.</p><small class="olive-credit">Photo : <a href="${tree.photoCredit.url}" target="_blank" rel="noopener noreferrer">${tree.photoCredit.author}</a> · <a href="${tree.photoCredit.licenseUrl}" target="_blank" rel="noopener noreferrer">${tree.photoCredit.license}</a></small></div>`;
+  panel.innerHTML = `<div class="olive-card"><button type="button" class="olive-close" aria-label="Retour à la carte">×</button><div class="olive-photo"><img src="${tree.photo}" alt="L’olivier près du trône de pierre à Torcello"><span class="olive-hint" aria-live="polite">Touche les trois olives qui scintillent dans son feuillage.</span></div></div>`;
   const photo = $(".olive-photo", panel), hint = $(".olive-hint", panel);
   OLIVE_POSITIONS.forEach(([left, top], index) => {
     if (has(oliveKey(index))) return;
