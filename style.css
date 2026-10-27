@@ -1349,6 +1349,18 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .gondolier-rendezvous .gr-trade-item[aria-pressed="true"]{border:1px solid #ffe39b;background:transparent;box-shadow:0 0 0 1px rgba(255,226,141,.55)}
 .gondolier-rendezvous .gr-trade-item img{width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
 .gondolier-rendezvous .gr-trade-item span{font:11px/1.12 Arial,sans-serif}
+.gondolier-rendezvous.gr-refused .gr-copy{animation:gr-refusal .35s ease-out}
+@keyframes gr-refusal{0%,100%{translate:0}30%,70%{translate:-4px}50%{translate:4px}}
+.gondolier-rendezvous.gr-ceremony-active .gr-stage{opacity:0;pointer-events:none}
+.gondolier-rendezvous.gr-ceremony-active .cr-close,.gondolier-rendezvous.gr-ceremony-active .cr-prev,.gondolier-rendezvous.gr-ceremony-active .gr-editor{visibility:hidden}
+.gr-ceremony{position:absolute;z-index:8;inset:0;overflow:hidden;background:rgba(4,17,31,.28);pointer-events:auto}
+.gr-ceremony-copy{position:absolute;z-index:3;top:calc(env(safe-area-inset-top,0px) + 9dvh);left:7%;right:7%;margin:0;color:#fff;text-align:center;font:clamp(21px,5.5vw,32px)/1.35 "Special Elite",Georgia,serif;text-shadow:0 2px 10px #061320,0 0 18px #061320}
+.gr-ceremony-key{position:absolute;z-index:2;left:50%;top:52%;width:min(80vw,450px);height:min(65dvh,560px);object-fit:contain;filter:drop-shadow(0 0 24px #ffe68a);transform:translate(-50%,-50%)}
+.gr-ceremony-star{position:absolute;z-index:2;color:#fff2b3;font:clamp(18px,5vw,34px)/1 Georgia,serif;text-shadow:0 0 12px #ffe17a;animation:gr-ceremony-spark 1.1s ease-in-out infinite alternate;pointer-events:none}
+@keyframes gr-ceremony-spark{from{opacity:.15;transform:scale(.4) rotate(0deg)}to{opacity:1;transform:scale(1.3) rotate(35deg)}}
+.ogrid .ob.gr-book-new{animation:gr-book-glow 2.2s ease-out}
+@keyframes gr-book-glow{0%{transform:scale(.55);filter:brightness(2) drop-shadow(0 0 24px #ffdf6d)}35%{transform:scale(1.3);filter:brightness(1.8) drop-shadow(0 0 20px #ffdf6d)}100%{transform:scale(1);filter:none}}
+@media (prefers-reduced-motion:reduce){.gr-ceremony-star,.ogrid .ob.gr-book-new{animation:none}}
 
 /* Message final de Corto : plus bas (plus de « toucher pour continuer »), il laisse passer les touchers vers la carte */
 .in2-end{pointer-events:none;padding-top:70px;padding-bottom:calc(2px + var(--safe-b))}

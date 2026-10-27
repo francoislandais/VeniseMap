@@ -160,6 +160,7 @@ function applyConfiguredGrants() {
   const gained = [];
   for (const [reward, target] of Object.entries(rewardPlacements)) {
       const player = 0;
+      if (has("o:cle-gondolier") && (reward === "object:frari" || reward === "object:diamant")) continue;
       if (!/^t:[a-z0-9-]+:[0-9]{1,3}$/.test(target) || !has(target) || has(grantKey(player, reward))) continue;
       award(grantKey(player, reward), 0, player); gained.push({ player, reward });
   }
@@ -720,7 +721,8 @@ function devCompleteChapter(p, fromMapButton = false) {
   const steps = p.chapters.flatMap((c) => c.steps.filter((s) => !s.pending).flatMap(chainOf));
   new Set(steps.map((s) => s.work).filter(Boolean)).forEach((id) => { if (!workFound(id)) award("w:" + id, POINTS.work, meIdx()); });
   if (has("fin:" + p.id)) unaward("fin:" + p.id);
-  if (p.id === "murano") for (const key of ["o:coquillage-murano", "bonus:murano-shell", "o:cle-gondolier"]) if (has(key)) unaward(key);
+  if (p.id === "murano") for (const key of ["o:coquillage-murano", "bonus:murano-shell"]) if (has(key)) unaward(key);
+  if (p.id === "frari") for (const key of ["o:cle-gondolier", "bonus:trade:gondolier"]) if (has(key)) unaward(key);
   if (has("tr:" + p.id)) unaward("tr:" + p.id);
   Object.keys(S.done).filter((key) => has(key) && (key.startsWith(`st:${p.id}:`) || (p.musicChallenge && key.startsWith(`music:${p.musicChallenge.entry}:`)) || (p.id === "miracoli" && key.startsWith("music:02:")))).forEach(unaward);
   save(); closeSheet(); refreshAll(); openChapters(p, false, true);
@@ -1005,28 +1007,33 @@ function walkerTap(W) {
       },
       hasKey: () => !LOCAL_DEV && objectFoundFor("cle-gondolier"),
       onTrade: (selectedIds) => {
-        if (LOCAL_DEV) return selectedIds.includes("coquillage-murano")
-          ? { accepted: true, message: "Ah, le coquillage magique de Murano ! En échange, voici ma clé ! (Essai local : ton inventaire et tes étoiles restent inchangés.)" }
-          : { accepted: false, message: "Ce sont de beaux objets, moussaillon, mais je n'échangerai ma clé que contre le coquillage magique de Murano." };
+        const diamond = selectedIds.find(id => id === "diamant" || (LOCAL_DEV && /^diamant-test-[1-3]$/.test(id)));
+        const validOffer = selectedIds.length === 2 && selectedIds.includes("frari") && !!diamond;
+        const refusal = { accepted: false, message: "Quoi ? Juste ce vieux truc en échange de ma clé d'or ? Tu te moques de moi, moussaillon !" };
+        if (LOCAL_DEV) return validOffer
+          ? { accepted: true, message: "Voilà un échange qui me convient. Cette clé d'or est à toi." }
+          : refusal;
         if (objectFoundFor("cle-gondolier")) return { accepted: false, message: "Tu as déjà ma clé, moussaillon. Garde tes trésors !" };
-        if (!selectedIds.includes("coquillage-murano") || !objectFoundFor("coquillage-murano")) {
-          return { accepted: false, message: "Ce sont de beaux objets, moussaillon, mais je n'échangerai ma clé que contre le coquillage magique de Murano." };
-        }
-        const player = meIdx(), shellGrant = grantKey(player, `object:coquillage-murano`);
-        // La première version du coquillage portait les 50 étoiles sur l'objet lui-même.
-        // Les transférer au gain permanent avant de retirer l'objet évite une perte de grade.
-        const legacyPoints = has(MURANO_SHELL_KEY) ? Number(S.done[MURANO_SHELL_KEY].p) || 0 : 0;
-        if (legacyPoints && !has("bonus:murano-shell")) award("bonus:murano-shell", legacyPoints, player);
-        if (has(MURANO_SHELL_KEY)) unaward(MURANO_SHELL_KEY);
-        if (has(shellGrant)) unaward(shellGrant);
+        if (!validOffer || !objectFoundFor("frari") || !objectFoundFor("diamant")) return refusal;
+        const player = meIdx();
+        const given = ["frari", "diamant"];
+        const keys = given.flatMap(id => [OBJECTS.find(item => item.id === id).key, grantKey(player, `object:${id}`)]);
+        const earnedPoints = keys.reduce((sum, key) => sum + (has(key) ? Number(S.done[key].p) || 0 : 0), 0);
+        if (earnedPoints) award("bonus:trade:gondolier", earnedPoints, player);
+        keys.forEach(key => { if (has(key)) unaward(key); });
         award("o:cle-gondolier", 0, player);
-        objectAssembly.delete("coquillage-murano");
-        if (heldId === "coquillage-murano") { heldId = null; heldEl?.remove(); heldEl = null; saveHeld(); }
+        given.forEach(id => objectAssembly.delete(id));
+        if (given.includes(heldId)) { heldId = null; heldEl?.remove(); heldEl = null; saveHeld(); }
         save(); refreshAll();
         if (!has("story:gondolier:first")) { award("story:gondolier:first", 0, player); save(); }
-        return { accepted: true, message: selectedIds.length > 1
-          ? "Ah, le coquillage magique de Murano ! Je ne prends que lui : garde tes autres trouvailles. En échange, voici ma clé !"
-          : "Ah, le coquillage magique de Murano ! C'est exactement ce que je cherchais. En échange, voici ma clé !" };
+        return { accepted: true, message: "Voilà un échange qui me convient. Cette clé d'or est à toi." };
+      },
+      onKeyToBook: () => {
+        setTab("objects");
+        const key = document.querySelector('#v-objects .ob[data-o="cle-gondolier"]');
+        key?.scrollIntoView({ block: "center", behavior: "smooth" });
+        key?.classList.add("gr-book-new");
+        if (key) setTimeout(() => key.classList.remove("gr-book-new"), 2400);
       },
     });
     return;
@@ -3816,7 +3823,7 @@ async function resetPlaceProgress(places) {
     if (key === "finale") return places.length === PLACES.length;
     const [kind, id] = key.split(":");
     const grant = /^grant:\d+:(object|music|music-won):(.+)$/.exec(key);
-    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (["o:coquillage-murano", "bonus:murano-shell", "o:cle-gondolier"].includes(key) && ids.has("murano")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
+    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (["o:coquillage-murano", "bonus:murano-shell"].includes(key) && ids.has("murano")) || (["o:cle-gondolier", "bonus:trade:gondolier"].includes(key) && ids.has("frari")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
   });
   keys.forEach(unaward);
   places.forEach((p) => { delete introSeen[p.id]; });

@@ -70,7 +70,7 @@ function typeLine(element) {
 }
 
 let opening = false;
-export async function openGondolierRendezvous({ onComplete, getOwnedObjects, hasKey, onTrade, editable = false } = {}) {
+export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwnedObjects, hasKey, onTrade, editable = false } = {}) {
   if (opening || document.querySelector(".corto-rendezvous")) return;
   opening = true;
   const layout = await layoutPromise;
@@ -89,16 +89,51 @@ export async function openGondolierRendezvous({ onComplete, getOwnedObjects, has
   new Image().src = KEY;
   new Image().src = STORM;
   const stage = overlay.querySelector(".gr-stage"), previous = overlay.querySelector(".cr-prev");
-  let index = 0, scene = null, typing = null, pointerStart = null, editor = null;
+  let index = 0, scene = null, typing = null, pointerStart = null, editor = null, reactionTimer = 0, ceremony = false;
   const selected = new Set();
   const close = (completed = false) => {
+    clearTimeout(reactionTimer);
     typing?.finish();
     document.removeEventListener("keydown", onKey);
     editor?.destroy();
     overlay.remove();
     document.body.classList.remove("corto-rendezvous-open");
     previousFocus?.focus?.();
-    if (completed) onComplete?.();
+    if (completed || index === LINES.length - 1) onComplete?.();
+  };
+  const celebrate = async (message) => {
+    if (ceremony) return;
+    ceremony = true;
+    clearTimeout(reactionTimer);
+    overlay.classList.add("gr-ceremony-active");
+    const layer = document.createElement("div");
+    layer.className = "gr-ceremony";
+    layer.innerHTML = `<p class="gr-ceremony-copy">${escapeHtml(message)}</p><img class="gr-ceremony-key" src="${KEY}" alt="La clé d'or du gondolier">`;
+    for (let i = 0; i < 32; i++) {
+      const star = document.createElement("span");
+      star.className = "gr-ceremony-star";
+      star.textContent = i % 3 ? "✦" : "✧";
+      star.style.cssText = `left:${8 + Math.random() * 84}%;top:${16 + Math.random() * 70}%;animation-delay:${(Math.random() * 1.3).toFixed(2)}s`;
+      layer.appendChild(star);
+    }
+    overlay.appendChild(layer);
+    const key = layer.querySelector(".gr-ceremony-key");
+    await key.decode().catch(() => {});
+    const book = document.querySelector("#home-btn")?.getBoundingClientRect();
+    const dx = book ? book.left + book.width / 2 - innerWidth / 2 : 0;
+    const dy = book ? book.top + book.height / 2 - innerHeight / 2 : innerHeight * .45;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    await key.animate(reduced ? [
+      { transform: "translate(-50%,-50%) scale(.8)", opacity: 1 },
+      { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.08)`, opacity: 0 },
+    ] : [
+      { transform: "translate(-50%,-50%) scale(.25)", opacity: 0, filter: "brightness(2) blur(7px)" },
+      { transform: "translate(-50%,-50%) scale(2.15)", opacity: 1, filter: "brightness(1.5) drop-shadow(0 0 22px #ffe68a)", offset: .32 },
+      { transform: "translate(-50%,-50%) scale(2.3)", opacity: 1, filter: "brightness(1.7) drop-shadow(0 0 35px #ffe68a)", offset: .69 },
+      { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.08)`, opacity: 0, filter: "brightness(2) drop-shadow(0 0 12px #ffe68a)" },
+    ], { duration: reduced ? 650 : 3500, easing: "ease-in-out", fill: "forwards" }).finished.catch(() => {});
+    close(true);
+    onKeyToBook?.();
   };
   const number = (value, fallback, low, high) => Number.isFinite(Number(value)) ? Math.max(low, Math.min(high, Number(value))) : fallback;
   const applyLayout = () => {
@@ -135,6 +170,8 @@ export async function openGondolierRendezvous({ onComplete, getOwnedObjects, has
       typing?.finish();
       overlay.classList.add("gr-trade-opened");
       offer.hidden = true; panel.hidden = false;
+      const copy = scene.querySelector(".gr-copy");
+      const invitation = { html: copy.innerHTML, label: copy.getAttribute("aria-label") };
       const owned = getOwnedObjects?.() || [];
       const ids = new Set(owned.map((item) => item.id));
       for (const id of selected) if (!ids.has(id)) selected.delete(id);
@@ -149,21 +186,32 @@ export async function openGondolierRendezvous({ onComplete, getOwnedObjects, has
             if (selected.has(id)) selected.delete(id); else selected.add(id);
             button.setAttribute("aria-pressed", String(selected.has(id)));
             submit.disabled = !selected.size;
-            answer.textContent = "";
           };
         });
         submit.onclick = () => {
-          const result = onTrade?.([...selected]);
-          answer.textContent = result?.message || "L'échange n'a pas pu avoir lieu. Réessaie.";
-          if (!result?.accepted) return;
-          panel.innerHTML = `<div class="gr-trade-success"><img src="${KEY}" alt="Clé du gondolier"><p>${escapeHtml(result.message)}</p><button type="button" class="gr-trade-finish">Retour à la carte</button></div>`;
-          panel.querySelector(".gr-trade-finish").onclick = () => close(true);
+          let result;
+          try { result = onTrade?.([...selected]); } catch (error) { console.error(error); }
+          answer.textContent = "";
+          if (result?.accepted) { celebrate(result.message || "Cette clé d'or est à toi."); return; }
+          clearTimeout(reactionTimer);
+          copy.textContent = result?.message || "Cet échange ne me convient pas, moussaillon !";
+          copy.setAttribute("aria-label", copy.textContent);
+          copy.setAttribute("role", "status");
+          overlay.classList.add("gr-refused");
+          reactionTimer = setTimeout(() => {
+            if (!copy.isConnected || ceremony) return;
+            copy.innerHTML = invitation.html;
+            copy.setAttribute("aria-label", invitation.label || copy.textContent);
+            copy.removeAttribute("role");
+            overlay.classList.remove("gr-refused");
+          }, 3300);
         };
       }
       panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
     };
   };
   const show = () => {
+    clearTimeout(reactionTimer);
     typing?.finish();
     overlay.classList.remove("gr-trade-opened");
     overlay.classList.toggle("gr-storm-active", index === 1 || index === 2);
@@ -188,9 +236,10 @@ export async function openGondolierRendezvous({ onComplete, getOwnedObjects, has
     requestAnimationFrame(() => requestAnimationFrame(() => next.classList.remove("gr-enter")));
     setTimeout(() => old.remove(), 520);
   };
-  const advance = () => { if (typing && !typing.done) typing.finish(); else if (index === LINES.length - 1) close(true); else { index++; show(); } };
+  const advance = () => { if (ceremony) return; if (typing && !typing.done) typing.finish(); else if (index < LINES.length - 1) { index++; show(); } };
   const back = () => { if (index > 0) { index--; show(); } };
   const onKey = (event) => {
+    if (ceremony) return;
     if (event.key === "Escape") close();
     else if (editor?.editing) return;
     else if (event.target.closest?.(".gr-trade")) return;
