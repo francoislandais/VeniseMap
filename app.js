@@ -1186,8 +1186,8 @@ async function flyOliveToBook(button, icon) {
 function openOliveTree(tree) {
   closeOlivePanel();
   const panel = document.createElement("section"); panel.className = "olive-panel"; panel.setAttribute("role", "dialog"); panel.setAttribute("aria-modal", "true"); panel.setAttribute("aria-label", "L’olivier de Torcello");
-  panel.innerHTML = `<div class="olive-card"><button type="button" class="olive-close" aria-label="Retour à la carte">×</button><div class="olive-photo"><img src="${tree.photo}" alt="L’olivier près du trône de pierre à Torcello"><span class="olive-hint" aria-live="polite">Touche les trois olives qui scintillent dans son feuillage.</span></div></div>`;
-  const photo = $(".olive-photo", panel), hint = $(".olive-hint", panel);
+  panel.innerHTML = `<div class="olive-card"><button type="button" class="olive-close" aria-label="Retour à la carte">×</button><div class="olive-photo"><img src="${tree.photo}" alt="L’olivier près du trône de pierre à Torcello"></div></div>`;
+  const photo = $(".olive-photo", panel);
   OLIVE_POSITIONS.forEach(([left, top], index) => {
     if (has(oliveKey(index))) return;
     const button = document.createElement("button"); button.type = "button"; button.className = "olive-fruit";
@@ -1200,11 +1200,9 @@ function openOliveTree(tree) {
       await flyOliveToBook(button, tree.fruitIcon);
       award(oliveKey(index, player), 0, player); save(); refreshAll();
       button.remove();
-      if (!$$(".olive-fruit", panel).length) hint.textContent = "Les trois olives ont rejoint ton livre.";
     };
     photo.appendChild(button);
   });
-  if (!$$(".olive-fruit", panel).length) hint.textContent = "Les trois olives ont rejoint ton livre.";
   $(".olive-close", panel).onclick = closeOlivePanel;
   panel.addEventListener("click", (event) => { if (event.target === panel) closeOlivePanel(); });
   document.body.appendChild(panel); olivePanel = panel; document.addEventListener("keydown", olivePanelKeydown);
