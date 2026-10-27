@@ -3342,7 +3342,7 @@ const PREVIEW_OBJECTS = DEV;
 const OBJECTS = [
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
   { id: "coquillage-murano", name: "Le coquillage magique de Murano", img: "coquillage-murano.svg", key: MURANO_SHELL_KEY },
-  { id: "cle-gondolier", name: "La clé du gondolier", img: "cle-bronze.svg", key: "o:cle-gondolier" },
+  { id: "cle-gondolier", name: "La clé du gondolier", img: "img/narrative/gondolier-gold-key.png", key: "o:cle-gondolier" },
   { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
   { id: "basilique", name: "La plume de l’évangéliste", img: "plume.svg", key: "tr:basilique" },
   { id: "coffre-code", name: "Le coffret à code", img: "coffre-code.svg", key: "o:coffre-code" },
@@ -3364,7 +3364,7 @@ const objectFoundFor = (id, player = meIdx()) => {
 };
 const maskGemObjects = () => Object.keys(S.done).filter((key) => /^o:mask-gem:\d+:m\d+$/.test(key) && has(key) && S.done[key].w === meIdx()).map((key) => ({ id: key.replace(/[^a-z0-9-]/g, "-"), name: "Gemme du carnaval", img: "diamant.svg", key }));
 const oliveObjects = () => [0, 1, 2].map((index) => ({ id: `olive-torcello-${index + 1}`, name: `Olive de Torcello ${index + 1}`, img: "olive-torcello.webp", key: oliveKey(index) })).filter((object) => has(object.key) && S.done[object.key].w === meIdx());
-const objectList = () => [...OBJECTS, ...maskGemObjects(), ...oliveObjects()].map((o) => ({ ...o, img: "img/objets/" + o.img, found: objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
+const objectList = () => [...OBJECTS, ...maskGemObjects(), ...oliveObjects()].map((o) => ({ ...o, img: o.img.startsWith("img/") ? o.img : "img/objets/" + o.img, found: objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = `vq_held:${PLAYER_ID}`, HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
