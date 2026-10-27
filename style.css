@@ -393,7 +393,7 @@ img.full{width:100%;border-radius:14px}
 .olive-fruit:nth-of-type(2){animation-delay:.5s}.olive-fruit:nth-of-type(3){animation-delay:1s}
 .olive-fruit img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .olive-fruit::after{content:"✦";position:absolute;right:1px;top:1px;color:#fffad5;text-shadow:0 0 5px white,0 0 10px #ffd45c;font-size:16px}
-@keyframes oliveGlint{to{filter:drop-shadow(0 0 9px white) drop-shadow(0 0 19px #ffd45c);scale:1.13}}
+@keyframes oliveGlint{to{filter:drop-shadow(0 0 9px white) drop-shadow(0 0 19px #ffd45c) brightness(1.18)}}
 .olive-name{margin:10px 0 2px;font:700 22px/1.1 Georgia,serif;color:#305b42}.olive-hint{margin:0 0 5px;font-size:13px;color:#415b50}
 .olive-credit{font-size:10px;color:#6b746e}.olive-credit a{color:inherit;text-decoration:underline}
 .home-btn.olive-book-target{z-index:2650!important;box-shadow:0 0 0 3px #ffedac,0 0 22px 8px #ffe59d}
