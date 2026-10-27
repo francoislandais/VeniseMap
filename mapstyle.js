@@ -69,10 +69,9 @@ const layers = [
   { id: "eau-lavis", type: "fill", source: "ofm", "source-layer": "water", paint: { "fill-pattern": "lavis", "fill-opacity": ZW } },
   // Les îles OSM sont dessinées au-dessus des polygones d'eau : cela rétablit une rive lisible
   // quand une tuile d'eau généralisée mord sur la terre (notamment autour de Murano).
-  { id: "iles-terre", type: "fill", source: "ofm", "source-layer": "place", minzoom: 11.5, filter: ISLAND,
-    paint: { "fill-color": "#ead8b8", "fill-opacity": 1 } },
-  { id: "iles-rives", type: "line", source: "ofm", "source-layer": "place", minzoom: 11.5, filter: ISLAND,
-    paint: { "line-color": "#9b7351", "line-width": ["interpolate", ["linear"], ["zoom"], 11.5, 0.6, 15, 1.1, 18, 1.7], "line-opacity": 0.8 } },
+  { id: "murano-terre", type: "fill", source: "murano", minzoom: 12.5, paint: { "fill-pattern": "paper", "fill-opacity": 0.92 } },
+  { id: "murano-rive", type: "line", source: "murano", minzoom: 12.5,
+    paint: { "line-color": "#9b7351", "line-width": ["interpolate", ["linear"], ["zoom"], 12.5, 0.7, 15, 1.3, 18, 1.8], "line-opacity": 0.88 } },
   // Petits canaux (largeur < ~24 m, que Stamen ne dessine pas) : toujours peints par mes soins, à tout zoom, avec un liseré sombre.
   { id: "canal-eau", type: "fill", source: "petits", paint: { "fill-pattern": "waves" } },
   { id: "canal-lavis", type: "fill", source: "petits", paint: { "fill-pattern": "lavis" } },
@@ -110,6 +109,7 @@ export function createMap(container, { center, zoom, minZoom = 11, maxZoom = 19 
           : { type: "raster", tiles: [OSM_URL], tileSize: 256, maxzoom: 19, attribution: "© OpenStreetMap" },
         ofm: { type: "vector", tiles: [OFM_TILES], minzoom: 0, maxzoom: 14, attribution: "OpenFreeMap © OpenMapTiles" },
         petits: { type: "geojson", data: "data/petits-canaux.json" },
+        murano: { type: "geojson", data: "data/murano-island.geojson", attribution: "© OpenStreetMap contributors" },
       },
       layers,
     },

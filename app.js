@@ -289,7 +289,7 @@ function modal(html, onClose) {
 }
 
 let adminUnlocked = ADMIN_CONTEXT, adminPromptOpen = false, adminPlayers = [], adminRewards = {}, adminCode = "";
-if (ADMIN_CONTEXT) fetch("api/admin/session", { headers: apiHeaders() }).then((r) => r.ok ? r.json() : Promise.reject()).then((data) => { adminPlayers = data.players || []; adminRewards = data.rewards || {}; if (tab === "settings") renderSettings(); }).catch(() => { location.replace(location.pathname.replace(/preview\.html$/, "")); });
+if (ADMIN_CONTEXT) fetch("api/admin/session", { headers: apiHeaders() }).then((r) => r.ok ? r.json() : Promise.reject()).then((data) => { adminPlayers = data.players || []; adminRewards = data.rewards || {}; if (tab === "settings") renderSettings(); }).catch(() => { location.replace(location.pathname.replace(/preview\.html$/, "") + "?open-preview=1"); });
 function requestAdminAccess(target) {
   if (adminPromptOpen) return;
   adminPromptOpen = true;
@@ -2630,7 +2630,7 @@ const MONTAGES = {
   doge: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Ici, on t'habille en <b>doge</b> ! Prends-toi en photo : ta tête prendra la place de la sienne. Tu peux la déplacer et l'agrandir.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
   miracoli: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Pour garder un souvenir de cette épreuve musicale, prends ta place dans ce portrait de doge. Tu peux déplacer et agrandir ta photo.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
   frari: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Aux Frari reposent de grands doges. Prête ta tête à celui-ci : tu peux la déplacer et l'agrandir.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
-  murano: { src: "img/montage/murano.webp", W: 960, H: 1173, cx: 462, cy: 392, rx: 24, ry: 31, rot: 0.02, intro: "Le four chauffe et le verre brille ! Prête ta tête au maître verrier de Murano pour fabriquer ton souvenir.", credit: "Charles Frederick Ulrich, « Glass Blowers of Murano », 1886. The Metropolitan Museum of Art, no 86.13 · Open Access, domaine public." },
+  murano: { src: "img/montage/murano.webp", W: 960, H: 1226, cx: 495, cy: 321, rx: 56, ry: 65, rot: 0.02, intro: "Le four chauffe et le verre brille ! Prête ta tête au souffleur de verre de ce tableau de Murano pour fabriquer ton souvenir.", credit: "Photo fournie pour le jeu par François Landais ; artiste peintre non identifié." },
   basilique: { src: "img/montage/loredan.webp", W: 900, H: 1262, cx: 390, cy: 437, rx: 90, ry: 130, rot: -0.05, intro: "Bravo pour Saint-Marc ! Voici le doge Leonardo Loredan, peint par Giovanni Bellini : mets ta tête à la place de la sienne.", credit: "Portrait du doge Leonardo Loredan par Giovanni Bellini (National Gallery, Londres), domaine public." },
   cadoro: { src: "img/montage/gritti.webp", W: 900, H: 1164, cx: 439, cy: 330, rx: 93, ry: 121, rot: 0.1, intro: "La maison d'or, c'est pour un doge en habit d'or ! Voici Andrea Gritti, peint par Titien : mets ta tête à la place de la sienne.", credit: "Portrait du doge Andrea Gritti par Titien (National Gallery of Art, Washington), CC0." },
   rialto: { src: "img/montage/gondolier.webp", W: 940, H: 1120, cx: 440, cy: 370, rx: 88, ry: 120, rot: 0.12, intro: "Sur l'ancien pont du Rialto, on se déplaçait déjà en gondole ! Mets ta tête sur ce gondolier peint par Carpaccio vers 1494.", credit: "Détail du « Miracle de la relique de la Croix au pont du Rialto » par Vittore Carpaccio (Gallerie dell'Accademia), domaine public." },
@@ -3912,7 +3912,7 @@ function downloadOfflinePack(report) {
     const manifest = await response.json();
     if (!Array.isArray(manifest.files) || !manifest.files.length) throw new Error("La liste des fichiers du jeu est vide.");
     if (!useStamen) throw new Error("La carte aquarelle n’est pas disponible sur ce téléphone.");
-    const shell = await caches.open("vq-shell-v2.327.1"), tiles = await caches.open("vq-tiles");
+    const shell = await caches.open("vq-shell-v2.328.1"), tiles = await caches.open("vq-tiles");
     const jobs = manifest.files.map((path) => ({ url: new URL(path, location.origin + "/").href, cache: shell, kind: "game" }));
     jobs.push(...tilesFor(OFM_TILES, 14, OFFLINE_VECTOR_BOXES).map((url) => ({ url, cache: shell, kind: "ofm" })));
     for (const font of FONTS) for (const range of ["0-255", "256-511"]) jobs.push({ url: OFM_GLYPHS.replace("{fontstack}", encodeURIComponent(font)).replace("{range}", range), cache: shell, kind: "ofm" });
@@ -4014,6 +4014,33 @@ function refreshAll() {
 }
 refreshAll();
 setTab("map");
+if (ADMIN_CONTEXT) {
+  // Créé ici : l'aperçu admin possède son propre HTML, distinct de la page joueur.
+  const resetButton = document.createElement("button");
+  resetButton.id = "admin-reset-player";
+  resetButton.type = "button";
+  resetButton.textContent = "↺ Réinitialiser mon joueur";
+  document.body.appendChild(resetButton);
+  resetButton.onclick = async () => {
+    if (!confirm("Réinitialiser complètement le joueur Administrateur ? Tous ses objets, fragments, épreuves et photos locales seront effacés. Les autres joueurs ne seront pas modifiés.")) return;
+    resetButton.disabled = true;
+    try {
+      syncEpoch++; clearTimeout(syncTimer); syncAbort?.abort();
+      await clearPlayerPhotos(PLAYER_ID);
+      S = { ...freshState(), kids: [{ name: "Administrateur", avatar: "🦁" }], onboarded: true, cfgT: Date.now(), resetAt: Date.now() };
+      localStorage.setItem(KEY, JSON.stringify(S));
+      const staleKeys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).filter((key) => key?.startsWith("vq_huff_") && key.endsWith(`:${PLAYER_ID}`));
+      for (const key of [DEFERRED_KEY, HELD_KEY, HELD_POS, BOAT_T0, ...staleKeys]) localStorage.removeItem(key);
+      heldId = null; heldEl?.remove(); heldEl = null; objectAssembly.clear(); dgPhoto = null;
+      Object.keys(pendingPhoto).forEach((key) => delete pendingPhoto[key]);
+      if (openId) closeSheet(); if (quest) closeQuest();
+      refreshAll(); setTab("map");
+      toast("Joueur Administrateur réinitialisé : objets, épreuves et photos effacés.");
+    } catch {
+      toast("Réinitialisation incomplète : les photos locales n’ont pas pu être effacées.");
+    } finally { resetButton.disabled = false; }
+  };
+}
 {
   const help = $("#dev-chap-help"); help.hidden = !DEV;
   help.textContent = "🔧 Tester un lieu";
