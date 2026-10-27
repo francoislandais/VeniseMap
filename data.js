@@ -1774,7 +1774,21 @@ export const PLACES = [
   { id: "salute", emoji: "⛪", name: "La Salute", lat: 45.4306, lon: 12.3347, r: 80,
     story: "Cette énorme église est posée sur plus d'un million de pieux de bois plantés dans la vase de la lagune !",
     clue: "Les grandes choses ont des racines cachées. Monte les marches et chuchote ton souhait au vent.",
-    musicChallenge: { entry: "deus", hint: "Une autre piste vers le fragment de l’ouverture t’attend ici." },
+    musicChallenge: { entry: "deus", point: "A", hint: "Près du maître-autel, un fragment de musique t’attend." },
+    plan: {
+      img: "img/plan/salute.svg",
+      w: 1200,
+      h: 1500,
+      title: "Basilique Santa Maria della Salute",
+      sub: "plan schématique",
+      points: [
+        { id: "A", n: "Maître-autel", x: 50, y: 16.3, title: "Le maître-autel de la Salute", sub: "Dans le sanctuaire, au fond de l’église", text: "Au bout de la rotonde, le maître-autel abrite l’icône byzantine de la Vierge à l’Enfant. Le groupe sculpté de Giusto Le Court rappelle le vœu de Venise pendant la peste de 1630.", where: "Dans le sanctuaire, à l’opposé de l’entrée principale.", img: "img/q/salute-4.webp" },
+        { id: "B", n: "Pentecôte", x: 27.9, y: 46.9, title: "L’autel de la Pentecôte", sub: "Premier autel à gauche en entrant", text: "Le tableau du Titien représente la descente de l’Esprit saint. La colombe apparaît dans les rayons, tout en haut de la toile.", where: "Premier autel à gauche depuis l’entrée principale.", img: "img/q/salute-5.webp" },
+        { id: "C", n: "Saint Antoine", x: 27.9, y: 59.5, title: "L’autel de saint Antoine", sub: "Deuxième autel à gauche en entrant", text: "Le tableau montre saint Antoine de Padoue. Cherche les fleurs blanches près de son épaule : ce sont des lys.", where: "Deuxième autel à gauche depuis l’entrée principale.", img: "img/q/salute-6.webp" },
+        { id: "D", n: "Entrée", x: 50, y: 84.9, title: "La grande porte", sub: "Façade principale et parvis", text: "La façade monumentale donne sur le Grand Canal. Une étoile à huit pointes, symbole de Stella Maris, se trouve au centre du fronton au-dessus de l’entrée.", where: "Sur le parvis, devant la grande porte.", img: "img/q/salute-2.webp" },
+        { id: "E", n: "Volutes", x: 72.3, y: 26.5, title: "La coupole et ses volutes", sub: "À observer depuis le parvis", text: "Les grandes volutes de pierre entourent la base de la coupole et en soutiennent le tambour. Leur forme enroulée est caractéristique du projet de Baldassare Longhena.", where: "Depuis le parvis, autour de la base de la grande coupole.", img: "img/q/salute-3.webp" }
+      ]
+    },
     chapters: [
       {
         "steps": [

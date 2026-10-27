@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1500" viewBox="0 0 1200 1500" role="img" aria-labelledby="title desc">
+<title id="title">Plan schématique de Santa Maria della Salute à Venise</title><desc id="desc">Plan vu du dessus, entrée au sud, rotonde octogonale entourée de six chapelles et sanctuaire avec maître-autel au nord.</desc>
+<defs>
+ <linearGradient id="paper" x2=".9" y2="1"><stop stop-color="#f8f0dc"/><stop offset=".5" stop-color="#f4ecd7"/><stop offset="1" stop-color="#efe4ca"/></linearGradient>
+ <linearGradient id="rotunda" x2="0" y2="1"><stop stop-color="#e2e9d9"/><stop offset="1" stop-color="#d8e2d3"/></linearGradient>
+ <filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+ <filter id="shadow" x="-.2" y="-.2" width="1.4" height="1.4"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#806455" flood-opacity=".18"/></filter>
+</defs>
+<rect width="1200" height="1500" fill="url(#paper)"/>
+<g opacity=".17" filter="url(#soft)"><ellipse cx="235" cy="310" rx="190" ry="96" fill="#c6d8c8"/><ellipse cx="940" cy="740" rx="230" ry="110" fill="#ead2c5"/><ellipse cx="430" cy="1190" rx="260" ry="110" fill="#e9dcb9"/></g>
+<g fill="#8b7162" font-family="Georgia,serif" text-anchor="middle">
+ <text x="600" y="92" font-size="28" letter-spacing="3">SANTA MARIA DELLA SALUTE</text>
+ <text x="600" y="130" font-size="18" letter-spacing="4" fill="#aa8573">PLAN SCHÉMATIQUE</text>
+</g>
+<!-- Steps and entrance -->
+<g stroke="#866d5f" stroke-width="12" fill="none" stroke-linecap="round"><path d="M398 1302H802"/><path d="M420 1323H780" stroke-width="7"/><path d="M443 1342H757" stroke-width="5"/></g>
+<path d="M470 1295V1244Q470 1218 496 1218H704Q730 1218 730 1244V1295" fill="#e7d8b8" stroke="#866d5f" stroke-width="9"/>
+<g fill="#9b7663" font-family="Georgia,serif" font-size="24" letter-spacing="4" text-anchor="middle"><text x="600" y="1410">ENTRÉE PRINCIPALE</text></g>
+<!-- Main octagonal basilica walls -->
+<path d="M600 205 L835 300 L930 520 L930 950 L820 1160 L600 1235 L380 1160 L270 950 L270 520 L365 300 Z" fill="#efe5d1" stroke="#80695d" stroke-width="18" stroke-linejoin="round" filter="url(#shadow)"/>
+<!-- six perimeter chapels -->
+<g fill="#e7d9e1" stroke="#947969" stroke-width="9">
+ <path d="M300 458H423V565H300Q278 565 278 543V480Q278 458 300 458Z"/>
+ <path d="M300 650H423V756H300Q278 756 278 734V672Q278 650 300 650Z"/>
+ <path d="M300 842H423V948H300Q278 948 278 926V864Q278 842 300 842Z"/>
+ <path d="M777 458H900Q922 458 922 480V543Q922 565 900 565H777Z"/>
+ <path d="M777 650H900Q922 650 922 672V734Q922 756 900 756H777Z"/>
+ <path d="M777 842H900Q922 842 922 864V926Q922 948 900 948H777Z"/>
+</g>
+<!-- inner ambulatory and central octagonal rotunda -->
+<path d="M600 345 L765 412 L833 570 L833 874 L760 1032 L600 1090 L440 1032 L367 874 L367 570 L435 412 Z" fill="none" stroke="#a18a78" stroke-width="18" stroke-linejoin="round"/>
+<path d="M600 423 L720 472 L770 590 L770 830 L716 950 L600 992 L484 950 L430 830 L430 590 L480 472 Z" fill="url(#rotunda)" stroke="#80695d" stroke-width="12" stroke-linejoin="round"/>
+<!-- pillars around central dome -->
+<g fill="#b5957f" stroke="#80695d" stroke-width="5">
+ <circle cx="600" cy="444" r="17"/><circle cx="735" cy="500" r="17"/><circle cx="758" cy="650" r="17"/><circle cx="735" cy="820" r="17"/><circle cx="600" cy="970" r="17"/><circle cx="465" cy="820" r="17"/><circle cx="442" cy="650" r="17"/><circle cx="465" cy="500" r="17"/>
+</g>
+<g fill="#7e7660" font-family="Georgia,serif" text-anchor="middle"><text x="600" y="690" font-size="32" letter-spacing="3">ROTONDE</text><text x="600" y="728" font-size="22" letter-spacing="2">SOUS LA GRANDE COUPOLE</text></g>
+<!-- sanctuary, chancel and high altar at the end opposite the entrance -->
+<path d="M445 205Q600 150 755 205L755 335H445Z" fill="#ead7bf" stroke="#80695d" stroke-width="13"/>
+<path d="M478 219Q600 177 722 219V295H478Z" fill="#f1e7d4" stroke="#a18a78" stroke-width="7"/>
+<path d="M478 306H722" stroke="#9b7965" stroke-width="11"/>
+<rect x="548" y="230" width="104" height="48" rx="8" fill="#c8a67e" stroke="#80695d" stroke-width="6"/>
+<path d="M568 239h64M568 251h64M568 263h64" stroke="#947455" stroke-width="4"/>
+<g fill="#8b7162" font-family="Georgia,serif" text-anchor="middle"><text x="600" y="196" font-size="23" letter-spacing="2">SANCTUAIRE</text><text x="600" y="325" font-size="19" letter-spacing="2">PRESBYTÈRE</text></g>
+<!-- passage from the rotunda to sanctuary -->
+<path d="M500 415V348M700 415V348" stroke="#80695d" stroke-width="10"/><path d="M515 360H685" stroke="#ae8c71" stroke-width="6"/>
+<!-- orientation -->
+<g transform="translate(1050 220)" fill="#9a7664" stroke="#9a7664"><path d="M0 70V0M0 0l-17 28M0 0l17 28" fill="none" stroke-width="7"/><text x="0" y="100" font-family="Georgia,serif" font-size="22" text-anchor="middle" stroke="none">N</text></g>
+<!-- embedded markers echo the church-plan series; app buttons sit over these targets -->
+<g font-family="Georgia,serif" font-weight="700" font-size="34" text-anchor="middle" dominant-baseline="central" filter="url(#shadow)">
+ <g><circle cx="600" cy="244" r="38" fill="#a94930" stroke="#f8efda" stroke-width="9"/><text x="600" y="244" fill="#fff7e8">A</text></g>
+ <g><circle cx="335" cy="704" r="38" fill="#a94930" stroke="#f8efda" stroke-width="9"/><text x="335" y="704" fill="#fff7e8">B</text></g>
+ <g><circle cx="335" cy="892" r="38" fill="#a94930" stroke="#f8efda" stroke-width="9"/><text x="335" y="892" fill="#fff7e8">C</text></g>
+ <g><circle cx="600" cy="1274" r="38" fill="#a94930" stroke="#f8efda" stroke-width="9"/><text x="600" y="1274" fill="#fff7e8">D</text></g>
+ <g><circle cx="868" cy="398" r="38" fill="#a94930" stroke="#f8efda" stroke-width="9"/><text x="868" y="398" fill="#fff7e8">E</text></g>
+</g>
+<g fill="#9a7664" font-family="Georgia,serif" font-size="18" letter-spacing="1.6" text-anchor="middle"><text x="600" y="1460">LE PARCOURS RESTE DANS LES ESPACES ACCESSIBLES</text></g>
+</svg>
