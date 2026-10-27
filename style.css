@@ -1334,6 +1334,21 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .gr-trade-item span{font:12px/1.16 Arial,sans-serif;text-align:center}
 .gr-trade-success{text-align:center}.gr-trade-success img{display:block;width:min(55vw,175px);height:150px;object-fit:contain;margin:0 auto 12px;filter:drop-shadow(0 0 12px #f6d978)}
 .gr-trade-success p{margin:0 0 18px;font:19px/1.35 Arial,sans-serif}
+.gondolier-rendezvous .gr-editor{z-index:7}
+.gondolier-rendezvous.gr-editing .gr-stage{touch-action:none}
+.gondolier-rendezvous.gr-editing .gr-scroll{overflow:visible;pointer-events:none}
+.gondolier-rendezvous.gr-editing .gr-copy,.gondolier-rendezvous.gr-editing .gr-key{pointer-events:auto;touch-action:none;cursor:grab}
+.gondolier-rendezvous.gr-editing .gr-trade{pointer-events:none}
+.gondolier-rendezvous.gr-editing .gr-selected{outline:2px dashed #a9d8ff;outline-offset:5px}
+.gondolier-rendezvous.gr-editing .cr-prev{display:none}
+.gondolier-rendezvous .gr-trade{position:absolute;z-index:3;left:clamp(16px,5vw,40px);right:clamp(16px,5vw,40px);bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:620px;max-height:56dvh;margin:0 auto;overflow-y:auto;overscroll-behavior:contain}
+.gondolier-rendezvous.gr-trade-screen .cr-prev{bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+.gondolier-rendezvous.gr-trade-opened .cr-prev{display:none}
+.gondolier-rendezvous .gr-trade-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.gondolier-rendezvous .gr-trade-item{min-height:68px;gap:2px;padding:3px;border:1px solid transparent;border-radius:6px;background:transparent;box-shadow:none;text-shadow:0 2px 5px rgba(0,0,0,.9)}
+.gondolier-rendezvous .gr-trade-item[aria-pressed="true"]{border:1px solid #ffe39b;background:transparent;box-shadow:0 0 0 1px rgba(255,226,141,.55)}
+.gondolier-rendezvous .gr-trade-item img{width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
+.gondolier-rendezvous .gr-trade-item span{font:11px/1.12 Arial,sans-serif}
 
 /* Message final de Corto : plus bas (plus de « toucher pour continuer »), il laisse passer les touchers vers la carte */
 .in2-end{pointer-events:none;padding-top:70px;padding-bottom:calc(2px + var(--safe-b))}

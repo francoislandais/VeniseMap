@@ -1,7 +1,30 @@
-// Première rencontre : les paroles du gondolier, sans texte narratif ni récompense prématurée.
+// Première rencontre : les paroles du gondolier, sans texte narratif.
+import { createGondolierEditor } from "./gondolier-rendezvous-editor.js";
 const IMAGE = "img/narrative/corto-gondolier-fin.png";
 const STORM = "img/narrative/gondolier-debut-tempete.png";
 const KEY = "img/narrative/gondolier-gold-key.png";
+const draftKey = "vq_gondolier_rendezvous_layout_draft";
+const normalizeLayout = (source) => {
+  const layout = source && typeof source.pages === "object" ? source : { pages: {} };
+  if (layout.version === 2 || (!layout.pages[8] && !layout.pages[9])) return layout;
+  const pages = {};
+  for (const [index, oldIndex] of [0, 1, 2, 3, 4, 5, 7, 8].entries()) if (layout.pages[oldIndex]) pages[index] = layout.pages[oldIndex];
+  return { ...layout, version: 2, pages };
+};
+const layoutPromise = fetch("data/gondolier-rendezvous-layout.json?" + Date.now())
+  .then(response => response.ok ? response.json() : { pages: {} }).catch(() => ({ pages: {} }))
+  .then(saved => {
+    const base = normalizeLayout(saved);
+    if (["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)) try {
+      const draft = normalizeLayout(JSON.parse(localStorage.getItem(draftKey)));
+      if (draft && typeof draft.pages === "object") {
+        const pages = { ...base.pages };
+        for (const [index, change] of Object.entries(draft.pages)) pages[index] = { ...pages[index], ...change, elements: { ...pages[index]?.elements, ...change.elements } };
+        return { ...base, ...draft, version: 2, pages };
+      }
+    } catch {}
+    return { ...base, version: 2 };
+  });
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const LINES = [
   "Ah, cette fameuse nuit… Crois-moi, moussaillon, je ne suis pas près de l'oublier !",
@@ -10,10 +33,8 @@ const LINES = [
   "Et puis, tout à coup, j'ai aperçu quelque chose d'étrange… Une petite lueur scintillait sous l'eau, juste à côté de ma gondole.",
   "Heureusement, le canal n'était pas profond à cet endroit. Je me suis penché, j'ai plongé le bras dans l'eau glacée et… regarde un peu ce que j'ai repêché !",
   "Une clé ! Et pas n'importe laquelle, à mon avis. Regarde comme elle brille ! Je n'avais jamais rien vu de pareil.",
-  "Depuis cette nuit, je la garde précieusement. Je l'admire chaque jour, même si, pour être franc, je n'ai pas la moindre idée de ce qu'elle peut ouvrir !",
   "Tu voudrais l'avoir, hein ? Je vois bien que tu la regardes avec envie ! Eh bien, pourquoi pas ? Je pourrais accepter de m'en séparer… Mais certainement pas pour rien !",
   "**Apporte-moi quelque chose de précieux, quelque chose qui me plaise vraiment, et nous pourrons faire un échange.**",
-  "Alors, ouvre l'œil, moussaillon ! Et si tu trouves un trésor digne de ma jolie clé, reviens me voir !",
 ];
 
 function typeLine(element) {
@@ -48,7 +69,12 @@ function typeLine(element) {
   return { get done() { return done; }, finish };
 }
 
-export function openGondolierRendezvous({ onComplete, getOwnedObjects, hasKey, onTrade } = {}) {
+let opening = false;
+export async function openGondolierRendezvous({ onComplete, getOwnedObjects, hasKey, onTrade, editable = false } = {}) {
+  if (opening || document.querySelector(".corto-rendezvous")) return;
+  opening = true;
+  const layout = await layoutPromise;
+  opening = false;
   if (document.querySelector(".corto-rendezvous")) return;
   const previousFocus = document.activeElement;
   const overlay = document.createElement("div");
@@ -63,15 +89,39 @@ export function openGondolierRendezvous({ onComplete, getOwnedObjects, hasKey, o
   new Image().src = KEY;
   new Image().src = STORM;
   const stage = overlay.querySelector(".gr-stage"), previous = overlay.querySelector(".cr-prev");
-  let index = 0, scene = null, typing = null, pointerStart = null;
+  let index = 0, scene = null, typing = null, pointerStart = null, editor = null;
   const selected = new Set();
   const close = (completed = false) => {
     typing?.finish();
     document.removeEventListener("keydown", onKey);
+    editor?.destroy();
     overlay.remove();
     document.body.classList.remove("corto-rendezvous-open");
     previousFocus?.focus?.();
     if (completed) onComplete?.();
+  };
+  const number = (value, fallback, low, high) => Number.isFinite(Number(value)) ? Math.max(low, Math.min(high, Number(value))) : fallback;
+  const applyLayout = () => {
+    if (!scene) return;
+    const change = layout.pages?.[index] || {}, copy = scene.querySelector(".gr-copy"), key = scene.querySelector(".gr-key");
+    if (copy) {
+      const c = change.elements?.copy || {};
+      const line = typeof change.text === "string" ? change.text : LINES[index];
+      if (!typing || typing.done || editor?.editing) { copy.innerHTML = escapeHtml(line).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>"); copy.setAttribute("aria-label", copy.textContent.trim()); }
+      copy.style.transform = `translate(${number(c.x, 0, -100, 100)}vw,${number(c.y, 0, -100, 100)}dvh)`;
+      copy.style.fontSize = `clamp(18px,${4.8 * number(c.size, 1, .65, 1.7)}vw,${25 * number(c.size, 1, .65, 1.7)}px)`;
+      copy.style.width = `${number(c.width, 100, 50, 100)}%`;
+    }
+    if (key) {
+      const c = change.elements?.key || {};
+      key.style.left = `${number(c.x, 50, -100, 100)}%`;
+      key.style.top = `${number(c.y, 43, -100, 100)}%`;
+      key.style.width = `min(${82 * number(c.size, 1, .35, 3)}vw,${410 * number(c.size, 1, .35, 3)}px)`;
+    }
+    const painting = overlay.classList.contains("gr-storm-active") ? overlay.querySelector(".gr-storm") : overlay.querySelector(".gr-painting");
+    const c = change.elements?.painting || {};
+    painting.style.objectPosition = `${number(c.x, 50, 0, 100)}% ${number(c.y, 24, 0, 100)}%`;
+    painting.style.scale = number(c.size, 1, 1, 1.8);
   };
   const renderTrade = (host) => {
     if (hasKey?.()) {
@@ -82,6 +132,8 @@ export function openGondolierRendezvous({ onComplete, getOwnedObjects, hasKey, o
     const panel = document.createElement("div"); panel.className = "gr-trade-panel"; panel.hidden = true;
     host.append(offer, panel);
     offer.onclick = () => {
+      typing?.finish();
+      overlay.classList.add("gr-trade-opened");
       offer.hidden = true; panel.hidden = false;
       const owned = getOwnedObjects?.() || [];
       const ids = new Set(owned.map((item) => item.id));
@@ -113,17 +165,23 @@ export function openGondolierRendezvous({ onComplete, getOwnedObjects, hasKey, o
   };
   const show = () => {
     typing?.finish();
+    overlay.classList.remove("gr-trade-opened");
     overlay.classList.toggle("gr-storm-active", index === 1 || index === 2);
     stage.querySelectorAll(".gr-exit").forEach((old) => old.remove());
     const next = document.createElement("div");
     next.className = `gr-scene${scene ? " gr-enter" : ""}`;
-    next.innerHTML = `${index === 5 || index === 6 ? `<img class="gr-key" src="${KEY}" alt="Clé d'or brillante">` : ""}<div class="gr-scroll"><div class="gr-copy">${LINES[index].replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>${index === LINES.length - 1 ? '<div class="gr-trade"></div>' : ""}</div>`;
+    const line = layout.pages?.[index]?.text ?? LINES[index];
+    next.innerHTML = `${index === 5 ? `<img class="gr-key" src="${KEY}" alt="Clé d'or brillante">` : ""}<div class="gr-scroll"><div class="gr-copy">${escapeHtml(line).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>")}</div>${index === LINES.length - 1 ? '<div class="gr-trade"></div>' : ""}`;
     const old = scene;
     stage.appendChild(next);
     scene = next;
+    applyLayout();
     typing = matchMedia("(prefers-reduced-motion: reduce)").matches ? null : typeLine(next.querySelector(".gr-copy"));
+    if (editor?.editing) typing?.finish();
     if (index === LINES.length - 1) renderTrade(next.querySelector(".gr-trade"));
+    overlay.classList.toggle("gr-trade-screen", index === LINES.length - 1);
     previous.hidden = index === 0;
+    editor?.refresh();
     if (!old) return;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) { old.remove(); next.classList.remove("gr-enter"); return; }
     old.classList.add("gr-exit");
@@ -134,16 +192,18 @@ export function openGondolierRendezvous({ onComplete, getOwnedObjects, hasKey, o
   const back = () => { if (index > 0) { index--; show(); } };
   const onKey = (event) => {
     if (event.key === "Escape") close();
+    else if (editor?.editing) return;
     else if (event.target.closest?.(".gr-trade")) return;
     else if (event.key === "ArrowRight" || ((event.key === "Enter" || event.key === " ") && event.target === overlay)) { event.preventDefault(); advance(); }
     else if (event.key === "ArrowLeft") { event.preventDefault(); back(); }
   };
   document.addEventListener("keydown", onKey);
   stage.addEventListener("pointerdown", (event) => {
-    if (!event.isPrimary || event.button !== 0 || event.target.closest?.(".gr-trade")) return;
+    if (editor?.editing || !event.isPrimary || event.button !== 0 || event.target.closest?.(".gr-trade")) return;
     pointerStart = { x: event.clientX, y: event.clientY, scroll: scene.querySelector(".gr-scroll")?.scrollTop || 0, time: Date.now() };
   });
   stage.addEventListener("pointerup", (event) => {
+    if (editor?.editing) return;
     if (event.target.closest?.(".gr-trade")) { pointerStart = null; return; }
     const start = pointerStart; pointerStart = null;
     if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12 || Date.now() - start.time > 800) return;
@@ -154,5 +214,6 @@ export function openGondolierRendezvous({ onComplete, getOwnedObjects, hasKey, o
   overlay.querySelector(".cr-close").onclick = () => close();
   previous.onclick = back;
   show();
+  if (editable) editor = createGondolierEditor({ overlay, stage, layout, lines: LINES, getIndex: () => index, showPage: next => { index = next; show(); }, applyLayout, finishTyping: () => typing?.finish(), draftKey });
   overlay.focus();
 }

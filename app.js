@@ -991,12 +991,23 @@ function walkerTap(W) {
   if (m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
   if (W.id === "gondolier") {
     openGondolierRendezvous({
+      editable: LOCAL_DEV,
       onComplete: () => {
+        if (LOCAL_DEV) return;
         if (!has("story:gondolier:first")) { award("story:gondolier:first", 0, meIdx()); save(); }
       },
-      getOwnedObjects: () => objectList().filter((item) => item.found).map(({ id, name, img }) => ({ id, name, img })),
-      hasKey: () => objectFoundFor("cle-gondolier"),
+      getOwnedObjects: () => {
+        const objects = objectList();
+        const shown = LOCAL_DEV ? objects : objects.filter(item => item.found);
+        const items = shown.map(({ id, name, img }) => ({ id, name, img }));
+        if (LOCAL_DEV) for (let i = 1; i <= 3; i++) items.push({ id: `diamant-test-${i}`, name: `Diamant de test ${i}`, img: "img/objets/diamant.svg" });
+        return items;
+      },
+      hasKey: () => !LOCAL_DEV && objectFoundFor("cle-gondolier"),
       onTrade: (selectedIds) => {
+        if (LOCAL_DEV) return selectedIds.includes("coquillage-murano")
+          ? { accepted: true, message: "Ah, le coquillage magique de Murano ! En échange, voici ma clé ! (Essai local : ton inventaire et tes étoiles restent inchangés.)" }
+          : { accepted: false, message: "Ce sont de beaux objets, moussaillon, mais je n'échangerai ma clé que contre le coquillage magique de Murano." };
         if (objectFoundFor("cle-gondolier")) return { accepted: false, message: "Tu as déjà ma clé, moussaillon. Garde tes trésors !" };
         if (!selectedIds.includes("coquillage-murano") || !objectFoundFor("coquillage-murano")) {
           return { accepted: false, message: "Ce sont de beaux objets, moussaillon, mais je n'échangerai ma clé que contre le coquillage magique de Murano." };

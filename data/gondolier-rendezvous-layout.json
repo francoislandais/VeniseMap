@@ -1,0 +1,63 @@
+{
+ "pages": {
+  "0": {
+   "elements": {
+    "copy": {
+     "x": 1.556669776119403,
+     "y": -5.316439883148831
+    }
+   }
+  },
+  "1": {
+   "elements": {
+    "copy": {
+     "x": 0.500566364605544,
+     "y": -6.187538437884379
+    }
+   }
+  },
+  "2": {
+   "elements": {
+    "copy": {
+     "x": -0.5705290511727079,
+     "y": -5.294818573185732
+    }
+   }
+  },
+  "3": {
+   "elements": {
+    "copy": {
+     "x": -0.6063432835820896,
+     "y": -6.587292435424354
+    }
+   }
+  },
+  "4": {
+   "text": "J'ai plongé le bras dans l'eau glacée et… regarde un peu ce que j'ai repêché !",
+   "elements": {
+    "copy": {
+     "x": -0.1898987206823028,
+     "y": -7.972978167281672
+    }
+   }
+  },
+  "5": {
+   "elements": {
+    "copy": {
+     "x": 0.29817430703624737,
+     "y": -7.254189729397294
+    },
+    "key": {
+     "x": 48.84145122601279,
+     "y": 23.72388145756458
+    }
+   },
+   "text": "Une magnifique clef !"
+  },
+  "6": {
+   "text": "Tu voudrais l'avoir, hein ? Il me semble que tu la regardes avec envie ! Eh bien, pourquoi pas ? Je pourrais accepter de m'en séparer… Mais certainement pas pour rien !"
+  },
+  "7": {}
+ },
+ "version": 2
+}
