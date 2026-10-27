@@ -2176,7 +2176,7 @@ export const PLACES = [
           {
             "idx": 103,
             "loc": { "lat": 45.45662, "lon": 12.35689 },
-            "where": "Dans la salle des objets antiques, cherche les petits récipients romains en verre qui ressemblent à des fioles. Observe leur silhouette.",
+            "where": "Au Musée du Verre de Murano (Museo del Vetro), Fondamenta Giustinian 8, entre dans la salle des objets antiques. Cherche les petits récipients romains en verre qui ressemblent à des fioles et observe leur silhouette.",
             "q": "Quelle partie de beaucoup de ces petites fioles est étroite ?",
             "opts": [
               "Le col",
@@ -2193,7 +2193,7 @@ export const PLACES = [
           {
             "idx": 104,
             "loc": { "lat": 45.45662, "lon": 12.35689 },
-            "where": "Trouve la coupe Barovier en verre bleu, présentée seule dans une vitrine. Approche-toi suffisamment pour regarder les personnages peints autour de la vasque.",
+            "where": "Au Musée du Verre de Murano (Museo del Vetro), trouve la coupe Barovier en verre bleu, présentée seule dans une vitrine. Approche-toi suffisamment pour regarder les personnages peints autour de la vasque.",
             "q": "Sur quel animal certaines jeunes femmes sont-elles assises ?",
             "opts": [
               "Des chevaux",
@@ -2213,7 +2213,7 @@ export const PLACES = [
           {
             "idx": 105,
             "loc": { "lat": 45.45662, "lon": 12.35689 },
-            "where": "Dans le grand salon du premier étage, lève les yeux sous le plafond peint. Regarde les grands objets de verre suspendus.",
+            "where": "Au Musée du Verre de Murano (Museo del Vetro), dans le grand salon du premier étage, lève les yeux sous le plafond peint. Regarde les grands objets de verre suspendus.",
             "q": "Combien de grands lustres y sont suspendus ?",
             "opts": [
               "Deux",
@@ -2230,7 +2230,7 @@ export const PLACES = [
           {
             "idx": 106,
             "loc": { "lat": 45.45662, "lon": 12.35689 },
-            "where": "Cherche les murrine, ces petits morceaux de verre multicolores assemblés dans une pièce. Observe leurs motifs répétés.",
+            "where": "Au Musée du Verre de Murano (Museo del Vetro), cherche les murrine, ces petits morceaux de verre multicolores assemblés dans une pièce. Observe leurs motifs répétés.",
             "q": "À quoi font penser beaucoup de ces petits motifs colorés ?",
             "opts": [
               "À des fleurs ou des étoiles",
@@ -2245,7 +2245,7 @@ export const PLACES = [
           {
             "idx": 107,
             "loc": { "lat": 45.45662, "lon": 12.35689 },
-            "where": "Dans la partie consacrée aux perles, cherche les petites perles colorées appelées conterie. Compare-les aux perles plus grosses et observe leurs minuscules ouvertures.",
+            "where": "Au Musée du Verre de Murano (Museo del Vetro), dans la partie consacrée aux perles, cherche les petites perles colorées appelées conterie. Compare-les aux perles plus grosses et observe leurs minuscules ouvertures.",
             "q": "À quoi sert le petit trou au centre d’une conteria ?",
             "opts": [
               "À laisser passer un fil",
