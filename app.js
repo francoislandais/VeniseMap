@@ -1687,7 +1687,27 @@ function renderNext() {
 /* ───────── Fiche d'un lieu ───────── */
 let openId = null;
 let medalOrigin = null;
-const inZone = (p) => DEV || (geoReady && !!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX));
+let muranoBoundary = null, muranoBoundaryLoading = null;
+function loadMuranoBoundary() {
+  if (!muranoBoundaryLoading) muranoBoundaryLoading = fetch("data/murano-island.geojson")
+    .then((response) => { if (!response.ok) throw new Error("Contour de Murano indisponible"); return response.json(); })
+    .then((data) => { muranoBoundary = data.features?.[0]?.geometry?.coordinates || null; })
+    .catch(() => { muranoBoundary = null; muranoBoundaryLoading = null; });
+  return muranoBoundaryLoading;
+}
+function pointInIsland(lon, lat, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+const muranoAlreadyOpened = (p) => p.id === "murano" && (has("story:murano:opened") || doneTasks(p) > 0 || has("fin:murano"));
+const muranoOpenOnIsland = (p) => muranoAlreadyOpened(p) && geoReady && !!pos && !!muranoBoundary &&
+  pointInIsland(pos.lon, pos.lat, muranoBoundary[0]) && !muranoBoundary.slice(1).some((hole) => pointInIsland(pos.lon, pos.lat, hole));
+const inRealZone = (p) => !!pos && (distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX) || muranoOpenOnIsland(p));
+const inZone = (p) => DEV || (geoReady && inRealZone(p));
 // Phrase de Corto citant le lieu (corto-lieux.js) : distance et temps de marche ; pas deux fois la même de suite pour un même niveau.
 const placeFarLast = {};
 function placeFarLine(p, d) {
@@ -1712,6 +1732,10 @@ async function openPlace(id, originRect) {
   if (ADMIN_CONTEXT && !pos) { toast("Clique d'abord sur la carte pour placer ta position."); return; }
   if (!DEV && !geoReady) { showGeoGate(); return; }
   const request = ++placeOpening;
+  if (muranoAlreadyOpened(p)) {
+    await loadMuranoBoundary();
+    if (request !== placeOpening || tab !== "map") return;
+  }
   const needsWelcome = !(arrived(p.id) && !complete(p)) && !(p.chapters && complete(p));
   let gpsValid = false;
   if (needsWelcome) {
@@ -1720,8 +1744,8 @@ async function openPlace(id, originRect) {
   }
   // Trop loin du lieu : plus de pastille agrandie ni de reprise d'épreuve, simplement un message de Corto (phrases near / mid / far avec distance et temps de marche).
   // Sur l'aperçu local, l'entrée de l'épreuve reste accessible pour ses contrôles de test, même si le GPS est loin.
-  { const inReal = !!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX);
-    if (!(p.chapters && complete(p)) && !(LOCAL_DEV && p.chapters) && (DEV ? !!pos && !inReal : !inZone(p))) { const d = distTo(p); if (suspended) closeSheet(); cortoSays(d == null ? say("nogps", p) : placeFarLine(p, d)); return; } }
+  { const inReal = inRealZone(p);
+    if (!(p.chapters && complete(p) && p.id !== "murano") && !(LOCAL_DEV && p.chapters) && (DEV ? !!pos && !inReal : !inZone(p))) { const d = distTo(p); if (suspended) closeSheet(); cortoSays(d == null ? say("nogps", p) : placeFarLine(p, d)); return; } }
   // Épreuve mise en pause : même lieu et enfant toujours dans la zone → on retombe exactement sur l'écran quitté.
   if (suspended) { if (suspended.id === id && inZone(p)) { resumeSuspended(); return; } closeSheet(); }
   // Enquête commencée et enfant toujours dans la zone : on reprend instantanément là où il en était, sans repasser par l'accueil.
@@ -1733,7 +1757,7 @@ async function openPlace(id, originRect) {
     return;
   }
   // Position confirmée : le premier macaron « J'y suis ! » est superflu.
-  const gpsInPlace = !!pos && distTo(p) <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX);
+  const gpsInPlace = inRealZone(p);
   if (gpsValid && (gpsInPlace || (LOCAL_DEV && p.chapters))) { showArrivalDirect(p); return; }
   buildMedal({ id, img: pic(id), title: p.name, bubble: `${esc(teaser(p))}<span class="m-q">Es-tu arrivé ?</span>`, label: "J'y suis !", originRect, bind: () => bindArrive(p) });
   if (LOCAL_DEV && p.chapters) {
@@ -2236,7 +2260,7 @@ async function tryArrive(p, forced) {
   if (!ok || !pos) { cortoFill(t, say("nogps", p)); }
   else {
     const d = distTo(p);
-    if (d <= Math.min(p.r, ZONE_MAX) + Math.min(pos.acc || 0, TOL_MAX)) { cortoFill(t, say("success", p)); await sleep(900); busy = false; await (inProgress(p) ? resumeQuest(p) : arrivalReveal(p)); return; }
+    if (inRealZone(p)) { cortoFill(t, say("success", p)); await sleep(900); busy = false; await (inProgress(p) ? resumeQuest(p) : arrivalReveal(p)); return; }
     cortoFill(t, say(d < 200 ? "near" : d > 1500 ? "far" : "mid", p));
   }
   busy = false; btn.disabled = false;
@@ -2341,6 +2365,7 @@ const EXIT_SVG = '<svg viewBox="0 0 48 48" width="24" height="24" fill="none" st
 let conclusionEditorAbort = null;
 function openChapters(p, replay = false, conclusionOnly = false, preview = false) {
   conclusionEditorAbort?.abort(); conclusionEditorAbort = null;
+  if (p.id === "murano" && !preview && !has("story:murano:opened")) { award("story:murano:opened", 0, meIdx()); save(); }
   chapCur = p; suspended = null; openId = "chap"; chatSel = "#b-talk"; $("#next").hidden = true; $("#bridge-btn").hidden = true;
   const sh = $("#sheet"); sh.hidden = false; sh.className = "medal-wrap bridge-wrap chap"; delete sh.dataset.k;
   sh.innerHTML = `<div class="chap-bg" style="background-image:url(${pic(p.id)})"></div><div class="chap-g chap-g-top"></div><div class="chap-g chap-g-bot"></div>
