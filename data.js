@@ -20,10 +20,10 @@ export const STORY = {
 
 export const LEVELS = [
   { min: 0, name: "Simple touriste", emoji: "🧳" }, // au départ : aucune tenue
-  { min: 1000, name: "Mousse", emoji: "🪢" },
-  { min: 2000, name: "Marin", emoji: "⛵" },
-  { min: 3000, name: "Capitaine", emoji: "🏴‍☠️" },
-  { min: 4000, name: "Amiral", emoji: "👑" },
+  { min: 600, name: "Mousse", emoji: "🪢" },
+  { min: 1100, name: "Marin", emoji: "⛵" },
+  { min: 1500, name: "Capitaine", emoji: "🏴‍☠️" },
+  { min: 2000, name: "Amiral", emoji: "👑" },
 ];
 
 // Collections libres, à cocher à tout moment (+3 points chacune)
