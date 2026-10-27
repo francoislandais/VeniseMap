@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Rubis de Burano">
+  <defs>
+    <linearGradient id="crown" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffb6bd"/><stop offset=".35" stop-color="#f63759"/><stop offset="1" stop-color="#93001f"/></linearGradient>
+    <linearGradient id="body" x1=".18" y1="0" x2=".8" y2="1"><stop stop-color="#ff7590"/><stop offset=".34" stop-color="#df103b"/><stop offset="1" stop-color="#640019"/></linearGradient>
+    <radialGradient id="heart"><stop stop-color="#ff9cab"/><stop offset=".55" stop-color="#ea1641"/><stop offset="1" stop-color="#9c0028"/></radialGradient>
+  </defs>
+  <path d="M39 57 67 29h66l28 28 13 39-74 82L26 96Z" fill="url(#body)" stroke="#680016" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M39 57 67 29h66l28 28-21 39H60Z" fill="url(#crown)"/>
+  <path d="M67 29 60 96 26 96 39 57ZM133 29l7 67h34l-13-39Z" fill="#b30930" opacity=".8"/>
+  <path d="M60 96h80l-40 82Z" fill="url(#heart)"/>
+  <path d="M26 96h34l40 82ZM174 96h-34l-40 82Z" fill="#8b0023"/>
+  <path d="M67 29 88 57 60 96M133 29 112 57l28 39M88 57h24M60 96h80" fill="none" stroke="#ffd5d9" stroke-width="2.6" opacity=".78"/>
+  <path d="m78 42 7-7m-30 38 7-11m38-13h10" fill="none" stroke="#fff9ee" stroke-width="5" stroke-linecap="round" opacity=".92"/>
+  <path d="M112 110 100 148 87 110" fill="#ff7184" opacity=".55"/>
+</svg>

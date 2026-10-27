@@ -1,4 +1,4 @@
-const VERSION = "v2.328.16";
+const VERSION = "v2.328.17";
 const SHELL = `vq-shell-${VERSION}`;
 // Cœur de l'appli précaché ; le reste peut être préparé depuis le profil du joueur.
 const FILES = ["./", "index.html", "style.css", "app.js", "data.js", "corto-lieux.js", "intro.js", "mapstyle.js", "config.js", "manifest.webmanifest", "vendor/maplibre-gl.js", "vendor/maplibre-gl.css", "fonts/special-elite-latin.woff2", "img/map-icon.webp", "img/objets/coquille.svg", "img/objets/perle.svg", "img/objets/plume.svg", "img/objets/coffre-code.svg", "img/objets/parchemin.svg", "img/objets/partition.svg", "img/objets/cle-bronze.svg", "img/objets/fiole-lagune.svg", "img/objets/verre-murano.svg", "img/objets/boussole.svg", "img/objets/masque.svg", "img/objets/sceau-lion.svg", "img/objets/diamant.svg", "img/objets/ruban-soie.svg", "img/objets/lanterne.svg", "img/intro/bg.webp", "img/home-icon.webp", "img/bridge-icon.webp", "data/petits-canaux.json", "data/outfits.json", "data/bridges.json", "data/facts.json", "icons/icon-192.png", "icons/icon-512.png", "img/corto-face.webp", "img/corto-content.webp", "img/corto-venise-pastel.webp"];
@@ -7,6 +7,7 @@ FILES.push("data/murano-island.geojson");
 FILES.push("data/arbres.json", ...["olivier_torcello", "palmier_san_servolo", "fevier_giardini_reali", "micocoulier_piazzale_roma"].flatMap((id) => [256, 512].map((size) => `img/arbres/${id}_${size}.png`)));
 FILES.push("img/arbres/olivier-torcello-photo.webp", "img/objets/olive-torcello.webp");
 FILES.push("img/objets/coquillage-murano.svg");
+FILES.push("img/objets/rubis-burano.svg");
 FILES.push("data/masques.json", "img/masque-venitien-transparent.png", "audio/mask-triumph.mp3");
 FILES.push("icons/corto-192.png", "icons/corto-512.png", "icons/corto-maskable-512.png", "icons/corto-apple-touch-180.png");
 FILES.push(...[1, 2, 3, 4, 5].map((n) => `img/masque-carnaval-${n}.webp`));

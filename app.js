@@ -1312,6 +1312,7 @@ fetch("data/arbres.json").then((r) => { if (!r.ok) throw new Error("Repères d�
 const MASK_IMAGES = ["img/masque-venitien-transparent.png", ...[1, 2, 3, 4, 5].map((n) => `img/masque-carnaval-${n}.webp`)];
 const MASK_GEM_IMAGE = "img/objets/diamant.svg";
 const MASK_STARS = 5, MASK_RADIUS = 55, maskMarkers = new Map();
+const BURANO_RUBY_MASK_ID = "m079";
 let maskSites = [];
 const maskKey = (id, player = meIdx()) => `mask:${player}:${id}`;
 const maskGemKey = (id, player = meIdx()) => `o:mask-gem:${player}:${id}`;
@@ -1466,7 +1467,7 @@ async function tapMask(site, record) {
   const { cx, cy } = celebration;
   el.classList.remove("is-blooming");
   if (player !== meIdx()) { await evaporateMask(celebration); img.style.visibility = ""; record.busy = false; return; }
-  if (Math.random() < .1) {
+  if (site.id !== BURANO_RUBY_MASK_ID && Math.random() < .1) {
     award(maskKey(site.id, player), 0, player); S.done[maskKey(site.id, player)].kind = "gem"; save();
     await evaporateMask(celebration);
     img.src = MASK_GEM_IMAGE; img.style.visibility = ""; el.classList.add("is-gem");
@@ -1483,6 +1484,7 @@ async function tapMask(site, record) {
 }
 function makeMaskMarker(site) {
   const el = document.createElement("button"); el.type = "button"; el.className = "mask-marker";
+  el.dataset.maskId = site.id;
   const index = Number(site.id.slice(1)) - 1, maskImage = MASK_IMAGES[index % MASK_IMAGES.length];
   const img = document.createElement("img"); img.src = maskImage; img.alt = ""; img.draggable = false; el.appendChild(img);
   const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([site.lon, site.lat]).addTo(map);
@@ -1554,6 +1556,96 @@ async function collectMuranoShell() {
   }
   flight.remove(); record.busy = false; updateMuranoShellMarker();
   toast("Coquillage magique rangé dans ton livre ! +50 ⭐", 5000);
+}
+
+// Le masque central de Burano révèle un rubis à ramasser sur la carte.
+const BURANO_RUBY = { lat: 45.48512, lon: 12.41829, radius: 55, img: "img/objets/rubis-burano.svg" };
+const BURANO_RUBY_KEY = "o:rubis-burano", BURANO_RUBY_BONUS = "bonus:burano-ruby";
+let buranoRubyMarker = null;
+function updateBuranoRubyMarker() {
+  const available = JEU && has(maskKey(BURANO_RUBY_MASK_ID)) && !has(BURANO_RUBY_KEY) && !has(grantKey(meIdx(), "object:rubis-burano"));
+  if (!available) {
+    if (buranoRubyMarker && !buranoRubyMarker.busy) { buranoRubyMarker.marker.remove(); buranoRubyMarker = null; }
+    return;
+  }
+  if (!buranoRubyMarker) {
+    const el = document.createElement("button"); el.type = "button"; el.className = "burano-ruby-marker";
+    const img = document.createElement("img"); img.src = BURANO_RUBY.img; img.alt = ""; img.draggable = false; el.appendChild(img);
+    const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([BURANO_RUBY.lon, BURANO_RUBY.lat]).addTo(map);
+    buranoRubyMarker = { marker, el, img, busy: false };
+    el.addEventListener("pointerdown", (event) => event.stopPropagation());
+    el.addEventListener("click", (event) => { event.stopPropagation(); collectBuranoRuby(); });
+  }
+  const zoom = map.getZoom();
+  buranoRubyMarker.el.hidden = zoom < 14;
+  buranoRubyMarker.el.style.setProperty("--burano-ruby-size", Math.round(Math.min(66, Math.max(44, 35 * 1.4 ** (zoom - 15)))) + "px");
+  buranoRubyMarker.el.setAttribute("aria-label", "Ramasser le rubis de Burano");
+}
+map.on("zoom", updateBuranoRubyMarker);
+function buranoRubyTrail(x, y) {
+  const star = document.createElement("span"); star.className = "burano-ruby-trail"; star.textContent = Math.random() < .5 ? "✦" : "✧";
+  star.style.cssText = `left:${x + (Math.random() - .5) * 22}px;top:${y + (Math.random() - .5) * 22}px`;
+  document.body.appendChild(star);
+  star.animate([{ transform: "translate(-50%,-50%) scale(1.2)", opacity: 1 }, { transform: `translate(${(Math.random() - .5) * 45}px,${-25 - Math.random() * 45}px) scale(.1)`, opacity: 0 }], { duration: 750, easing: "ease-out", fill: "forwards" }).finished.finally(() => star.remove());
+}
+async function collectBuranoRuby() {
+  const record = buranoRubyMarker;
+  if (!record || record.busy || !mapWorkVisible() || !has(maskKey(BURANO_RUBY_MASK_ID)) || has(BURANO_RUBY_KEY)) return;
+  record.busy = true; record.el.classList.add("is-searching"); armMaskSound();
+  const player = meIdx(), [fix] = await Promise.all([maskFix(), sleep(550)]);
+  record.el.classList.remove("is-searching");
+  if (!record.el.isConnected || player !== meIdx()) { record.busy = false; return; }
+  if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.acc) || fix.acc > 80) {
+    record.busy = false; toast("Je ne parviens pas à vérifier ta position. Réessaie près du rubis."); return;
+  }
+  const distance = dist(fix.lat, fix.lon, BURANO_RUBY.lat, BURANO_RUBY.lon);
+  if (distance > BURANO_RUBY.radius + Math.min(fix.acc, 20)) {
+    record.busy = false; cortoSays(`Le rubis est encore à ${fmtD(distance)}. Approche-toi, matelot !`); return;
+  }
+  try { navigator.vibrate?.([80, 40, 130]); } catch {}
+  playMaskSound();
+  const r = record.img.getBoundingClientRect(), sx = r.left + r.width / 2, sy = r.top + r.height / 2;
+  const cx = innerWidth / 2, cy = innerHeight / 2, fullSize = Math.max(innerWidth, innerHeight) * 1.08, startScale = r.width / fullSize;
+  const glow = document.createElement("div"); glow.className = "burano-ruby-aura"; document.body.appendChild(glow);
+  const ghost = record.img.cloneNode(); ghost.className = "burano-ruby-bloom"; ghost.alt = "";
+  ghost.style.cssText = `left:${sx - fullSize / 2}px;top:${sy - fullSize / 2}px;width:${fullSize}px;height:${fullSize}px`;
+  document.body.appendChild(ghost); record.el.hidden = true;
+  const centerTransform = `translate(${cx - sx}px,${cy - sy}px) scale(1)`;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const bloom = ghost.animate([
+    { transform: `translate(0,0) scale(${startScale})`, filter: "drop-shadow(0 0 8px #ffe58c)" },
+    { transform: `translate(${cx - sx}px,${cy - sy}px) scale(.68) rotate(-7deg)`, filter: "drop-shadow(0 0 26px #fff0a5)", offset: .72 },
+    { transform: centerTransform, filter: "drop-shadow(0 0 42px #ffdc58)" },
+  ], { duration: reduced ? 260 : 1000, easing: "cubic-bezier(.2,.7,.18,1)", fill: "forwards" });
+  const aura = glow.animate([{ opacity: 0 }, { opacity: .92 }], { duration: reduced ? 220 : 900, fill: "forwards" });
+  await bloom.finished.catch(() => {});
+  ghost.style.transform = centerTransform; bloom.cancel(); glow.style.opacity = ".92"; aura.cancel();
+  if (player !== meIdx()) { ghost.remove(); glow.remove(); record.busy = false; updateBuranoRubyMarker(); return; }
+  award(BURANO_RUBY_KEY, 0, player); award(BURANO_RUBY_BONUS, 100, player); save(); refreshAll();
+  await sleep(reduced ? 200 : 800);
+  const book = $("#home-btn"), target = book?.getBoundingClientRect();
+  const tx = target ? target.left + target.width / 2 : cx, ty = target ? target.top + target.height / 2 : cy;
+  book?.classList.add("olive-book-target");
+  const duration = reduced ? 320 : 1350;
+  await new Promise((resolve) => {
+    const started = performance.now(); let lastTrail = 0;
+    const frame = (now) => {
+      const t = Math.min(1, (now - started) / duration), eased = t * t * (3 - 2 * t), lift = -65 * Math.sin(Math.PI * t);
+      const x = cx + (tx - cx) * eased, y = cy + (ty - cy) * eased + lift;
+      const scale = 1 - .95 * eased;
+      ghost.style.transform = `translate(${x - sx}px,${y - sy}px) scale(${scale}) rotate(${t * 290}deg)`;
+      ghost.style.opacity = String(Math.min(1, (1 - t) * 5));
+      glow.style.opacity = String(Math.max(0, .92 - t * 2.2));
+      if (!reduced && now - lastTrail > 45) { buranoRubyTrail(x, y); lastTrail = now; }
+      if (t < 1) requestAnimationFrame(frame); else resolve();
+    };
+    requestAnimationFrame(frame);
+  });
+  ghost.remove(); glow.remove(); book?.classList.remove("olive-book-target");
+  if (book) book.animate([{ transform: "scale(1)" }, { transform: "scale(1.28)", filter: "brightness(1.7) drop-shadow(0 0 15px #ffe278)", offset: .45 }, { transform: "scale(1)" }], { duration: 650 });
+  maskRain(tx, ty); starsToCounter(cx, cy, 100, true);
+  record.busy = false; updateBuranoRubyMarker();
+  toast("Rubis de Burano rangé dans ton livre ! +100 ⭐", 5000);
 }
 
 $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientRect());
@@ -3386,6 +3478,7 @@ const PREVIEW_OBJECTS = DEV;
 const OBJECTS = [
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
   { id: "coquillage-murano", name: "Le coquillage magique de Murano", img: "coquillage-murano.svg", key: MURANO_SHELL_KEY },
+  { id: "rubis-burano", name: "Le rubis de Burano", img: "rubis-burano.svg", key: BURANO_RUBY_KEY },
   { id: "cle-gondolier", name: "La clé du gondolier", img: "img/narrative/gondolier-gold-key.png", key: "o:cle-gondolier" },
   { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
   { id: "basilique", name: "La plume de l’évangéliste", img: "plume.svg", key: "tr:basilique" },
@@ -4143,7 +4236,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateBuranoRubyMarker(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");
