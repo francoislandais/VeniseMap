@@ -160,7 +160,7 @@ function applyConfiguredGrants() {
   const gained = [];
   for (const [reward, target] of Object.entries(rewardPlacements)) {
       const player = 0;
-      if (has("o:cle-gondolier") && (reward === "object:frari" || reward === "object:diamant")) continue;
+      if (has("o:cle-gondolier") && (reward === "object:coquillage-murano" || reward === "object:diamant")) continue;
       if (!/^t:[a-z0-9-]+:[0-9]{1,3}$/.test(target) || !has(target) || has(grantKey(player, reward))) continue;
       award(grantKey(player, reward), 0, player); gained.push({ player, reward });
   }
@@ -1011,15 +1011,15 @@ function walkerTap(W) {
       hasKey: () => !LOCAL_DEV && objectFoundFor("cle-gondolier"),
       onTrade: (selectedIds) => {
         const diamond = selectedIds.find(id => id === "diamant" || (LOCAL_DEV && /^diamant-test-[1-3]$/.test(id)));
-        const validOffer = selectedIds.length === 2 && selectedIds.includes("frari") && !!diamond;
+        const validOffer = selectedIds.length === 2 && selectedIds.includes("coquillage-murano") && !!diamond;
         const refusal = { accepted: false, message: "Quoi ? Juste ce vieux truc en échange de ma clé d'or ? Tu te moques de moi, moussaillon !" };
         if (LOCAL_DEV) return validOffer
           ? { accepted: true, message: "Voilà un échange qui me convient. Cette clé d'or est à toi." }
           : refusal;
         if (objectFoundFor("cle-gondolier")) return { accepted: false, message: "Tu as déjà ma clé, moussaillon. Garde tes trésors !" };
-        if (!validOffer || !objectFoundFor("frari") || !objectFoundFor("diamant")) return refusal;
+        if (!validOffer || !objectFoundFor("coquillage-murano") || !objectFoundFor("diamant")) return refusal;
         const player = meIdx();
-        const given = ["frari", "diamant"];
+        const given = ["coquillage-murano", "diamant"];
         const keys = given.flatMap(id => [OBJECTS.find(item => item.id === id).key, grantKey(player, `object:${id}`)]);
         const earnedPoints = keys.reduce((sum, key) => sum + (has(key) ? Number(S.done[key].p) || 0 : 0), 0);
         if (earnedPoints) award("bonus:trade:gondolier", earnedPoints, player);
