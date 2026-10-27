@@ -2402,12 +2402,114 @@ export const PLACES = [
       { t: "choice", q: "La tour de l'église de Burano est...", opts: ["📐 Penchée", "🔵 Bleue", "🔊 Muette"], a: 0, fact: "Le sol de la lagune est mou : la tour s'est inclinée petit à petit." },
       { t: "do", q: "Penche-toi comme la tour et prends la pose !" },
     ] },
-  { id: "torcello", emoji: "🪑", name: "Le trône d'Attila", lat: 45.49830, lon: 12.41850, r: 150,
-    story: "Torcello est l'île où les premiers Vénitiens se sont installés. Sur la place, un vieux fauteuil de pierre : le trône d'Attila. Personne ne sait vraiment pourquoi on l'appelle ainsi !",
-    clue: "Les rois ont disparu, la chaise est restée. Assieds-toi : c'est ton tour de régner.",
-    tasks: [
-      { t: "do", q: "Assieds-toi sur le trône comme un roi ou une reine (si c'est permis !)." },
-      { t: "count", q: "Combien de chats croises-tu sur l'île ?", a: null },
+  { id: "torcello", emoji: "🪑", name: "Le trône blanc de Torcello", lat: 45.49830, lon: 12.41850, r: 150,
+    story: "Torcello fut longtemps un centre important de la lagune. Son grand siège de pierre porte un surnom spectaculaire : « le trône d’Attila ». Mais la légende et l’histoire ne disent pas toujours la même chose…",
+    clue: "Un siège de pierre, deux vieilles églises, une haute tour et un pont : suis les indices, observe bien et laisse les légendes à leur place, mousse !",
+    chapters: [
+      {
+        "steps": [
+          {
+            "idx": 300,
+            "where": "Observe le grand siège de pierre du campo. On le surnomme le « trône d’Attila ». Regarde sa matière ; pas besoin de monter dessus.",
+            "q": "Dans quelle matière ce siège est-il taillé ?",
+            "opts": [
+              "Dans un gros bloc de pierre",
+              "Dans des planches de bois",
+              "Dans du verre bleu",
+              "Dans de la brique"
+            ],
+            "a": 0,
+            "reveal": "Tu as trouvé le trône blanc ! Son surnom est une légende : l’archéologue Diego Calaon explique que ce siège n’appartenait pas à Attila. Son ancien usage fait encore débat ; il pourrait avoir été lié à la basilique, peut-être comme siège d’évêque. Mystère !",
+            "img": "img/places/torcello.webp",
+            "src": [
+              "https://iris.unive.it/retrieve/54afb2ff-6b21-4dcb-8e21-27877cdb241a/la%20Carega%20de%20Atila.pdf",
+              "https://www.museoditorcello.cittametropolitana.ve.it/en/island-torcello.html",
+              "https://commons.wikimedia.org/wiki/File:Torcello_-_Attila%27s_thone.JPG"
+            ],
+            "cap": "Torcello – le siège dit « trône d’Attila » · Rémi Mathis · CC BY-SA 3.0."
+          },
+          {
+            "idx": 301,
+            "where": "Depuis la place, regarde le haut de la façade de Santa Maria Assunta. Repère les deux petites fenêtres rondes au milieu.",
+            "q": "Combien de fenêtres rondes vois-tu sur cette partie de la façade ?",
+            "opts": [
+              "Une",
+              "Deux",
+              "Quatre",
+              "Aucune"
+            ],
+            "a": 1,
+            "reveal": "Cette basilique est très ancienne : le musée indique que Santa Maria fut fondée en 639. Du VIIe au Xe siècle, Torcello prospéra grâce au sel et au commerce. Plus tard, l’île s’est peu à peu vidée, notamment quand les marais se sont étendus.",
+            "img": "img/q/torcello-1.webp",
+            "src": [
+              "https://www.museoditorcello.cittametropolitana.ve.it/en/island-torcello.html",
+              "https://www.italia.it/it/veneto/venezia/torcello",
+              "https://commons.wikimedia.org/wiki/File:Basilica_di_Santa_Maria_Assunta,_Torcello.jpg"
+            ],
+            "cap": "Façade nord-ouest de Santa Maria Assunta · Till Niermann · CC BY 3.0 (image redimensionnée et convertie en WebP)."
+          },
+          {
+            "idx": 302,
+            "where": "Passe devant la petite église Santa Fosca et observe son portique depuis le chemin extérieur.",
+            "q": "Qu’est-ce qui entoure l’église ?",
+            "opts": [
+              "Une galerie d’arches et de colonnes",
+              "Un rempart crénelé",
+              "Des vitres modernes",
+              "Un fossé rempli d’eau"
+            ],
+            "a": 0,
+            "reveal": "Santa Fosca date du XIe siècle. Le musée décrit une église en forme de croix entourée d’un portique octogonal : ses arches et ses colonnes sculptées forment un élégant chemin couvert. « Octogonal », cela veut dire huit côtés.",
+            "img": "img/q/torcello-2.webp",
+            "src": [
+              "https://www.museoditorcello.cittametropolitana.ve.it/en/island-torcello.html",
+              "https://www.italia.it/it/veneto/venezia/torcello",
+              "https://commons.wikimedia.org/wiki/File:Chiesa_di_Santa_Fosca,_Torcello.JPG"
+            ],
+            "cap": "Santa Fosca et son portique · Ethan Doyle White · CC BY-SA 4.0 (image redimensionnée et convertie en WebP)."
+          },
+          {
+            "idx": 303,
+            "where": "Lève les yeux vers le grand campanile de brique. Observe la loggia tout en haut, depuis le chemin.",
+            "q": "Combien de fenêtres en arc sont groupées sur la face visible du campanile ?",
+            "opts": [
+              "Deux",
+              "Trois",
+              "Quatre",
+              "Six"
+            ],
+            "a": 2,
+            "reveal": "Le campanile date du XIe siècle. Tout en haut, les ouvertures sont groupées par quatre : c’est la « quadrifora », un nom savant pour un joli détail que tu as repéré sans monter dans la tour !",
+            "img": "img/q/torcello-3.webp",
+            "src": [
+              "https://www.italia.it/it/veneto/venezia/torcello",
+              "https://www.veneziaunica.it/it/cosa-fare-a-venezia/itinerari/torcello-la-venezia-delle-origini",
+              "https://commons.wikimedia.org/wiki/File:Venezia_Cattedrale_di_Santa_Maria_Assunta_Campanile.jpg"
+            ],
+            "cap": "Campanile de Santa Maria Assunta · Zairon · CC BY-SA 4.0 (image redimensionnée et convertie en WebP)."
+          },
+          {
+            "idx": 304,
+            "where": "Suis le chemin public jusqu’au Ponte del Diavolo. Arrête-toi avant les marches et regarde sa silhouette au-dessus du canal.",
+            "q": "Quelle forme dessine le pont au-dessus de l’eau ?",
+            "opts": [
+              "Une grande arche",
+              "Une ligne toute plate",
+              "Une spirale",
+              "Deux arches l’une au-dessus de l’autre"
+            ],
+            "a": 0,
+            "reveal": "Son arche s’élève au-dessus du canal. Le nom « pont du Diable » appartient aux histoires racontées sur l’île ; son origine exacte n’est pas certaine. C’est un vieux pont aux marches hautes : traverse seulement avec un adulte, sans courir.",
+            "img": "img/q/torcello-4.webp",
+            "src": [
+              "https://www.veneziaunica.it/it/cosa-fare-a-venezia/itinerari/torcello-la-venezia-delle-origini",
+              "https://www.visitvenezia.eu/en/venetianity/tales-of-venice/torcello-island-the-legend-of-the-devil-s-bridge",
+              "https://commons.wikimedia.org/wiki/File:Torcello,_ponte_del_diavolo_01.jpg"
+            ],
+            "cap": "Ponte del Diavolo · Sailko · CC BY 3.0 (image redimensionnée et convertie en WebP)."
+          }
+        ]
+      }
     ] },
 
   // ─── JOUR 6 : livres et secrets ───

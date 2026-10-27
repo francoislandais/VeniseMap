@@ -12,6 +12,7 @@ export const FONTS = ["Noto Sans Bold", "Noto Sans Italic"];
 
 const INK = "#6b4535", WATER = "#2f7fae";
 const POI = ["in", ["get", "class"], ["literal", ["place_of_worship", "museum", "monument", "castle", "attraction", "theatre", "library", "town_hall", "college"]]];
+const ISLAND = ["==", ["get", "class"], "island"];
 // motifs dessinés par le code : papier, vaguelettes, arbres (pour garder un rendu net aux forts zooms)
 function mk(w, h, draw) { const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d"); draw(x, w, h); return x.getImageData(0, 0, w, h); }
 function rnd(seed) { let s = seed; return () => ((s = (s * 16807) % 2147483647) / 2147483647); }
@@ -66,6 +67,12 @@ const layers = [
   // Mer, lagune, Grand Canal : tuiles Stamen d'origine ; ma peinture (OpenFreeMap) ne les remplace qu'à fort zoom, quand l'aquarelle devient floue.
   { id: "eau-nette", type: "fill", source: "ofm", "source-layer": "water", paint: { "fill-pattern": "waves", "fill-opacity": ZW } },
   { id: "eau-lavis", type: "fill", source: "ofm", "source-layer": "water", paint: { "fill-pattern": "lavis", "fill-opacity": ZW } },
+  // Les îles OSM sont dessinées au-dessus des polygones d'eau : cela rétablit une rive lisible
+  // quand une tuile d'eau généralisée mord sur la terre (notamment autour de Murano).
+  { id: "iles-terre", type: "fill", source: "ofm", "source-layer": "place", minzoom: 11.5, filter: ISLAND,
+    paint: { "fill-color": "#ead8b8", "fill-opacity": 1 } },
+  { id: "iles-rives", type: "line", source: "ofm", "source-layer": "place", minzoom: 11.5, filter: ISLAND,
+    paint: { "line-color": "#9b7351", "line-width": ["interpolate", ["linear"], ["zoom"], 11.5, 0.6, 15, 1.1, 18, 1.7], "line-opacity": 0.8 } },
   // Petits canaux (largeur < ~24 m, que Stamen ne dessine pas) : toujours peints par mes soins, à tout zoom, avec un liseré sombre.
   { id: "canal-eau", type: "fill", source: "petits", paint: { "fill-pattern": "waves" } },
   { id: "canal-lavis", type: "fill", source: "petits", paint: { "fill-pattern": "lavis" } },
@@ -84,6 +91,11 @@ if (true) layers.push(
   { id: "noms-rues", type: "symbol", source: "ofm", "source-layer": "transportation_name", minzoom: 17.3, layout: { "symbol-placement": "line", "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]], "text-font": ["Noto Sans Italic"], "text-size": 11 }, paint: { "text-color": "#5a3b2c", "text-halo-color": "#f7eddc", "text-halo-width": 1.5 } },
   { id: "noms-eau", type: "symbol", source: "ofm", "source-layer": "waterway", minzoom: 17.0, layout: { "symbol-spacing": 700, "text-padding": 60, "symbol-placement": "line", "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]], "text-font": ["Noto Sans Italic"], "text-size": 12, "text-letter-spacing": 0.15 }, paint: { "text-color": "#1f5f8a", "text-halo-color": "#e9f3f8", "text-halo-width": 1.5 } },
   { id: "noms-eau2", type: "symbol", source: "ofm", "source-layer": "water_name", layout: { "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]], "text-font": ["Noto Sans Italic"], "text-size": 13, "text-letter-spacing": 0.2, "text-padding": 90 }, paint: { "text-color": "#1f5f8a", "text-halo-color": "#e9f3f8", "text-halo-width": 1.5 } },
+  { id: "noms-iles", type: "symbol", source: "ofm", "source-layer": "place", minzoom: 11.5, filter: ISLAND,
+    layout: { "text-field": ["upcase", ["coalesce", ["get", "name:latin"], ["get", "name"]]], "text-font": ["Noto Sans Italic"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 11.5, 11, 15, 14, 18, 16], "text-letter-spacing": 0.14,
+      "text-anchor": "center", "text-max-width": 10, "text-padding": 36, "text-allow-overlap": false, "symbol-z-order": "source" },
+    paint: { "text-color": "#58402f", "text-halo-color": "#f5e8d0", "text-halo-width": 2.2, "text-halo-blur": 0.2 } },
   ...MONUMENTS,
 );
 

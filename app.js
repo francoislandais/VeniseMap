@@ -3837,6 +3837,7 @@ function renderSettings() {
       fb.onclick = () => { try { if (fsPref()) { localStorage.setItem("vq_fs", "0"); if (document.fullscreenElement) document.exitFullscreen(); } else { localStorage.removeItem("vq_fs"); enterFs(); } } catch {} lab(); }; } } }
   fetch("img/ponts/credits.json").then((r) => r.json()).then((c) => { const el = $("#credits", v); if (el) el.insertAdjacentHTML("beforeend", `<p style="margin:10px 0 4px"><b>Ponts</b></p>` + Object.values(c).map((x) => `<p style="margin:4px 0">${esc(x.name)} : ${esc(x.author)} · ${esc(x.license)} · <a href="${esc(x.url)}" target="_blank" rel="noopener">source</a></p>`).join("")); }).catch(() => {});
   fetch("img/places/credits.json").then((r) => r.json()).then((c) => { const el = $("#credits", v); if (el) el.insertAdjacentHTML("afterbegin", Object.entries(c).map(([id, x]) => `<p style="margin:6px 0"><b>${esc(place(id)?.name || id)}</b> : ${esc(x.author)} · ${esc(x.license)} · <a href="${esc(x.url)}" target="_blank" rel="noopener">source</a></p>`).join("")); }).catch(() => {});
+  fetch("img/q/credits.json").then((r) => r.json()).then((c) => { const el = $("#credits", v); if (el) el.insertAdjacentHTML("beforeend", `<p style="margin:10px 0 4px"><b>Épreuves · Torcello</b></p>` + Object.values(c).map((x) => `<p style="margin:4px 0">${esc(x.title)} : ${esc(x.author)} · ${esc(x.license)} · <a href="${esc(x.url)}" target="_blank" rel="noopener">source</a></p>`).join("")); }).catch(() => {});
   $$('[data-delete-player]', v).forEach((button) => button.onclick = async () => {
     const playerId = button.dataset.deletePlayer, name = adminPlayers.find((p) => p.id === playerId)?.name || "ce joueur";
     if (!confirm(`Supprimer ${name} et son score ? Ses photos locales seront effacées quand son appareil se reconnectera.`)) return;
@@ -3913,7 +3914,7 @@ function downloadOfflinePack(report) {
     const manifest = await response.json();
     if (!Array.isArray(manifest.files) || !manifest.files.length) throw new Error("La liste des fichiers du jeu est vide.");
     if (!useStamen) throw new Error("La carte aquarelle n’est pas disponible sur ce téléphone.");
-    const shell = await caches.open("vq-shell-v2.326.1"), tiles = await caches.open("vq-tiles");
+    const shell = await caches.open("vq-shell-v2.327.1"), tiles = await caches.open("vq-tiles");
     const jobs = manifest.files.map((path) => ({ url: new URL(path, location.origin + "/").href, cache: shell, kind: "game" }));
     jobs.push(...tilesFor(OFM_TILES, 14, OFFLINE_VECTOR_BOXES).map((url) => ({ url, cache: shell, kind: "ofm" })));
     for (const font of FONTS) for (const range of ["0-255", "256-511"]) jobs.push({ url: OFM_GLYPHS.replace("{fontstack}", encodeURIComponent(font)).replace("{range}", range), cache: shell, kind: "ofm" });

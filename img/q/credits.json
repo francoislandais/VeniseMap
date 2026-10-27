@@ -1,0 +1,30 @@
+{
+  "torcello-1.webp": {
+    "place": "torcello",
+    "title": "Basilica di Santa Maria Assunta, Torcello",
+    "author": "Till Niermann",
+    "license": "CC BY 3.0 · image redimensionnée et convertie en WebP",
+    "url": "https://commons.wikimedia.org/wiki/File:Basilica_di_Santa_Maria_Assunta,_Torcello.jpg"
+  },
+  "torcello-2.webp": {
+    "place": "torcello",
+    "title": "Chiesa di Santa Fosca, Torcello",
+    "author": "Ethan Doyle White",
+    "license": "CC BY-SA 4.0 · image redimensionnée et convertie en WebP",
+    "url": "https://commons.wikimedia.org/wiki/File:Chiesa_di_Santa_Fosca,_Torcello.JPG"
+  },
+  "torcello-3.webp": {
+    "place": "torcello",
+    "title": "Campanile di Santa Maria Assunta",
+    "author": "Zairon",
+    "license": "CC BY-SA 4.0 · image redimensionnée et convertie en WebP",
+    "url": "https://commons.wikimedia.org/wiki/File:Venezia_Cattedrale_di_Santa_Maria_Assunta_Campanile.jpg"
+  },
+  "torcello-4.webp": {
+    "place": "torcello",
+    "title": "Ponte del Diavolo, Torcello",
+    "author": "Sailko",
+    "license": "CC BY 3.0 · image redimensionnée et convertie en WebP",
+    "url": "https://commons.wikimedia.org/wiki/File:Torcello,_ponte_del_diavolo_01.jpg"
+  }
+}
