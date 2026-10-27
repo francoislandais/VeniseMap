@@ -69,13 +69,58 @@ function typeLine(element) {
   return { get done() { return done; }, finish };
 }
 
+function createStormSound() {
+  const wind = new Audio("audio/corto-wind.mp3"), thunder = new Audio("audio/corto-thunder.mp3");
+  wind.loop = true; wind.preload = "auto"; wind.volume = 0;
+  thunder.preload = "auto"; thunder.volume = 0;
+  let frame = 0, thunderPlayed = false, stopped = false, page = 0, last = 0;
+  const play = (audio) => { if (audio.paused) audio.play().catch(() => {}); };
+  const fade = (windTarget, thunderTarget, duration) => {
+    cancelAnimationFrame(frame);
+    const started = performance.now(), fromWind = wind.volume, fromThunder = thunder.volume;
+    const tick = (now) => {
+      if (stopped) return;
+      const t = Math.min(1, (now - started) / duration);
+      wind.volume = Math.max(0, Math.min(1, fromWind + (windTarget - fromWind) * t));
+      thunder.volume = Math.max(0, Math.min(1, fromThunder + (thunderTarget - fromThunder) * t));
+      if (t < 1) frame = requestAnimationFrame(tick);
+      else if (windTarget === 0) { wind.pause(); thunder.pause(); }
+    };
+    frame = requestAnimationFrame(tick);
+  };
+  const onVisibility = () => {
+    if (document.hidden) { cancelAnimationFrame(frame); wind.pause(); thunder.pause(); }
+    else if (!stopped && page < last) { play(wind); fade(.3, thunderPlayed ? .15 : 0, 500); }
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+  return {
+    start() { if (stopped) return; play(wind); fade(.3, 0, 700); },
+    scene(index, finalIndex) {
+      if (stopped) return;
+      page = index; last = finalIndex;
+      if (index >= finalIndex) { fade(0, 0, 1700); return; }
+      play(wind);
+      if (index >= 1 && !thunderPlayed) { thunderPlayed = true; thunder.currentTime = 0; play(thunder); }
+      fade(.3, index >= 1 ? .18 : 0, 500);
+    },
+    stop() {
+      stopped = true; cancelAnimationFrame(frame);
+      document.removeEventListener("visibilitychange", onVisibility);
+      for (const audio of [wind, thunder]) { audio.pause(); audio.currentTime = 0; }
+    },
+  };
+}
+
 let opening = false;
-export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwnedObjects, hasKey, onTrade, editable = false } = {}) {
+export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwnedObjects, hasKey, hasSeen, onTrade, editable = false } = {}) {
   if (opening || document.querySelector(".corto-rendezvous")) return;
+  const seen = !!hasSeen?.();
+  const sound = seen ? null : createStormSound();
+  sound?.start();
   opening = true;
   const layout = await layoutPromise;
   opening = false;
-  if (document.querySelector(".corto-rendezvous")) return;
+  if (document.querySelector(".corto-rendezvous")) { sound?.stop(); return; }
   const previousFocus = document.activeElement;
   const overlay = document.createElement("div");
   overlay.className = "corto-rendezvous gondolier-rendezvous";
@@ -89,10 +134,11 @@ export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwne
   new Image().src = KEY;
   new Image().src = STORM;
   const stage = overlay.querySelector(".gr-stage"), previous = overlay.querySelector(".cr-prev");
-  let index = 0, scene = null, typing = null, pointerStart = null, editor = null, reactionTimer = 0, ceremony = false;
+  let index = seen ? LINES.length - 1 : 0, scene = null, typing = null, pointerStart = null, editor = null, reactionTimer = 0, ceremony = false;
   const selected = new Set();
   const close = (completed = false) => {
     clearTimeout(reactionTimer);
+    sound?.stop();
     typing?.finish();
     document.removeEventListener("keydown", onKey);
     editor?.destroy();
@@ -167,6 +213,7 @@ export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwne
     const panel = document.createElement("div"); panel.className = "gr-trade-panel"; panel.hidden = true;
     host.append(offer, panel);
     offer.onclick = () => {
+      sound?.stop();
       typing?.finish();
       overlay.classList.add("gr-trade-opened");
       offer.hidden = true; panel.hidden = false;
@@ -178,7 +225,7 @@ export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwne
       if (!owned.length) {
         panel.innerHTML = `<p class="gr-trade-answer">Tu n'as encore aucun objet à proposer. Reviens me voir après tes découvertes !</p>`;
       } else {
-        panel.innerHTML = `<p class="gr-trade-prompt">Choisis les objets que tu veux m'offrir.</p><div class="gr-trade-grid">${owned.map((item) => `<button type="button" class="gr-trade-item" data-item="${escapeHtml(item.id)}" aria-pressed="${selected.has(item.id)}"><img src="${escapeHtml(item.img)}" alt=""><span>${escapeHtml(item.name)}</span></button>`).join("")}</div><button type="button" class="gr-trade-submit" ${selected.size ? "" : "disabled"}>Proposer au gondolier</button><p class="gr-trade-answer" role="status" aria-live="polite"></p>`;
+        panel.innerHTML = `<p class="gr-trade-prompt">Choisis les objets que tu veux m'offrir.</p><div class="gr-trade-grid">${owned.map((item) => `<button type="button" class="gr-trade-item" data-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}" aria-pressed="${selected.has(item.id)}"><img src="${escapeHtml(item.img)}" alt=""></button>`).join("")}</div><button type="button" class="gr-trade-submit" ${selected.size ? "" : "disabled"}>Proposer au gondolier</button><p class="gr-trade-answer" role="status" aria-live="polite"></p>`;
         const submit = panel.querySelector(".gr-trade-submit"), answer = panel.querySelector(".gr-trade-answer");
         panel.querySelectorAll(".gr-trade-item").forEach((button) => {
           button.onclick = () => {
@@ -212,9 +259,10 @@ export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwne
   };
   const show = () => {
     clearTimeout(reactionTimer);
+    sound?.scene(index, LINES.length - 1);
     typing?.finish();
     overlay.classList.remove("gr-trade-opened");
-    overlay.classList.toggle("gr-storm-active", index === 1 || index === 2);
+    overlay.classList.toggle("gr-storm-active", index >= 1);
     stage.querySelectorAll(".gr-exit").forEach((old) => old.remove());
     const next = document.createElement("div");
     next.className = `gr-scene${scene ? " gr-enter" : ""}`;

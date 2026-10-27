@@ -1349,6 +1349,10 @@ body.intro-open>*:not(.in2){visibility:hidden!important}
 .gondolier-rendezvous .gr-trade-item[aria-pressed="true"]{border:1px solid #ffe39b;background:transparent;box-shadow:0 0 0 1px rgba(255,226,141,.55)}
 .gondolier-rendezvous .gr-trade-item img{width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
 .gondolier-rendezvous .gr-trade-item span{font:11px/1.12 Arial,sans-serif}
+.gondolier-rendezvous .gr-trade{left:50%;right:auto;width:min(620px,calc(100vw - 32px));max-width:none;margin:0;transform:translateX(-50%)}
+.gondolier-rendezvous .gr-trade-open{margin-inline:auto}
+.gondolier-rendezvous .gr-trade-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+.gondolier-rendezvous .gr-trade-item{min-height:52px;gap:0;padding:2px}
 .gondolier-rendezvous.gr-refused .gr-copy{animation:gr-refusal .35s ease-out}
 @keyframes gr-refusal{0%,100%{translate:0}30%,70%{translate:-4px}50%{translate:4px}}
 .gondolier-rendezvous.gr-ceremony-active .gr-stage{opacity:0;pointer-events:none}

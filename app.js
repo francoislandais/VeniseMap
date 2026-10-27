@@ -994,8 +994,9 @@ function walkerTap(W) {
   if (W.id === "gondolier") {
     openGondolierRendezvous({
       editable: LOCAL_DEV,
+      hasSeen: () => has("story:gondolier:first") || (LOCAL_DEV && sessionStorage.getItem("vq_dev_gondolier_seen_v1") === "1"),
       onComplete: () => {
-        if (LOCAL_DEV) return;
+        if (LOCAL_DEV) { sessionStorage.setItem("vq_dev_gondolier_seen_v1", "1"); return; }
         if (!has("story:gondolier:first")) { award("story:gondolier:first", 0, meIdx()); save(); }
       },
       getOwnedObjects: () => {
