@@ -894,7 +894,7 @@ function motionSpeed(M, t) {
 // Horloge fluide : l'heure absolue, mais avancée par performance.now() (sans les micro-sauts de Date.now) ; recalée seulement si l'horloge du téléphone saute.
 const CLK = { t0: Date.now(), p0: performance.now() };
 function nowMs() { const v = CLK.t0 + (performance.now() - CLK.p0); if (Math.abs(v - Date.now()) > 1500) { CLK.t0 = Date.now(); CLK.p0 = performance.now(); return CLK.t0; } return v; }
-const GONDOLIER_VISIT = { until: Date.parse("2026-10-28T08:00:00+01:00"), lat: 45.4297533, lon: 12.3292317, shore: 12 };
+const GONDOLIER_VISIT = { until: Date.parse("2026-10-28T08:00:00+01:00"), lat: 45.431618, lon: 12.328693, shore: 12 };
 function rawAt(W, t) {
   if (W.id === "gondolier" && t < GONDOLIER_VISIT.until) return { lat: GONDOLIER_VISIT.lat, lon: GONDOLIER_VISIT.lon, shore: GONDOLIER_VISIT.shore };
   const R = W.R, f = ((t / 3600000) % W.h) / W.h, target = ((W.motion ? motionDist(W.motion, t) : f * R.total) + huffOff(W, t)) % R.total;
