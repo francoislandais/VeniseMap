@@ -133,6 +133,15 @@ async function sync() {
 }
 
 const has = (k) => !!S.done[k] && !S.done[k].d;
+const DEFERRED_KEY = `vq_deferred_v1:${PLAYER_ID}`;
+function deferredFor(scope) { try { return JSON.parse(localStorage.getItem(DEFERRED_KEY) || "{}")[scope] || []; } catch { return []; } }
+function setDeferred(scope, ids) { try { const all = JSON.parse(localStorage.getItem(DEFERRED_KEY) || "{}"); all[scope] = [...new Set(ids)]; localStorage.setItem(DEFERRED_KEY, JSON.stringify(all)); } catch {} }
+function deferItem(scope, id) { const ids = deferredFor(scope).filter((x) => x !== id); ids.push(id); setDeferred(scope, ids); }
+function resolveDeferred(scope, id) { setDeferred(scope, deferredFor(scope).filter((x) => x !== id)); }
+function orderedPending(scope, items, keyOf, isDone) {
+  const pending = items.filter((item) => !isDone(item)), deferred = deferredFor(scope);
+  return [...pending.filter((item) => !deferred.includes(keyOf(item))), ...deferred.flatMap((key) => pending.filter((item) => keyOf(item) === key))];
+}
 const award = (k, p, w = "all") => { S.done[k] = { t: Date.now(), p, w }; };
 const unaward = (k) => { S.done[k] = { t: Date.now(), p: 0, d: 1 }; };
 const points = () => Object.values(S.done).reduce((n, v) => n + (v.d ? 0 : v.p || 0), 0);
@@ -1939,14 +1948,15 @@ function starsToCounter(cx, cy, n, counted = false) {
 function bridgeChoose(ch, stars = 0, centerFrom = null) {
   return new Promise((res) => {
     const bar = $("#b-actions"); if (!bar) return; skipEnd = () => res({ skip: true });
-    bar.innerHTML = ch.map((x, i) => `<button class="b-btn choice" data-k="${i}">${x.t}</button>`).join("");
+    bar.innerHTML = ch.map((x, i) => `<button class="b-btn choice" data-k="${i}">${x.t}</button>`).join("") + `<button type="button" class="b-btn quiz-pass">Passer</button>`;
+    $(".quiz-pass", bar).onclick = () => { bar.hidden = true; bar.innerHTML = ""; bar.style.top = bar.style.bottom = ""; delete $("#sheet").dataset.k; res({ pass: true }); };
     bar.className = "b-actions stack"; bar.hidden = false;
     const sh = $("#sheet"); sh.dataset.k = "bar"; sh.style.setProperty("--bar", bar.offsetHeight + "px");
     // Sans image associée à la question : les propositions sont centrées entre la bulle de Corto et le bas de l'écran
     if (centerFrom != null) { const H = sh.clientHeight, bh = bar.offsetHeight, top0 = centerFrom + 10, free = H - top0 - 96 - SAFE_B(); bar.style.bottom = "auto"; bar.style.top = Math.max(top0, top0 + (free - bh) / 2) + "px"; }
     bar.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 320, easing: "cubic-bezier(.2,.9,.25,1.1)" });
     let wrong = 0;
-    $$("button", bar).forEach((b) => (b.onclick = () => {
+    $$("button.choice", bar).forEach((b) => (b.onclick = () => {
       const c = ch[+b.dataset.k];
       if (c.ok) { $$("button", bar).forEach((x) => (x.disabled = true)); b.classList.add("right"); if (stars && wrong === 0) starBurst(b, stars); b.animate([{ transform: "scale(1)" }, { transform: "scale(1.12)", offset: .35 }, { transform: "scale(1)" }], { duration: 520, easing: "ease-out" }); setTimeout(() => { bar.hidden = true; bar.innerHTML = ""; bar.style.top = bar.style.bottom = ""; delete sh.dataset.k; res({ first: wrong === 0, t: c.t }); }, 700); return; }
       wrong++; buzz(); b.classList.add("wrong"); b.disabled = true;
@@ -1966,7 +1976,7 @@ async function clearTalk() {
 // puis se fond dans le lavis sombre du QCM, comme dans une épreuve de lieu.
 function openBridgeCeremony(b, intro) {
   const sh = $("#sheet"), list = (FACTS && FACTS.bridges[String(b[0])]) || [];
-  const order = shuffle(list.map((_, i) => i).filter((i) => !has(`z:${b[0]}:${i}`)));
+  let order = orderedPending(`bridge:${b[0]}`, shuffle(list.map((_, i) => i),), String, (i) => has(`z:${b[0]}:${i}`));
   const genericImage = !b[1] || !b[3];
   const image = genericImage ? "img/ponts/_generic.webp" : `img/ponts/${b[0]}.webp`;
   openId = "bridges"; $("#next").hidden = true; $("#bridge-btn").hidden = true; document.body.classList.add("bridge-open");
@@ -1991,6 +2001,16 @@ function openBridgeCeremony(b, intro) {
     answers.innerHTML = choices.map((choice, i) => `<button type="button" data-choice="${i}">${esc(choice.text)}</button>`).join("");
     answers.scrollTop = 0;
     const buttons = $$('button', answers);
+    let pass = $(".bridge-pass", sh);
+    if (!pass) { pass = document.createElement("button"); pass.type = "button"; pass.className = "bridge-pass"; pass.textContent = "Passer"; answers.parentElement.appendChild(pass); }
+    pass.hidden = false;
+    pass.onclick = () => {
+      if (!alive() || answered) return;
+      deferItem(`bridge:${b[0]}`, String(index));
+      order = order.filter((item) => item !== index); order.push(index);
+      cursor = cursor < order.length - 1 ? cursor : 0;
+      pass.hidden = true; next.textContent = "Question suivante"; next.hidden = false; next.onclick = () => showQuestion();
+    };
     buttons.forEach((button) => { button.disabled = true; });
     // WebKit peut laisser un ancien calque du panneau à l'écran jusqu'au premier toucher.
     // On révèle les choix sur une nouvelle image, puis on autorise les clics sur la suivante.
@@ -2010,7 +2030,7 @@ function openBridgeCeremony(b, intro) {
       if (!choice.correct) { button.disabled = true; button.classList.add("wrong"); buzz(); return; }
       const first = !$(".bridge-answers .wrong", sh);
       answered = true; $$("button", answers).forEach((item) => item.disabled = true);
-      award(`z:${b[0]}:${index}`, first ? POINTS.quiz : 0, meIdx()); save(); refreshAll();
+      resolveDeferred(`bridge:${b[0]}`, String(index)); award(`z:${b[0]}:${index}`, first ? POINTS.quiz : 0, meIdx()); save(); refreshAll(); pass.hidden = true;
       const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
       setTimeout(() => { if (!alive() || serial !== current) return; button.classList.add("right"); if (first) { starBurst(button, POINTS.quiz, true); confetti(30); } }, reduced ? 0 : 380);
       setTimeout(() => { if (!alive() || serial !== current) return; words.innerHTML = richText(fact.t); }, reduced ? 0 : 900);
@@ -2143,7 +2163,7 @@ function bindTasks(p, sh, after = () => renderSheet(), redraw = () => renderShee
   $$(".task[data-i]", sh).forEach((el) => {
     const i = +el.dataset.i, t = p.tasks[i];
     if (taskDone(p.id, i)) return;
-    const win = (extra) => { const pt = t.pts ?? POINTS.task, player = meIdx(); award(`t:${p.id}:${i}`, pt, player); const gained = applyConfiguredGrants(); save(); chime(); confetti(70); toast(`+${pt} ⭐ Bravo ${myName()} !`); announceConfiguredGrants(gained, player); if (extra) extra(); refreshAll(); after(i); };
+    const win = (extra) => { const pt = t.pts ?? POINTS.task, player = meIdx(); resolveDeferred(`place:${p.id}`, String(i)); award(`t:${p.id}:${i}`, pt, player); const gained = applyConfiguredGrants(); save(); chime(); confetti(70); toast(`+${pt} ⭐ Bravo ${myName()} !`); announceConfiguredGrants(gained, player); if (extra) extra(); refreshAll(); after(i); };
     $$(".opt", el).forEach((b) => (b.onclick = () => {
       if (+b.dataset.j === t.a) { b.classList.add("right"); win(); } else { b.classList.add("bad"); b.disabled = true; }
     }));
@@ -2196,7 +2216,7 @@ const introSeen = {};
 function openQuest(id) {
   closeSheet();
   if (place(id).chapters) { openChapters(place(id)); return; }
-  const p = place(id), first = p.tasks.findIndex((_, i) => !taskDone(id, i));
+  const p = place(id), order = orderedPending(`place:${id}`, p.tasks.map((_, i) => i), String, (i) => taskDone(id, i)), first = order.length ? order[0] : -1;
   quest = { id, step: first < 0 ? p.tasks.length : first, phase: first < 0 ? "end" : doneTasks(p) === 0 && !introSeen[id] ? "intro" : "task" };
   $("#quest").hidden = false; $("#next").hidden = true; $("#bridge-btn").hidden = true; scheduleGeoSync();
   map.easeTo({ center: [p.lon, p.lat] }); renderQuest();
@@ -2439,7 +2459,7 @@ async function runChapters(p, replay = false) {
     // Reprise : si l'enfant a déjà répondu à des questions, il retrouve exactement la première question restante.
     const answered = all.flatMap(chainOf).filter((s) => taskDone(p.id, s.idx)).length;
     let lead = replay ? `On refait les épreuves, {g} ! Tu peux t'amuser à réessayer !` : answered ? `Reprenons là où nous en étions, {g} !` : `Te voilà dans ${p.name.replace(/^L'/, "l'")}, {g} !`, el = chatAdd(typingHtml, "fc"), fresh = true;
-    const todo = all.filter((s) => replay || chainOf(s).some((x) => !taskDone(p.id, x.idx)));
+    const todo = replay ? all.slice() : orderedPending(`chap:${p.id}`, all, (s) => String(s.idx), (s) => taskDone(p.id, s.idx));
     const sh = $("#sheet");
     try { await document.fonts.ready; } catch {} // mesure après chargement de la police de Corto
     const chainBar = (qs, from) => qs.slice(from).reduce((m, x) => Math.max(m, barHeight(x.opts)), 0);
@@ -2474,6 +2494,8 @@ async function runChapters(p, replay = false) {
         const cf = null; // les propositions se centrent d'elles-mêmes dans l'espace libre au-dessus de la bande de Corto (feuille de style)
         const pts = x.pts ?? 10, r = await bridgeChoose(ch, replay ? 0 : pts, cf); closeLoc();
         if (r.skip) break outer;
+        if (r.pass) { deferItem(`chap:${p.id}`, String(x.idx)); todo.push(s); continue outer; }
+        if (!replay) resolveDeferred(`chap:${p.id}`, String(x.idx));
         sh.classList.add("chap-reveal"); // seule l'image de fond se floute pendant la révélation
         if (!replay) { const player = meIdx(); award(`t:${p.id}:${x.idx}`, r.first ? pts : 0, player); const gained = applyConfiguredGrants(); save(); refreshAll(); announceConfiguredGrants(gained, player); }
         if (r.first && !replay) confetti(30);
@@ -2521,15 +2543,16 @@ function renderQuest() {
   } else {
     const i = quest.step, t = p.tasks[i];
     if (taskDone(p.id, i)) {
-      const last = nextUndone(p, i + 1) < 0;
+    const last = orderedPending(`place:${p.id}`, p.tasks.map((_, n) => n), String, (n) => taskDone(p.id, n)).length === 0;
       body = `<div class="q-solved"><div class="em">🎉</div><h2>Bravo !</h2><p>+${t.pts ?? POINTS.task} ⭐</p>${t.fact ? `<div class="fact">💡 ${esc(t.fact)}</div>` : ""}${t.t === "photo" ? `<img class="thumb" data-k="${p.id}:${i}" alt="">` : ""}</div><button class="btn blue wide" id="qnext">${last ? "Terminer ✅" : "Suivant ➜"}</button>`;
-    } else body = taskHtml(p, t, i);
+  } else body = taskHtml(p, t, i) + `<button type="button" class="q-pass" id="qpass">Passer cette épreuve</button>`;
   }
   q.innerHTML = questHero(p) + `<div class="q-body">${body}</div>`;
   $("[data-qx]", q).onclick = closeQuest;
   const go = $("#qgo", q); if (go) go.onclick = () => { introSeen[p.id] = true; quest.phase = "task"; renderQuest(); };
   const nx = $("#qnext", q);
-  if (nx) nx.onclick = () => { const n = nextUndone(p, quest.step + 1); if (n < 0) { quest.phase = "end"; chime(true); confetti(140); } else quest.step = n; renderQuest(); };
+  if (nx) nx.onclick = () => { const pending = orderedPending(`place:${p.id}`, p.tasks.map((_, n) => n), String, (n) => taskDone(p.id, n)); if (!pending.length) { quest.phase = "end"; chime(true); confetti(140); } else { quest.step = pending[0]; } renderQuest(); };
+  const pass = $("#qpass", q); if (pass) pass.onclick = () => { deferItem(`place:${p.id}`, String(quest.step)); const pending = orderedPending(`place:${p.id}`, p.tasks.map((_, n) => n), String, (n) => taskDone(p.id, n)); quest.step = pending[0]; renderQuest(); };
   const dn = $("#qdone", q); if (dn) dn.onclick = closeQuest;
   if (quest.phase === "task" && !taskDone(p.id, quest.step)) bindTasks(p, $(".q-body", q), (i) => { if (p.tasks[i].t === "choice") setTimeout(() => quest && quest.id === p.id && renderQuest(), 800); else renderQuest(); }, renderQuest);
   hydrateThumbs(q);
@@ -2609,6 +2632,7 @@ const MONTAGES = {
   doge: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Ici, on t'habille en <b>doge</b> ! Prends-toi en photo : ta tête prendra la place de la sienne. Tu peux la déplacer et l'agrandir.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
   miracoli: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Pour garder un souvenir de cette épreuve musicale, prends ta place dans ce portrait de doge. Tu peux déplacer et agrandir ta photo.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
   frari: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Aux Frari reposent de grands doges. Prête ta tête à celui-ci : tu peux la déplacer et l'agrandir.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
+  murano: { src: "img/montage/murano.webp", W: 960, H: 1173, cx: 462, cy: 392, rx: 24, ry: 31, rot: 0.02, intro: "Le four chauffe et le verre brille ! Prête ta tête au maître verrier de Murano pour fabriquer ton souvenir.", credit: "Charles Frederick Ulrich, « Glass Blowers of Murano », 1886. The Metropolitan Museum of Art, no 86.13 · Open Access, domaine public." },
   basilique: { src: "img/montage/loredan.webp", W: 900, H: 1262, cx: 390, cy: 437, rx: 90, ry: 130, rot: -0.05, intro: "Bravo pour Saint-Marc ! Voici le doge Leonardo Loredan, peint par Giovanni Bellini : mets ta tête à la place de la sienne.", credit: "Portrait du doge Leonardo Loredan par Giovanni Bellini (National Gallery, Londres), domaine public." },
   cadoro: { src: "img/montage/gritti.webp", W: 900, H: 1164, cx: 439, cy: 330, rx: 93, ry: 121, rot: 0.1, intro: "La maison d'or, c'est pour un doge en habit d'or ! Voici Andrea Gritti, peint par Titien : mets ta tête à la place de la sienne.", credit: "Portrait du doge Andrea Gritti par Titien (National Gallery of Art, Washington), CC0." },
   rialto: { src: "img/montage/gondolier.webp", W: 940, H: 1120, cx: 440, cy: 370, rx: 88, ry: 120, rot: 0.12, intro: "Sur l'ancien pont du Rialto, on se déplaçait déjà en gondole ! Mets ta tête sur ce gondolier peint par Carpaccio vers 1494.", credit: "Détail du « Miracle de la relique de la Croix au pont du Rialto » par Vittore Carpaccio (Gallerie dell'Accademia), domaine public." },
@@ -2990,6 +3014,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
   $(".mq-exit", overlay).onclick = close;
   const credit = `<p class="mq-credit">${esc(entry.credit.text)}${entry.credit.source ? ` <a href="${esc(entry.credit.source)}" target="_blank" rel="noopener">Source</a>` : ""}${entry.credit.license ? ` · <a href="${esc(entry.credit.license)}" target="_blank" rel="noopener">Licence</a>` : ""}</p>`;
   const questionKey = (question, index) => `music:${id}:q:${question.key ?? index}`;
+  const musicPending = () => orderedPending(`music:${id}`, entry.questions.map((_, i) => i), String, (i) => has(questionKey(entry.questions[i], i)));
   const showMusicFinal = () => {
     stopClip();
     body.className = "mq-body mq-final";
@@ -3077,7 +3102,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     stage.innerHTML = `<div class="mq-quiz-options${grid ? " grid" : ""}">${q.options.map((answer, j) => `<button type="button" data-answer="${j}">${esc(answer)}</button>`).join("")}</div><p class="mq-quiz-note" aria-live="polite"></p><div class="mq-corto-line"><div class="mq-corto-bubble"><span class="mq-corto-question">${esc(q.question)}</span><span class="mq-corto-explanation" hidden>${esc(q.explanation)}</span></div><span class="mq-corto-face" aria-hidden="true"></span></div>`;
     body.appendChild(stage);
     const footer = document.createElement("div"); footer.className = "mq-quiz-foot";
-    footer.innerHTML = `<button type="button" class="mq-quiz-continue" hidden>${index + 1 === entry.questions.length ? "Terminer" : "Continuer"} →</button>`;
+    footer.innerHTML = `<button type="button" class="mq-quiz-pass">Passer</button><button type="button" class="mq-quiz-continue" hidden>Continuer →</button>`;
     overlay.appendChild(footer);
     const placeQuestion = () => {
       if (!stage.isConnected) return;
@@ -3091,14 +3116,19 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     let wrong = 0, answered = false, advanced = false;
     const advance = () => {
       if (advanced) return; advanced = true; footer.remove();
-      if (index === 1 && (entry.second?.audio || entry.duo)) transitionToDuo(); else showQuestion(index + 1);
+      const nextIndex = musicPending()[0];
+      if (nextIndex == null) { victory(); return; }
+      if (nextIndex >= 2 && index < 2 && (entry.second?.audio || entry.duo)) transitionToDuo(); else showQuestion(nextIndex);
     };
+    $(".mq-quiz-pass", footer).onclick = (event) => { event.stopPropagation(); if (advanced || answered) return; deferItem(`music:${id}`, String(index)); advance(); };
     choices.forEach((button) => button.onclick = () => {
       if (answered) return;
       if (+button.dataset.answer !== q.answer) { wrong++; buzz(); button.disabled = true; button.classList.add("wrong"); note.textContent = "Essaie encore, écoute bien !"; return; }
       answered = true; choices.forEach((other) => other.disabled = true); note.textContent = "";
+      $(".mq-quiz-pass", footer).hidden = true;
       bubble.style.minHeight = Math.ceil(bubble.getBoundingClientRect().height) + "px";
       const doneKey = questionKey(q, index), fresh = !has(doneKey);
+      resolveDeferred(`music:${id}`, String(index));
       const points = q.key === "duo" && has(`music:${id}:q:${index}`) ? 0 : 10;
       if (fresh) { award(doneKey, points, meIdx()); save(); refreshAll(); }
       const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -3156,7 +3186,7 @@ async function openMusicChallenge(id, p, onWon = () => {}, replay = false) {
     }
     transitioning = false;
   };
-  const first = replay ? 0 : entry.questions.findIndex((question, index) => !has(questionKey(question, index)));
+  const first = replay ? 0 : (musicPending()[0] ?? -1);
   if (first < 0) victory(); else if (first < 2) showListening("opening", first || null); else showListening("duo", first);
 }
 async function renderMusicCollection() {
@@ -3883,7 +3913,7 @@ function downloadOfflinePack(report) {
     const manifest = await response.json();
     if (!Array.isArray(manifest.files) || !manifest.files.length) throw new Error("La liste des fichiers du jeu est vide.");
     if (!useStamen) throw new Error("La carte aquarelle n’est pas disponible sur ce téléphone.");
-    const shell = await caches.open("vq-shell-v2.326.0"), tiles = await caches.open("vq-tiles");
+    const shell = await caches.open("vq-shell-v2.326.1"), tiles = await caches.open("vq-tiles");
     const jobs = manifest.files.map((path) => ({ url: new URL(path, location.origin + "/").href, cache: shell, kind: "game" }));
     jobs.push(...tilesFor(OFM_TILES, 14, OFFLINE_VECTOR_BOXES).map((url) => ({ url, cache: shell, kind: "ofm" })));
     for (const font of FONTS) for (const range of ["0-255", "256-511"]) jobs.push({ url: OFM_GLYPHS.replace("{fontstack}", encodeURIComponent(font)).replace("{range}", range), cache: shell, kind: "ofm" });
