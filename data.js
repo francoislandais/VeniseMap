@@ -2116,8 +2116,8 @@ export const PLACES = [
       { t: "count", q: "Combien de bricole as-tu comptées pendant la traversée ?", a: null },
     ] },
   { id: "murano", emoji: "🏺", name: "Murano, l'île du verre", lat: 45.45507, lon: 12.3526, r: 120,
-    story: "Depuis plus de 700 ans, les maîtres verriers soufflent du verre brûlant pour fabriquer vases, bijoux, animaux...",
-    clue: "Le feu et le souffle font naître des merveilles. Trouve où le verre devient animal.",
+    story: "Bienvenue dans ton enquête à Murano ! Depuis le Moyen Âge, les verriers de Venise apprennent aussi en observant les beaux verres venus du Moyen-Orient, notamment de Syrie. Au XVe siècle, Angelo Barovier met au point un verre d’une limpidité étonnante : le cristallo.",
+    clue: "Deux mystères t’attendent : qui se cache derrière le nom de la coupe Barovier, et quel secret rend le cristallo si clair ? Ouvre l’œil, mousse !",
     chapters: [
       {
         "steps": [
@@ -2185,8 +2185,10 @@ export const PLACES = [
               "Les anses"
             ],
             "a": 0,
-            "reveal": "Le musée conserve notamment des unguentaria, de petits flacons qui pouvaient contenir des parfums ou des huiles. La collection archéologique présente aussi des urnes de verre trouvées dans des tombes romaines.",
-            "src": []
+            "reveal": "Ces petits flacons romains pouvaient contenir parfum ou huile ; le musée expose aussi des urnes trouvées dans des tombes. Bien plus tard, les verriers de Venise ont appris en observant les beaux verres du Moyen-Orient, surtout de Syrie, puis ont adapté les savoir-faire. Les techniques voyagent et se transforment !",
+            "src": [
+              "https://museovetro.visitmuve.it/it/il-museo/percorsi-e-collezioni/vetro-xv-xvi-xvii-secolo/"
+            ]
           },
           {
             "idx": 104,
@@ -2200,9 +2202,12 @@ export const PLACES = [
               "Des ânes"
             ],
             "a": 0,
-            "reveal": "La coupe Barovier date d’environ 1460–1470. Elle associe du verre soufflé bleu, des émaux de plusieurs couleurs et de l’or. Sa décoration montre notamment une chevauchée et une fontaine de jouvence.",
+            "reveal": "Indice de détective : la coupe date d’environ 1460–1470 et raconte une chevauchée vers la fontaine de jouvence. Mais son nom est un piège ! Le musée l’attribue à un atelier vénitien : on ne sait pas quel artisan l’a décorée. « Barovier » vient d’une ancienne croyance qui attribuait la peinture à Angelo Barovier. Lui est surtout associé à une autre merveille : le verre cristallin, presque aussi clair que le cristal de roche.",
             "img": "img/q/murano-4.webp",
-            "src": [],
+            "src": [
+              "https://www.visitmuve.it/capolavoro/coppa-barovier/",
+              "https://museovetro.visitmuve.it/it/il-museo/percorsi-e-collezioni/vetro-xv-xvi-xvii-secolo/"
+            ],
             "cap": "À droite de la fontaine, de jeunes femmes montent à cheval."
           },
           {
@@ -2217,8 +2222,10 @@ export const PLACES = [
               "Cinq"
             ],
             "a": 1,
-            "reveal": "Le musée décrit trois grands lustres dans cette salle. Celui du centre possède 60 bras : Giovanni Fuga et Lorenzo Santi l’ont réalisé et présenté à l’exposition du verre de Murano de 1864, où il a reçu une médaille d’or.",
-            "src": []
+            "reveal": "Le musée décrit trois grands lustres dans cette salle. Celui du centre possède 60 bras : Giovanni Fuga et Lorenzo Santi l’ont réalisé et présenté à l’exposition du verre de Murano de 1864, où il a reçu une médaille d’or. Bien avant ces lustres, le cristallo et les verres peints de Murano étaient déjà recherchés par les grandes familles, les doges et même le pape.",
+            "src": [
+              "https://museovetro.visitmuve.it/it/il-museo/percorsi-e-collezioni/vetro-xv-xvi-xvii-secolo/"
+            ]
           },
           {
             "idx": 106,
@@ -2262,9 +2269,11 @@ export const PLACES = [
               "Des colonnes torsadées"
             ],
             "a": 0,
-            "reveal": "Cette partie arrondie s’appelle l’abside. Elle fait de la basilique l’un des exemples les plus reconnaissables de l’architecture romane de la lagune. La Ville de Venise conseille justement de la regarder depuis la rive opposée.",
+            "reveal": "Cette partie arrondie s’appelle l’abside. La basilique est très ancienne : selon son histoire, le corps de saint Donat fut amené de Céphalonie à Murano en 1125. Quelques années plus tard, vers 1140, on réalisa le précieux pavement de mosaïque que tu vas explorer. Tu as trouvé le début de la piste !",
             "img": "img/q/murano-8.webp",
-            "src": [],
+            "src": [
+              "https://www.sandonatomurano.it/basilica-dei-santi-maria-e-donato"
+            ],
             "cap": "Deux rangées d’arcades ornent l’abside, visible au-delà du canal."
           },
           {
@@ -2296,9 +2305,12 @@ export const PLACES = [
               "Des hiboux"
             ],
             "a": 0,
-            "reveal": "Le sol de la basilique mêle figures d’animaux et dessins géométriques. Les deux oiseaux sont des paons reconnaissables à leur longue queue décorée d’ocelles. Une photographie identifiée du pavement confirme ce détail.",
+            "reveal": "Bravo, tu as repéré les paons ! Le pavement mêle animaux, formes géométriques, marbre et morceaux de pâte de verre colorée. Il date d’environ 1140 : il existait donc déjà avant 1204, l’année de la quatrième croisade. On ne peut pas dire que ce sol vient du butin rapporté de Constantinople cette année-là ; ce sont deux histoires différentes.",
             "img": "img/q/murano-10.webp",
-            "src": [],
+            "src": [
+              "https://www.sandonatomurano.it/basilica-dei-santi-maria-e-donato",
+              "https://www.basilicasanmarco.it/storia/cronologia-essenziale/"
+            ],
             "cap": "Les deux paons encadrent un vase au centre du panneau."
           },
           {

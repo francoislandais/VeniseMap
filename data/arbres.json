@@ -15,7 +15,16 @@
       "iconSmall": "img/arbres/olivier_torcello_256.png",
       "collectible": "olives",
       "verifiedExactTrunk": false,
-      "enabled": true
+      "enabled": true,
+      "fruit": "olive",
+      "fruitIcon": "img/objets/olive-torcello.webp",
+      "photo": "img/arbres/olivier-torcello-photo.webp",
+      "photoCredit": {
+        "author": "Ethan Doyle White",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "url": "https://commons.wikimedia.org/wiki/File:Attila%27s_Throne_and_Torcello_Museum.JPG"
+      }
     },
     {
       "id": "palmier_san_servolo",

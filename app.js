@@ -715,6 +715,13 @@ function devCompleteChapter(p, fromMapButton = false) {
   Object.keys(S.done).filter((key) => has(key) && (key.startsWith(`st:${p.id}:`) || (p.musicChallenge && key.startsWith(`music:${p.musicChallenge.entry}:`)) || (p.id === "miracoli" && key.startsWith("music:02:")))).forEach(unaward);
   save(); closeSheet(); refreshAll(); openChapters(p, false, true);
 }
+function devCompletePlace(p) {
+  if (p.chapters?.length) { devCompleteChapter(p, true); return; }
+  if (!Array.isArray(p.tasks) || !p.tasks.length) { toast("Ce lieu n'a pas de questionnaire à tester."); return; }
+  if (!arrived(p.id)) award("a:" + p.id, POINTS.arrive, meIdx());
+  p.tasks.forEach((task, index) => { const taskIndex = task.idx ?? index; if (!taskDone(p.id, taskIndex)) award(`t:${p.id}:${taskIndex}`, task.pts ?? POINTS.task, meIdx()); });
+  save(); closeSheet(); refreshAll(); openQuest(p.id);
+}
 function doArrive(p, manual) {
   award("a:" + p.id, POINTS.arrive); save();
   chime(); confetti(60);
@@ -1124,6 +1131,76 @@ function renderMap() {
 }
 // Repères botaniques illustrés : indépendants des lieux, des épreuves et de la progression.
 const treeMarkers = new Map();
+const oliveKey = (index, player = meIdx()) => `o:olive-torcello:${player}:${index}`;
+const OLIVE_POSITIONS = [[15, 11], [33, 18], [19, 32]];
+let olivePanel = null;
+function closeOlivePanel() {
+  if (!olivePanel) return;
+  const panel = olivePanel; olivePanel = null;
+  panel.remove(); document.removeEventListener("keydown", olivePanelKeydown);
+}
+function olivePanelKeydown(event) { if (event.key === "Escape") closeOlivePanel(); }
+function oliveTrail(x, y) {
+  const spark = document.createElement("span"); spark.className = "olive-trail"; spark.textContent = Math.random() < .5 ? "✦" : "✧";
+  spark.style.cssText = `left:${x + (Math.random() - .5) * 20}px;top:${y + (Math.random() - .5) * 20}px`;
+  document.body.appendChild(spark);
+  spark.animate([{ transform: "translate(-50%,-50%) scale(1)", opacity: 1 }, { transform: "translate(-50%,-90%) scale(.15)", opacity: 0 }], { duration: 540, easing: "ease-out", fill: "forwards" }).finished.finally(() => spark.remove());
+}
+async function flyOliveToBook(button, icon) {
+  const from = button.getBoundingClientRect(), book = $("#home-btn"), to = book?.getBoundingClientRect();
+  if (!to) return;
+  const sx = from.left + from.width / 2, sy = from.top + from.height / 2;
+  const tx = to.left + to.width / 2, ty = to.top + to.height / 2;
+  const cx = (sx + tx) / 2 + Math.min(80, innerWidth * .12), cy = Math.min(sy, ty) - Math.min(130, innerHeight * .16);
+  book.classList.add("olive-book-target");
+  const flight = document.createElement("img"); flight.className = "olive-flight"; flight.src = icon; flight.alt = "";
+  document.body.appendChild(flight); button.hidden = true;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches, duration = reduced ? 260 : 1450;
+  await new Promise((resolve) => {
+    const started = performance.now(); let lastTrail = 0;
+    function frame(now) {
+      const t = Math.min(1, (now - started) / duration), u = 1 - t;
+      const x = u * u * sx + 2 * u * t * cx + t * t * tx;
+      const y = u * u * sy + 2 * u * t * cy + t * t * ty;
+      const scale = 1 + .22 * Math.sin(Math.PI * t) - .78 * t * t;
+      flight.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) rotate(${t * 480}deg) scale(${scale})`;
+      flight.style.filter = `drop-shadow(0 0 ${8 + 15 * Math.sin(Math.PI * t)}px #fff5af) drop-shadow(0 0 15px #ffd35a)`;
+      if (!reduced && now - lastTrail > 42) { oliveTrail(x, y); lastTrail = now; }
+      if (t < 1) requestAnimationFrame(frame); else resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+  flight.remove();
+  book.animate([{ transform: "scale(1)", filter: "brightness(1)" }, { transform: "scale(1.25)", filter: "brightness(1.5) drop-shadow(0 0 12px #ffe48b)", offset: .45 }, { transform: "scale(1)", filter: "brightness(1)" }], { duration: 600 });
+  setTimeout(() => book.classList.remove("olive-book-target"), 650);
+}
+function openOliveTree(tree) {
+  closeOlivePanel();
+  const panel = document.createElement("section"); panel.className = "olive-panel"; panel.setAttribute("role", "dialog"); panel.setAttribute("aria-modal", "true"); panel.setAttribute("aria-label", "L’olivier de Torcello");
+  panel.innerHTML = `<div class="olive-card"><button type="button" class="olive-close" aria-label="Retour à la carte">×</button><h2>L’olivier de Torcello</h2><div class="olive-photo"><img src="${tree.photo}" alt="Photographie de l’olivier près du trône de pierre à Torcello"></div><p class="olive-name">Son fruit : l’olive</p><p class="olive-hint">Touche les trois olives qui scintillent dans son feuillage.</p><small class="olive-credit">Photo : <a href="${tree.photoCredit.url}" target="_blank" rel="noopener noreferrer">${tree.photoCredit.author}</a> · <a href="${tree.photoCredit.licenseUrl}" target="_blank" rel="noopener noreferrer">${tree.photoCredit.license}</a></small></div>`;
+  const photo = $(".olive-photo", panel), hint = $(".olive-hint", panel);
+  OLIVE_POSITIONS.forEach(([left, top], index) => {
+    if (has(oliveKey(index))) return;
+    const button = document.createElement("button"); button.type = "button"; button.className = "olive-fruit";
+    button.style.cssText = `left:${left}%;top:${top}%`; button.setAttribute("aria-label", `Cueillir l’olive ${index + 1} sur 3`);
+    button.innerHTML = `<img src="${tree.fruitIcon}" alt="">`;
+    button.onclick = async () => {
+      if (button.disabled || has(oliveKey(index))) return;
+      button.disabled = true;
+      const player = meIdx();
+      await flyOliveToBook(button, tree.fruitIcon);
+      award(oliveKey(index, player), 0, player); save(); refreshAll();
+      button.remove();
+      if (!$$(".olive-fruit", panel).length) hint.textContent = "Les trois olives ont rejoint ton livre.";
+    };
+    photo.appendChild(button);
+  });
+  if (!$$(".olive-fruit", panel).length) hint.textContent = "Les trois olives ont rejoint ton livre.";
+  $(".olive-close", panel).onclick = closeOlivePanel;
+  panel.addEventListener("click", (event) => { if (event.target === panel) closeOlivePanel(); });
+  document.body.appendChild(panel); olivePanel = panel; document.addEventListener("keydown", olivePanelKeydown);
+  $(".olive-close", panel).focus();
+}
 // Rayon de consultation seulement : les points de site ne valident jamais un tronc ni une récolte.
 const treeViewRadius = (tree) => tree.precision === "site_only" ? 250 : 150;
 function updateTreeSize() {
@@ -1139,14 +1216,23 @@ function renderTrees(points) {
     el.type = "button"; el.className = "tree-marker"; el.dataset.treeId = tree.id;
     const img = document.createElement("img"); img.src = tree.iconSmall; img.srcset = `${tree.icon} 2x`; img.alt = ""; img.draggable = false;
     el.appendChild(img);
-    const showTree = () => {
+    const showTree = async () => {
       if (tab !== "map") return;
+      if (tree.id === "olivier_torcello") {
+        el.classList.add("tree-checking");
+        const fix = await maskFix();
+        el.classList.remove("tree-checking");
+        if (!el.isConnected || tab !== "map") return;
+        if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.acc) || fix.acc > 80) {
+          cortoSays("Je n’arrive pas à vérifier ta position. Réessaie près de l’olivier."); return;
+        }
+        const away = dist(fix.lat, fix.lon, tree.coordinates.lat, tree.coordinates.lng);
+        if (away > treeViewRadius(tree) + Math.min(fix.acc, 30)) { cortoSays(placeFarLine(tree, away)); return; }
+        openOliveTree(tree); return;
+      }
       if (!pos) { cortoSays(say("nogps")); return; }
       const away = dist(pos.lat, pos.lon, tree.coordinates.lat, tree.coordinates.lng);
-      if (away > treeViewRadius(tree) + Math.min(pos.acc || 0, 30)) {
-        cortoSays(placeFarLine(tree, away));
-        return;
-      }
+      if (away > treeViewRadius(tree) + Math.min(pos.acc || 0, 30)) { cortoSays(placeFarLine(tree, away)); return; }
       toast(`${tree.name} — ${tree.positionLabel}. ${precision}`, 6000);
     };
     let touchStart = null, lastTouch = 0;
@@ -3160,7 +3246,8 @@ const objectFoundFor = (id, player = meIdx()) => {
   return !!item && (has(grantKey(player, `object:${id}`)) || (has(item.key) && S.done[item.key].w === player));
 };
 const maskGemObjects = () => Object.keys(S.done).filter((key) => /^o:mask-gem:\d+:m\d+$/.test(key) && has(key) && S.done[key].w === meIdx()).map((key) => ({ id: key.replace(/[^a-z0-9-]/g, "-"), name: "Gemme du carnaval", img: "diamant.svg", key }));
-const objectList = () => [...OBJECTS, ...maskGemObjects()].map((o) => ({ ...o, img: "img/objets/" + o.img, found: objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
+const oliveObjects = () => [0, 1, 2].map((index) => ({ id: `olive-torcello-${index + 1}`, name: `Olive de Torcello ${index + 1}`, img: "olive-torcello.webp", key: oliveKey(index) })).filter((object) => has(object.key) && S.done[object.key].w === meIdx());
+const objectList = () => [...OBJECTS, ...maskGemObjects(), ...oliveObjects()].map((o) => ({ ...o, img: "img/objets/" + o.img, found: objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = `vq_held:${PLAYER_ID}`, HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
@@ -3598,9 +3685,10 @@ async function resetPlaceProgress(places) {
   const workIds = new Set(places.flatMap((p) => p.chapters?.flatMap((c) => c.steps.flatMap(chainOf).map((s) => s.work).filter(Boolean)) || []));
   const keys = Object.keys(S.done).filter((key) => {
     if (!has(key)) return false;
-    if (key === "finale") return true;
+    if (key === "finale") return places.length === PLACES.length;
     const [kind, id] = key.split(":");
-    return (["a", "t", "fin", "tr", "st", "ph"].includes(kind) && ids.has(id)) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id));
+    const grant = /^grant:\d+:(object|music|music-won):(.+)$/.exec(key);
+    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? ids.has(grant[2]) : musicIds.has(grant[2]));
   });
   keys.forEach(unaward);
   places.forEach((p) => { delete introSeen[p.id]; });
@@ -3795,7 +3883,7 @@ function downloadOfflinePack(report) {
     const manifest = await response.json();
     if (!Array.isArray(manifest.files) || !manifest.files.length) throw new Error("La liste des fichiers du jeu est vide.");
     if (!useStamen) throw new Error("La carte aquarelle n’est pas disponible sur ce téléphone.");
-    const shell = await caches.open("vq-shell-v2.325.0"), tiles = await caches.open("vq-tiles");
+    const shell = await caches.open("vq-shell-v2.325.4"), tiles = await caches.open("vq-tiles");
     const jobs = manifest.files.map((path) => ({ url: new URL(path, location.origin + "/").href, cache: shell, kind: "game" }));
     jobs.push(...tilesFor(OFM_TILES, 14, OFFLINE_VECTOR_BOXES).map((url) => ({ url, cache: shell, kind: "ofm" })));
     for (const font of FONTS) for (const range of ["0-255", "256-511"]) jobs.push({ url: OFM_GLYPHS.replace("{fontstack}", encodeURIComponent(font)).replace("{range}", range), cache: shell, kind: "ofm" });
@@ -3899,12 +3987,23 @@ refreshAll();
 setTab("map");
 {
   const help = $("#dev-chap-help"); help.hidden = !DEV;
-  help.textContent = "🔧 Réinitialiser l'église-bijou et ouvrir sa conclusion";
+  help.textContent = "🔧 Tester un lieu";
   help.onclick = async () => {
-    if (!DEV || tab !== "map" || !$("#sheet").hidden || help.disabled) return;
+    if (!DEV || tab !== "map" || help.disabled) return;
+    if (!$("#sheet").hidden || !$("#quest").hidden || $(".music-quest,.music-found")) { toast("Ferme d'abord l'épreuve en cours."); return; }
     help.disabled = true;
-    try { const p = place("miracoli"); await resetPlaceProgress([p]); devCompleteChapter(p, true); }
-    catch { toast("Impossible de préparer la conclusion de l'église-bijou."); }
+    try {
+      const trials = PLACES.filter((p) => Array.isArray(p.tasks) && p.tasks.length);
+      if (!trials.length) { toast("Aucun lieu à tester."); return; }
+      const close = modal(`<h2>🔧 Tester un lieu</h2><p>Choisis un lieu. Son parcours sera remis à zéro, puis tu arriveras directement à la fin de son questionnaire. Les photos de ce lieu seront effacées de cet appareil. Les objets et fragments apparaissent seulement dans les lieux qui en proposent.</p><label for="dev-trial-choice">Lieu</label><select id="dev-trial-choice" class="t">${trials.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}</select><p id="dev-trial-error" role="alert" hidden></p><div class="row"><button type="button" class="btn ghost grow" data-close>Annuler</button><button type="button" class="btn blue grow" id="dev-trial-start">Réinitialiser et tester</button></div>`);
+      $("#dev-trial-start").onclick = async () => {
+        const button = $("#dev-trial-start"), selected = trials.find((p) => p.id === $("#dev-trial-choice").value);
+        if (!selected || button.disabled) return;
+        button.disabled = true;
+        try { await resetPlaceProgress([selected]); close(); devCompletePlace(selected); }
+        catch { const error = $("#dev-trial-error"); error.textContent = "Impossible de remettre cette épreuve à zéro. Réessaie."; error.hidden = false; button.disabled = false; }
+      };
+    } catch { toast("Impossible de préparer ce lieu pour le test."); }
     finally { help.disabled = false; }
   };
 }

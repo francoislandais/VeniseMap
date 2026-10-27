@@ -381,6 +381,25 @@ img.full{width:100%;border-radius:14px}
 .maplibregl-marker.tree-marker{z-index:2;width:var(--tree-size,48px);height:var(--tree-size,48px);padding:0;border:0;background:none;box-shadow:none;cursor:pointer;touch-action:manipulation}
 .tree-marker img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(20,35,26,.35))}
 .tree-marker:focus-visible{outline:2px solid #174e6b;outline-offset:3px;border-radius:4px}
+.tree-marker.tree-checking img{animation:oliveTreePulse .8s ease-in-out infinite alternate}
+@keyframes oliveTreePulse{to{filter:drop-shadow(0 0 14px #fff4b1) brightness(1.18)}}
+.olive-panel{position:fixed;inset:0;z-index:2600;display:grid;place-items:center;padding:calc(12px + var(--safe-t)) 10px calc(12px + var(--safe-b));background:rgba(19,35,37,.68);backdrop-filter:blur(7px)}
+.olive-card{position:relative;display:flex;flex-direction:column;align-items:center;max-height:100%;width:max-content;max-width:100%;padding:12px 14px 14px;border:2px solid #e9d4ab;border-radius:24px;background:#fff6e9;box-shadow:0 20px 50px rgba(13,30,29,.36);overflow:auto;text-align:center}
+.olive-card h2{margin:1px 32px 9px;font:700 clamp(21px,5vw,30px)/1.12 Georgia,serif;color:#244d48}
+.olive-close{position:absolute;right:10px;top:8px;z-index:2;width:34px;height:34px;border:0;border-radius:50%;background:#e2eee5;color:#204a42;font-size:25px;line-height:1;cursor:pointer}
+.olive-photo{position:relative;height:min(64dvh,570px);aspect-ratio:1280/2277;max-width:calc(100vw - 48px);overflow:hidden;border-radius:16px;background:#aec4ae;box-shadow:0 4px 14px rgba(45,64,45,.22)}
+.olive-photo>img{display:block;width:100%;height:100%;object-fit:cover}
+.olive-fruit{position:absolute;z-index:1;width:54px;height:54px;padding:0;border:0;background:none;cursor:pointer;transform:translate(-50%,-50%);animation:oliveGlint 1.7s ease-in-out infinite alternate;filter:drop-shadow(0 0 5px #fff7ba) drop-shadow(0 0 10px #ffd765)}
+.olive-fruit:nth-of-type(2){animation-delay:.5s}.olive-fruit:nth-of-type(3){animation-delay:1s}
+.olive-fruit img{width:100%;height:100%;object-fit:contain;pointer-events:none}
+.olive-fruit::after{content:"✦";position:absolute;right:1px;top:1px;color:#fffad5;text-shadow:0 0 5px white,0 0 10px #ffd45c;font-size:16px}
+@keyframes oliveGlint{to{filter:drop-shadow(0 0 9px white) drop-shadow(0 0 19px #ffd45c);scale:1.13}}
+.olive-name{margin:10px 0 2px;font:700 22px/1.1 Georgia,serif;color:#305b42}.olive-hint{margin:0 0 5px;font-size:13px;color:#415b50}
+.olive-credit{font-size:10px;color:#6b746e}.olive-credit a{color:inherit;text-decoration:underline}
+.home-btn.olive-book-target{z-index:2650!important;box-shadow:0 0 0 3px #ffedac,0 0 22px 8px #ffe59d}
+.olive-flight{position:fixed;z-index:2700;left:0;top:0;width:62px;height:62px;object-fit:contain;pointer-events:none;will-change:transform,filter}
+.olive-trail{position:fixed;z-index:2699;pointer-events:none;color:#fff5b5;text-shadow:0 0 8px #fff,0 0 14px #ffcf6b;font:18px/1 Georgia,serif}
+@media (prefers-reduced-motion:reduce){.olive-fruit,.tree-marker.tree-checking img{animation:none}}
 /* Les masques deviennent lisibles au zoom du quartier et restent des cibles tactiles. */
 .maplibregl-marker.mask-marker{z-index:25;width:var(--mask-size,32px);height:var(--mask-size,32px);min-width:0;min-height:0;padding:0;border:0;background:none;box-shadow:none;cursor:pointer;touch-action:manipulation}
 .mask-marker[hidden],body:not(.jeu) .maplibregl-marker.mask-marker{display:none!important}
