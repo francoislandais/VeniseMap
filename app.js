@@ -3145,7 +3145,7 @@ function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {}
       award(grantKey(meIdx(), `object:${p.id}`), 0, meIdx()); save(); refreshAll(); confetti(120); toast(`${R.emoji} Tu as trouvé : ${R.name} !`);
       e.animate([{ transform: "translate(-50%,-50%) scale(1.4)" }, { transform: "translate(-50%,-50%) scale(.2)", opacity: 0 }], { duration: 700, fill: "forwards" }).finished.then(() => { e.remove(); onClaim(); });
     });
-    if (musicHere && !musicWonFor(M.entry)) {
+    if (musicHere && (!musicWonFor(M.entry) || p.id === "salute")) {
       const fragment = document.createElement("button"); fragment.type = "button"; fragment.className = "hid-music-fragment";
       fragment.setAttribute("aria-label", "Attraper le morceau de partition");
       fragment.innerHTML = `<img src="img/music/${esc(M.entry)}-parchemin.png" alt="">`;
