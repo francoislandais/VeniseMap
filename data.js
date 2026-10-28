@@ -1774,7 +1774,7 @@ export const PLACES = [
   { id: "salute", emoji: "⛪", name: "La Salute", lat: 45.4306, lon: 12.3347, r: 80,
     story: "Cette énorme église est posée sur plus d'un million de pieux de bois plantés dans la vase de la lagune !",
     clue: "Les grandes choses ont des racines cachées. Monte les marches et chuchote ton souhait au vent.",
-    musicChallenge: { entry: "deus", point: "A", hint: "Près du maître-autel, un fragment de musique t’attend." },
+    musicChallenge: { entry: "deus", point: "C", at: [0.53, 0.36], hint: "Saint Antoine a quelque chose pour toi…" },
     plan: {
       img: "img/plan/salute.svg",
       w: 1200,
