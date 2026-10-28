@@ -2938,6 +2938,7 @@ document.addEventListener("visibilitychange", () => {
 /* ───────── Montage « doge » : la tête de l'enfant, découpée façon papier, collée sur un portrait de doge ───────── */
 // Un tableau d'époque par lieu : l'ovale (cx, cy, rx, ry, rot) marque le visage à remplacer, en pixels de l'image.
 const MONTAGES = {
+  schiavoni: { src: "img/montage/schiavoni.jpg", W: 304, H: 400, cx: 108, cy: 154, rx: 48, ry: 62, rot: 0.07, faceOpening: true, intro: "Garde un souvenir de la Scuola : prends la place de ce noble vénitien.", credit: "Portrait d’un noble vénitien : image fournie par François Landais pour le jeu." },
   doge: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Ici, on t'habille en <b>doge</b> ! Prends-toi en photo : ta tête prendra la place de la sienne. Tu peux la déplacer et l'agrandir.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
   miracoli: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Pour garder un souvenir de cette épreuve musicale, prends ta place dans ce portrait de doge. Tu peux déplacer et agrandir ta photo.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
   frari: { src: "img/montage/doge.webp", W: 960, H: 1163, cx: 466, cy: 346, rx: 80, ry: 106, rot: -0.07, intro: "Aux Frari reposent de grands doges. Prête ta tête à celui-ci : tu peux la déplacer et l'agrandir.", credit: "Portrait du doge Francesco Erizzo par Bernardo Strozzi (photo : Didier Descouens, CC BY-SA 4.0)." },
@@ -2951,7 +2952,13 @@ let dgPhoto = null, dgTf = { x: 0, y: 0, s: 1 };
 function dgDraw(cv, M) {
   const dgImg = MONT_IMGS[M.src]; if (!dgImg) return; const ctx = cv.getContext("2d"), { cx, cy, rx, ry, rot } = M;
   ctx.clearRect(0, 0, cv.width, cv.height); ctx.drawImage(dgImg, 0, 0);
-  if (!dgPhoto) return; // sans photo : le tableau tel quel, avec le visage du doge
+  if (!dgPhoto) {
+    if (M.faceOpening) { // ouverture ovale du nouveau portrait, en gardant son chapeau et ses cheveux
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, rot, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+    return;
+  }
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
   // Tête fondue dans le tableau : photo teintée, bords adoucis par un dégradé elliptique.
   const m = 1.35, W = Math.ceil(2 * rx * m), H = Math.ceil(2 * ry * m), off = document.createElement("canvas"); off.width = W; off.height = H;
@@ -2960,7 +2967,7 @@ function dgDraw(cv, M) {
   try { o.filter = "sepia(.32) saturate(.9) contrast(.95) brightness(.97)"; } catch {}
   o.drawImage(dgPhoto, (-pw * k) / 2 + dgTf.x, (-ph * k) / 2 + dgTf.y, pw * k, ph * k); o.filter = "none"; o.restore();
   o.globalCompositeOperation = "destination-in"; o.save(); o.translate(W / 2, H / 2); o.scale(1, ry / rx);
-  const g = o.createRadialGradient(0, 0, rx * 0.5, 0, 0, rx * 1.02); g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(.62, "rgba(0,0,0,.9)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  const g = o.createRadialGradient(0, 0, rx * (M.faceOpening ? .86 : .5), 0, 0, rx * 1.02); g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(.62, "rgba(0,0,0,.9)"); g.addColorStop(1, "rgba(0,0,0,0)");
   o.fillStyle = g; o.fillRect(-W, -W, 2 * W, 2 * W); o.restore();
   ctx.drawImage(off, -W / 2, -H / 2); ctx.restore();
 }
