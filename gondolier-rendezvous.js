@@ -34,7 +34,7 @@ const LINES = [
   "Heureusement, le canal n'était pas profond à cet endroit. Je me suis penché, j'ai plongé le bras dans l'eau glacée et… regarde un peu ce que j'ai repêché !",
   "Une clé ! Et pas n'importe laquelle, à mon avis. Regarde comme elle brille ! Je n'avais jamais rien vu de pareil.",
   "Tu voudrais l'avoir, hein ? Je vois bien que tu la regardes avec envie ! Eh bien, pourquoi pas ? Je pourrais accepter de m'en séparer… Mais certainement pas pour rien !",
-  "**Apporte-moi quelque chose de précieux, quelque chose qui me plaise vraiment, et nous pourrons faire un échange.**",
+  "**Un seul objet de ton livre me suffit. Choisis celui que tu veux m’offrir, et ma clé est à toi.**",
 ];
 
 function typeLine(element) {
@@ -225,13 +225,13 @@ export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwne
       if (!owned.length) {
         panel.innerHTML = `<p class="gr-trade-answer">Tu n'as encore aucun objet à proposer. Reviens me voir après tes découvertes !</p>`;
       } else {
-        panel.innerHTML = `<p class="gr-trade-prompt">Choisis les objets que tu veux m'offrir.</p><div class="gr-trade-grid">${owned.map((item) => `<button type="button" class="gr-trade-item" data-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}" aria-pressed="${selected.has(item.id)}"><img src="${escapeHtml(item.img)}" alt=""></button>`).join("")}</div><button type="button" class="gr-trade-submit" ${selected.size ? "" : "disabled"}>Proposer au gondolier</button><p class="gr-trade-answer" role="status" aria-live="polite"></p>`;
+        panel.innerHTML = `<p class="gr-trade-prompt">Choisis un seul objet à m’offrir.</p><div class="gr-trade-grid">${owned.map((item) => `<button type="button" class="gr-trade-item" data-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}" aria-pressed="${selected.has(item.id)}"><img src="${escapeHtml(item.img)}" alt=""></button>`).join("")}</div><button type="button" class="gr-trade-submit" ${selected.size ? "" : "disabled"}>Proposer au gondolier</button><p class="gr-trade-answer" role="status" aria-live="polite"></p>`;
         const submit = panel.querySelector(".gr-trade-submit"), answer = panel.querySelector(".gr-trade-answer");
         panel.querySelectorAll(".gr-trade-item").forEach((button) => {
           button.onclick = () => {
             const id = button.dataset.item;
-            if (selected.has(id)) selected.delete(id); else selected.add(id);
-            button.setAttribute("aria-pressed", String(selected.has(id)));
+            const wasSelected = selected.has(id); selected.clear(); if (!wasSelected) selected.add(id);
+            panel.querySelectorAll(".gr-trade-item").forEach((item) => item.setAttribute("aria-pressed", String(selected.has(item.dataset.item))));
             submit.disabled = !selected.size;
           };
         });

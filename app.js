@@ -163,7 +163,6 @@ function applyConfiguredGrants() {
   for (const [reward, target] of Object.entries(rewardPlacements)) {
       const player = 0;
       if (has(`trade:gondolier:spent:${reward}`)) continue;
-      if (has("o:cle-gondolier") && (reward === "object:coquillage-murano" || reward === "object:diamant")) continue;
       if (!/^t:[a-z0-9-]+:[0-9]{1,3}$/.test(target) || !has(target) || has(grantKey(player, reward))) continue;
       award(grantKey(player, reward), 0, player); gained.push({ player, reward });
   }
@@ -1007,7 +1006,7 @@ function walkerTap(W) {
       },
       getOwnedObjects: () => {
         const objects = objectList();
-        const shown = LOCAL_DEV ? objects : objects.filter(item => item.found);
+        const shown = (LOCAL_DEV ? objects : objects.filter(item => item.found)).filter(item => item.id !== "cle-gondolier");
         const items = shown.map(({ id, name, img }) => ({ id, name, img }));
         if (LOCAL_DEV) for (let i = 1; i <= 3; i++) items.push({ id: `diamant-test-${i}`, name: `Diamant de test ${i}`, img: "img/objets/diamant.svg" });
         return items;
@@ -1020,11 +1019,8 @@ function walkerTap(W) {
           if (LOCAL_DEV && /^diamant-test-[1-3]$/.test(id)) return { id, img: "img/objets/diamant.svg" };
           return null;
         });
-        const isShell = item => item && ["coquillage-murano", "frari"].includes(item.id);
-        const isDiamond = item => item && item.img === "img/objets/diamant.svg";
-        const validOffer = offered.length >= 2 && offered.every(item => isShell(item) || isDiamond(item))
-          && offered.some(isShell) && offered.some(isDiamond);
-        const refusal = { accepted: false, message: "Quoi ? Juste ce vieux truc en échange de ma clé d'or ? Tu te moques de moi, moussaillon !" };
+        const validOffer = offered.length === 1 && offered[0] && offered[0].id !== "cle-gondolier";
+        const refusal = { accepted: false, message: "Choisis un seul objet de ton livre, celui que tu veux m’offrir. Il me suffit pour faire l’échange !" };
         if (LOCAL_DEV) return validOffer
           ? { accepted: true, message: "Voilà un échange qui me convient. Cette clé d'or est à toi." }
           : refusal;
