@@ -37,6 +37,7 @@ export const LIEUX = {
   lido: { la: "la plage du Lido" },
   arsenal: { la: "les lions de l'Arsenal" },
   castello: { la: "le quartier de Castello derrière l'Arsenal" },
+  schiavoni: { la: "la Scuola di San Giorgio degli Schiavoni", in: "entrer dans la Scuola di San Giorgio degli Schiavoni" },
   cortesconta: { la: "la Corte Sconta" },
 };
 export const PLACE_FAR = {

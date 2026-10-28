@@ -1,0 +1,131 @@
+{
+  "lieu": "Scuola Dalmata di San Giorgio degli Schiavoni",
+  "consulte_le": "2026-10-28",
+  "perimetre": "Les deux œuvres de ce lieu présentes dans la base : SCH01 et SCH02. Cinq questions d’observation par œuvre ; aucun détail provenant d’une autre peinture du même sujet.",
+  "reperage": "Salle inférieure selon le site officiel. Retrouver les peintures par leur sujet, sans imposer un numéro d’accrochage susceptible de changer.",
+  "questions": [
+    {
+      "idx": 0,
+      "oeuvre": "SCH01",
+      "question": "Quel animal porte le chevalier ?",
+      "reponse": "Un cheval",
+      "detail_verifie": "Le cheval et son cavalier, dans la moitié droite.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+        "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+      ]
+    },
+    {
+      "idx": 1,
+      "oeuvre": "SCH01",
+      "question": "Suis des yeux la longue ligne qui relie le chevalier à la gueule du dragon. De quelle arme s’agit-il ?",
+      "reponse": "Une lance",
+      "detail_verifie": "La longue arme oblique, entre le cavalier et le dragon.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+      ]
+    },
+    {
+      "idx": 2,
+      "oeuvre": "SCH01",
+      "question": "Une princesse regarde le combat. Dans quel coin du tableau se cache-t-elle ?",
+      "reponse": "Tout à droite, près du bord",
+      "detail_verifie": "Le bord droit, derrière le cavalier.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+        "https://www.nga.gov/sites/default/files/2025-09/an_eye_for_art_opt.pdf"
+      ]
+    },
+    {
+      "idx": 3,
+      "oeuvre": "SCH01",
+      "question": "Mission dragon ! Regarde son dos, dans la moitié gauche. Qu’y vois-tu ?",
+      "reponse": "Des ailes en éventail",
+      "detail_verifie": "Les grandes ailes du dragon, à gauche.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+      ]
+    },
+    {
+      "idx": 4,
+      "oeuvre": "SCH01",
+      "question": "Pars explorer le lointain, derrière le dragon. Qu’a peint Carpaccio au bord de l’eau ?",
+      "reponse": "Une ville avec des tours",
+      "detail_verifie": "La ville dans le coin supérieur gauche.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+      ]
+    },
+    {
+      "idx": 5,
+      "oeuvre": "SCH02",
+      "question": "Observe le lion, en bas à gauche. Qu’est-ce qui entoure son cou ?",
+      "reponse": "Une épaisse crinière",
+      "detail_verifie": "La crinière du lion, au premier plan à gauche.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+        "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+      ]
+    },
+    {
+      "idx": 6,
+      "oeuvre": "SCH02",
+      "question": "Observe les jambes et les manteaux des religieux, surtout à droite. Que font-ils à l’arrivée du lion ?",
+      "reponse": "Ils prennent leurs jambes à leur cou",
+      "detail_verifie": "Les religieux qui courent au premier plan et vers la porte de droite.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+      ]
+    },
+    {
+      "idx": 7,
+      "oeuvre": "SCH02",
+      "question": "Au milieu de cette panique, trouve le vieil homme près du lion. Comment reconnais-tu son visage ?",
+      "reponse": "À sa longue barbe blanche",
+      "detail_verifie": "Saint Jérôme, au premier plan, juste à droite du lion.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+      ]
+    },
+    {
+      "idx": 8,
+      "oeuvre": "SCH02",
+      "question": "Lève maintenant les yeux vers le grand arbre, presque au milieu du tableau. Quelle silhouette forme son feuillage ?",
+      "reponse": "Une large couronne arrondie",
+      "detail_verifie": "La cime du grand arbre, au centre supérieur.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+      ]
+    },
+    {
+      "idx": 9,
+      "oeuvre": "SCH02",
+      "question": "Défi miniature : dans le bâtiment à gauche du grand arbre, cherche juste sous le toit. Quelle forme a la petite fenêtre ?",
+      "reponse": "Un cercle",
+      "detail_verifie": "La fenêtre ronde sous le toit du bâtiment, dans la moitié gauche.",
+      "type_preuve": "Observation directe de la reproduction du tableau ; identification et lieu recoupés avec la Scuola et Save Venice.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+      ]
+    }
+  ]
+}

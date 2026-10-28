@@ -4228,6 +4228,218 @@ export const PLACES = [
         ]
       }
     ] },
+  {
+    "id": "schiavoni",
+    "emoji": "🐉",
+    "name": "La Scuola degli Schiavoni",
+    "lat": 45.43639,
+    "lon": 12.34611,
+    "r": 65,
+    "story": "À la Scuola di San Giorgio degli Schiavoni, Carpaccio a rempli les murs d’histoires. Un chevalier affronte un dragon ; un lion sème la panique dans un couvent ! Les indices t’attendent dans la salle du rez-de-chaussée, à visiter avec ton accompagnateur.",
+    "clue": "Ouvre l’œil, détective : observe les animaux, les gestes et les petits détails. Deux tableaux peuvent rejoindre ton livre.",
+    "collectibleReward": {
+      "id": "schiavoni-gems",
+      "lead": "Trois pierres précieuses t’attendent !",
+      "hint": "Une améthyste violette, une émeraude verte et un saphir bleu viennent d’apparaître sur ta carte, autour de la Scuola. Retrouve-les près des ponts de la Comenda, de la Corte Nova et de Sant’Antonin. Chacune vaut 50 points !"
+    },
+    "chapters": [
+      {
+        "title": "Le chevalier et le dragon",
+        "steps": [
+          {
+            "idx": 0,
+            "where": "Au rez-de-chaussée, retrouve « Saint Georges et le dragon », le grand tableau avec le chevalier.",
+            "q": "Quel animal porte le chevalier ?",
+            "opts": [
+              "Un cheval",
+              "Un dromadaire",
+              "Un éléphant"
+            ],
+            "a": 0,
+            "reveal": "Le cheval brun galope vers le dragon. Saint Georges est représenté en chevalier, avec une armure.",
+            "img": "img/oeuvres/SCH01.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+              "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+            ],
+            "cap": "Le cheval et son cavalier, dans la moitié droite."
+          },
+          {
+            "idx": 1,
+            "where": "Reste devant « Saint Georges et le dragon ».",
+            "q": "Suis des yeux la longue ligne qui relie le chevalier à la gueule du dragon. De quelle arme s’agit-il ?",
+            "opts": [
+              "Une épée courte",
+              "Une lance",
+              "Un arc"
+            ],
+            "a": 1,
+            "reveal": "C’est une lance : sa longue tige relie les deux adversaires et guide ton regard à travers le tableau.",
+            "img": "img/oeuvres/SCH01.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+            ],
+            "cap": "La longue arme oblique, entre le cavalier et le dragon."
+          },
+          {
+            "idx": 2,
+            "where": "Reste devant « Saint Georges et le dragon ».",
+            "q": "Une princesse regarde le combat. Dans quel coin du tableau se cache-t-elle ?",
+            "opts": [
+              "Tout à gauche, près des tours",
+              "Tout en bas, sous le cheval",
+              "Tout à droite, près du bord"
+            ],
+            "a": 2,
+            "reveal": "La princesse se tient debout au bord droit, les mains jointes. Dans la légende de saint Georges, le chevalier vient la délivrer du dragon.",
+            "img": "img/oeuvres/SCH01.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+              "https://www.nga.gov/sites/default/files/2025-09/an_eye_for_art_opt.pdf"
+            ],
+            "cap": "Le bord droit, derrière le cavalier."
+          },
+          {
+            "idx": 3,
+            "where": "Reste devant « Saint Georges et le dragon ».",
+            "q": "Mission dragon ! Regarde son dos, dans la moitié gauche. Qu’y vois-tu ?",
+            "opts": [
+              "Des ailes en éventail",
+              "Une carapace de tortue",
+              "Une bosse de dromadaire"
+            ],
+            "a": 0,
+            "reveal": "De grandes ailes faites de membranes se déploient sur son dos. Carpaccio compose un animal imaginaire avec plusieurs formes d’animaux.",
+            "img": "img/oeuvres/SCH01.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+            ],
+            "cap": "Les grandes ailes du dragon, à gauche."
+          },
+          {
+            "idx": 4,
+            "where": "Reste devant « Saint Georges et le dragon ».",
+            "q": "Pars explorer le lointain, derrière le dragon. Qu’a peint Carpaccio au bord de l’eau ?",
+            "opts": [
+              "Une rangée de moulins",
+              "Un campement de tentes",
+              "Une ville avec des tours"
+            ],
+            "a": 2,
+            "reveal": "Des tours et des bâtiments serrés composent une ville au loin. Ce décor donne de la profondeur à la scène : le combat est devant, la ville est derrière.",
+            "img": "img/oeuvres/SCH01.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+            ],
+            "cap": "La ville dans le coin supérieur gauche.",
+            "work": "SCH01"
+          }
+        ]
+      },
+      {
+        "title": "Un lion au couvent",
+        "steps": [
+          {
+            "idx": 5,
+            "where": "Au rez-de-chaussée, retrouve « Saint Jérôme et le lion » : des religieux s’enfuient dans une cour.",
+            "q": "Observe le lion, en bas à gauche. Qu’est-ce qui entoure son cou ?",
+            "opts": [
+              "Une couronne de fleurs",
+              "Une épaisse crinière",
+              "Un collier à grelots"
+            ],
+            "a": 1,
+            "reveal": "Une épaisse crinière encadre la tête du lion. Il entre dans la cour du couvent avec saint Jérôme.",
+            "img": "img/oeuvres/SCH02.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+              "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+            ],
+            "cap": "Le lion, au premier plan à gauche."
+          },
+          {
+            "idx": 6,
+            "where": "Reste devant « Saint Jérôme et le lion ».",
+            "q": "Observe les jambes et les manteaux des religieux, surtout à droite. Que font-ils à l’arrivée du lion ?",
+            "opts": [
+              "Ils s’installent pour manger",
+              "Ils s’agenouillent en rang",
+              "Ils prennent leurs jambes à leur cou"
+            ],
+            "a": 2,
+            "reveal": "Ils s’enfuient dans plusieurs directions ! Leurs grands vêtements soulevés et leurs jambes écartées donnent du mouvement à cette arrivée.",
+            "img": "img/oeuvres/SCH02.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+            ],
+            "cap": "Les religieux qui courent au premier plan et vers la porte de droite."
+          },
+          {
+            "idx": 7,
+            "where": "Reste devant « Saint Jérôme et le lion ».",
+            "q": "Au milieu de cette panique, trouve le vieil homme près du lion. Comment reconnais-tu son visage ?",
+            "opts": [
+              "À sa longue barbe blanche",
+              "À sa moustache noire",
+              "À ses joues sans barbe"
+            ],
+            "a": 0,
+            "reveal": "Sa longue barbe blanche descend sur son vêtement sombre. C’est saint Jérôme : il reste près du lion tandis que les autres s’éloignent.",
+            "img": "img/oeuvres/SCH02.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+            ],
+            "cap": "Saint Jérôme, au premier plan, juste à droite du lion."
+          },
+          {
+            "idx": 8,
+            "where": "Reste devant « Saint Jérôme et le lion ».",
+            "q": "Lève maintenant les yeux vers le grand arbre, presque au milieu du tableau. Quelle silhouette forme son feuillage ?",
+            "opts": [
+              "Une flèche étroite et pointue",
+              "Une large couronne arrondie",
+              "Un bouquet de grandes palmes"
+            ],
+            "a": 1,
+            "reveal": "Le feuillage forme une large couronne arrondie. Ce grand arbre est un bon repère pour séparer les personnages du premier plan et les bâtiments du fond.",
+            "img": "img/oeuvres/SCH02.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+            ],
+            "cap": "La cime du grand arbre, au centre supérieur."
+          },
+          {
+            "idx": 9,
+            "where": "Reste devant « Saint Jérôme et le lion ».",
+            "q": "Défi miniature : dans le bâtiment à gauche du grand arbre, cherche juste sous le toit. Quelle forme a la petite fenêtre ?",
+            "opts": [
+              "Un carré",
+              "Un triangle",
+              "Un cercle"
+            ],
+            "a": 2,
+            "reveal": "La petite fenêtre est ronde : on appelle cela un oculus. Avec les galeries, les portes et les fenêtres, Carpaccio transforme le couvent en décor plein de choses à observer.",
+            "img": "img/oeuvres/SCH02.webp",
+            "src": [
+              "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_014.jpg",
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+            ],
+            "cap": "La fenêtre ronde sous le toit du bâtiment, dans la moitié gauche.",
+            "work": "SCH02"
+          }
+        ]
+      }
+    ]
+  },
   { id: "cortesconta", final: true, emoji: "🗝️", name: "La Corte Sconta", lat: 45.4340, lon: 12.3478, r: 130,
     story: "Dans le quartier de Castello, derrière l'Arsenal, il existe des cours cachées entre les maisons. La Corte Sconta, c'est LA cour secrète : on y entre par un petit passage, et le temps s'arrête. (Parents : le point exact est approximatif, une cour cachée de Castello fait très bien l'affaire. Pour une pause à table, un célèbre restaurant du coin porte ce nom : à réserver.)",
     clue: "Te voilà au bout du voyage. Il ne te manque qu'un mot de passe : le vrai nom de la ville.",

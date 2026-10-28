@@ -5,6 +5,7 @@ import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
 import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
 import { openCortoRendezvous } from "./corto-rendezvous.js";
 import { openGondolierRendezvous } from "./gondolier-rendezvous.js";
+import { SCHIAVONI_GEMS, createSchiavoniGems } from "./schiavoni-gems.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -723,6 +724,7 @@ function devCompleteChapter(p, fromMapButton = false) {
   new Set(steps.map((s) => s.work).filter(Boolean)).forEach((id) => { if (!workFound(id)) award("w:" + id, POINTS.work, meIdx()); });
   if (has("fin:" + p.id)) unaward("fin:" + p.id);
   if (p.id === "murano") for (const key of ["o:coquillage-murano", "bonus:murano-shell"]) if (has(key)) unaward(key);
+  if (p.id === "schiavoni") for (const gem of SCHIAVONI_GEMS) if (has(gem.key)) unaward(gem.key);
   if (p.id === "frari") for (const key of ["o:cle-gondolier", "bonus:trade:gondolier"]) if (has(key)) unaward(key);
   if (has("tr:" + p.id)) unaward("tr:" + p.id);
   Object.keys(S.done).filter((key) => has(key) && (key.startsWith(`st:${p.id}:`) || (p.musicChallenge && key.startsWith(`music:${p.musicChallenge.entry}:`)) || (p.id === "miracoli" && key.startsWith("music:02:")))).forEach(unaward);
@@ -1594,6 +1596,19 @@ function updateBuranoRubyMarker() {
   buranoRubyMarker.el.setAttribute("aria-label", "Ramasser le rubis de Burano");
 }
 map.on("zoom", updateBuranoRubyMarker);
+const schiavoniGems = createSchiavoniGems({
+  map, Marker: maplibregl.Marker,
+  ready: () => JEU && has("fin:schiavoni"), player: meIdx,
+  owned: (gem, player) => has(gem.key) || has(grantKey(player, `object:${gem.id}`)),
+  mapVisible: mapWorkVisible, fix: maskFix, distance: dist,
+  armSound: armMaskSound, playSound: playMaskSound,
+  noGps: () => toast("Je ne parviens pas à vérifier ta position. Réessaie près de la pierre précieuse."),
+  tooFar: (gem, distance) => cortoSays(`${gem.short} t’attend près du ${gem.bridge}. Encore ${fmtD(distance)}, ${cortoAddress()} !`),
+  claim: (gem, player) => { award(gem.key, 50, player); save(); refreshAll(); },
+  stars: (cx, cy, n) => starsToCounter(cx, cy, n, true),
+  collected: (gem) => toast(`${gem.short} rejoint tes objets ! +50 points`, 4500),
+  retry: () => toast("La pierre précieuse t’attend toujours. Réessaie dans un instant."),
+});
 // Le masque d’or se débloque à la fin de l’épreuve de la Boule d’or.
 const DOGANA_MASK = { lat: 45.43085, lon: 12.33662, radius: 65, img: "img/objets/masque-or.webp" };
 const DOGANA_MASK_KEY = "o:masque-or", DOGANA_MASK_BONUS = "bonus:dogana-masque-or";
@@ -2603,7 +2618,7 @@ async function chapEnd(p, replay, preview = false) {
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
   const hasSecret = p.id === "murano" || !!(p.reward || p.musicChallenge || p.collectibleReward);
-  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.collectibleReward ? "Le masque d’or est à toi !" : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
@@ -2611,8 +2626,8 @@ async function chapEnd(p, replay, preview = false) {
   bubble.classList.remove("typing");
   bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span>${hasSecret ? `<span class="chap-secret-clue">${esc(defaults.secret)}</span>` : ""}`;
   fitChapTalk();
-  if (!preview && (p.reward || p.collectibleReward || p.musicChallenge || p.id === "murano" && complete(p)) && !has("fin:" + p.id)) {
-    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "dogana") updateDoganaMaskMarker();
+  if (!preview && (p.reward || p.musicChallenge || (p.collectibleReward || p.id === "murano") && complete(p)) && !has("fin:" + p.id)) {
+    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "dogana") updateDoganaMaskMarker(); if (p.id === "schiavoni") schiavoniGems.update();
   }
   let planButton = null, photoButton = null;
   if (p.plan || p.musicChallenge || MONTAGES[p.id]) {
@@ -3549,6 +3564,7 @@ const BADGES = [
    Les trésors existants gardent leur clé tr:<lieu> ; les nouveaux utiliseront o:<id> quand une épreuve les remettra. */
 const PREVIEW_OBJECTS = DEV;
 const OBJECTS = [
+  ...SCHIAVONI_GEMS,
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
   { id: "coquillage-murano", name: "Le coquillage magique de Murano", img: "coquillage-murano.svg", key: MURANO_SHELL_KEY },
   { id: "rubis-burano", name: "Le rubis de Burano", img: "rubis-burano.svg", key: BURANO_RUBY_KEY },
@@ -4010,13 +4026,14 @@ async function resetPlaceProgress(places) {
   const ids = new Set(places.map((p) => p.id));
   const musicIds = new Set(places.map((p) => p.musicChallenge?.entry).filter(Boolean));
   if (ids.has("miracoli")) musicIds.add("02"); // ancien défi remplacé par « Pulchra es »
+  const rewardObjectIds = new Set(ids.has("schiavoni") ? SCHIAVONI_GEMS.map((gem) => gem.id) : []);
   const workIds = new Set(places.flatMap((p) => p.chapters?.flatMap((c) => c.steps.flatMap(chainOf).map((s) => s.work).filter(Boolean)) || []));
   const keys = Object.keys(S.done).filter((key) => {
     if (!has(key)) return false;
     if (key === "finale") return places.length === PLACES.length;
     const [kind, id] = key.split(":");
     const grant = /^grant:\d+:(object|music|music-won):(.+)$/.exec(key);
-    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (["o:coquillage-murano", "bonus:murano-shell"].includes(key) && ids.has("murano")) || (["o:cle-gondolier", "bonus:trade:gondolier"].includes(key) && ids.has("frari")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
+    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (["o:coquillage-murano", "bonus:murano-shell"].includes(key) && ids.has("murano")) || (["o:cle-gondolier", "bonus:trade:gondolier"].includes(key) && ids.has("frari")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? rewardObjectIds.has(grant[2]) || ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
   });
   keys.forEach(unaward);
   places.forEach((p) => { delete introSeen[p.id]; });
@@ -4310,7 +4327,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");
