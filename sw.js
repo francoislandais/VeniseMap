@@ -8,6 +8,7 @@ FILES.push("data/arbres.json", ...["olivier_torcello", "palmier_san_servolo", "f
 FILES.push("img/arbres/olivier-torcello-photo.webp", "img/objets/olive-torcello.webp");
 FILES.push("img/objets/coquillage-murano.svg");
 FILES.push("img/objets/rubis-burano.svg");
+FILES.push("img/objets/masque-or.webp");
 FILES.push("data/masques.json", "img/masque-venitien-transparent.png", "audio/mask-triumph.mp3");
 FILES.push("icons/corto-192.png", "icons/corto-512.png", "icons/corto-maskable-512.png", "icons/corto-apple-touch-180.png");
 FILES.push(...[1, 2, 3, 4, 5].map((n) => `img/masque-carnaval-${n}.webp`));

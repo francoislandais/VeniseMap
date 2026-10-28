@@ -1594,6 +1594,67 @@ function updateBuranoRubyMarker() {
   buranoRubyMarker.el.setAttribute("aria-label", "Ramasser le rubis de Burano");
 }
 map.on("zoom", updateBuranoRubyMarker);
+// Le masque d’or se débloque à la fin de l’épreuve de la Boule d’or.
+const DOGANA_MASK = { lat: 45.43085, lon: 12.33662, radius: 65, img: "img/objets/masque-or.webp" };
+const DOGANA_MASK_KEY = "o:masque-or", DOGANA_MASK_BONUS = "bonus:dogana-masque-or";
+let doganaMaskMarker = null;
+function updateDoganaMaskMarker() {
+  const available = JEU && has("fin:dogana") && !has(DOGANA_MASK_KEY) && !has(grantKey(meIdx(), "object:masque-or"));
+  if (!available) {
+    if (doganaMaskMarker && !doganaMaskMarker.busy) { doganaMaskMarker.marker.remove(); doganaMaskMarker = null; }
+    return;
+  }
+  if (!doganaMaskMarker) {
+    const el = document.createElement("button"); el.type = "button"; el.className = "dogana-mask-marker";
+    el.setAttribute("aria-label", "Ramasser le masque d’or près de la Boule d’or");
+    const img = document.createElement("img"); img.src = DOGANA_MASK.img; img.alt = ""; img.draggable = false; el.appendChild(img);
+    const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([DOGANA_MASK.lon, DOGANA_MASK.lat]).addTo(map);
+    doganaMaskMarker = { marker, el, img, busy: false };
+    el.addEventListener("pointerdown", (event) => event.stopPropagation());
+    el.addEventListener("click", (event) => { event.stopPropagation(); collectDoganaMask(); });
+  }
+  const zoom = map.getZoom();
+  doganaMaskMarker.el.hidden = zoom < 13.5;
+  doganaMaskMarker.el.style.setProperty("--dogana-mask-size", Math.round(Math.min(66, Math.max(34, 31 * 1.38 ** (zoom - 15)))) + "px");
+}
+map.on("zoom", updateDoganaMaskMarker);
+async function collectDoganaMask() {
+  const record = doganaMaskMarker;
+  if (!record || record.busy || !mapWorkVisible() || !has("fin:dogana") || has(DOGANA_MASK_KEY)) return;
+  record.busy = true; record.el.classList.add("is-searching"); armMaskSound();
+  const player = meIdx(), started = performance.now();
+  try { navigator.vibrate?.([45, 35, 65]); } catch {}
+  const turn = record.img.animate([{ transform: "rotate(0) scale(1)" }, { transform: "rotate(360deg) scale(1.08)" }], { duration: 900, iterations: Infinity });
+  let frame = 0;
+  const accelerate = (now) => { turn.playbackRate = Math.min(8, 1 + (now - started) / 350); frame = requestAnimationFrame(accelerate); };
+  frame = requestAnimationFrame(accelerate);
+  const [fix] = await Promise.all([maskFix(), sleep(900)]);
+  cancelAnimationFrame(frame); turn.cancel(); record.el.classList.remove("is-searching");
+  if (!record.el.isConnected || player !== meIdx()) { record.busy = false; return; }
+  if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.acc) || fix.acc > 80) {
+    record.busy = false; toast("Je ne parviens pas à vérifier ta position. Réessaie près de la Boule d’or."); return;
+  }
+  const distance = dist(fix.lat, fix.lon, DOGANA_MASK.lat, DOGANA_MASK.lon);
+  if (distance > DOGANA_MASK.radius + Math.min(fix.acc, 20)) {
+    record.busy = false; cortoSays(`Le masque d’or t’attend près de la Boule d’or. Approche-toi encore (${fmtD(distance)}).`); return;
+  }
+  try { navigator.vibrate?.([80, 40, 130]); } catch {}
+  playMaskSound();
+  const { cx, cy, ghost } = await bloomMask(record.img);
+  if (player !== meIdx()) { await evaporateMask({ cx, cy, ghost }); record.img.style.visibility = ""; record.busy = false; return; }
+  award(DOGANA_MASK_KEY, 0, player); award(DOGANA_MASK_BONUS, 100, player); save(); refreshAll();
+  maskRain(cx, cy); starsToCounter(cx, cy, 100, true);
+  const from = ghost.getBoundingClientRect(), book = $("#home-btn")?.getBoundingClientRect();
+  const flight = record.img.cloneNode(); flight.className = "mask-gem-flight dogana-mask-flight";
+  flight.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px`;
+  document.body.appendChild(flight); ghost.remove();
+  if (book) {
+    const dx = book.left + book.width / 2 - (from.left + from.width / 2), dy = book.top + book.height / 2 - (from.top + from.height / 2);
+    await flight.animate([{ transform: "scale(1) rotate(0)", opacity: 1 }, { transform: "scale(1.08) rotate(18deg)", opacity: 1, offset: .2 }, { transform: `translate(${dx}px,${dy}px) scale(.12) rotate(420deg)`, opacity: 0 }], { duration: 1250, easing: "cubic-bezier(.3,0,.4,1)", fill: "forwards" }).finished.catch(() => {});
+  }
+  flight.remove(); record.busy = false; updateDoganaMaskMarker();
+  toast("Masque d’or rangé dans tes objets ! +100 points", 5000);
+}
 function buranoRubyTrail(x, y) {
   const star = document.createElement("span"); star.className = "burano-ruby-trail"; star.textContent = Math.random() < .5 ? "✦" : "✧";
   star.style.cssText = `left:${x + (Math.random() - .5) * 22}px;top:${y + (Math.random() - .5) * 22}px`;
@@ -2541,8 +2602,8 @@ async function chapEnd(p, replay, preview = false) {
   emblem.className = "chap-victory";
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
-  const hasSecret = p.id === "murano" || !!(p.reward || p.musicChallenge);
-  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? endSecret(p) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
+  const hasSecret = p.id === "murano" || !!(p.reward || p.musicChallenge || p.collectibleReward);
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.collectibleReward ? "Le masque d’or est à toi !" : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
@@ -2550,8 +2611,8 @@ async function chapEnd(p, replay, preview = false) {
   bubble.classList.remove("typing");
   bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span>${hasSecret ? `<span class="chap-secret-clue">${esc(defaults.secret)}</span>` : ""}`;
   fitChapTalk();
-  if (!preview && (p.reward || p.id === "murano" && complete(p)) && !has("fin:" + p.id)) {
-    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker();
+  if (!preview && (p.reward || p.collectibleReward || p.id === "murano" && complete(p)) && !has("fin:" + p.id)) {
+    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "dogana") updateDoganaMaskMarker();
   }
   let planButton = null, photoButton = null;
   if (p.plan || p.musicChallenge || MONTAGES[p.id]) {
@@ -3491,6 +3552,7 @@ const OBJECTS = [
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
   { id: "coquillage-murano", name: "Le coquillage magique de Murano", img: "coquillage-murano.svg", key: MURANO_SHELL_KEY },
   { id: "rubis-burano", name: "Le rubis de Burano", img: "rubis-burano.svg", key: BURANO_RUBY_KEY },
+  { id: "masque-or", name: "Le masque d’or", img: "masque-or.webp", key: DOGANA_MASK_KEY },
   { id: "cle-gondolier", name: "La clé du gondolier", img: "img/narrative/gondolier-gold-key.png", key: "o:cle-gondolier" },
   { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
   { id: "basilique", name: "La plume de l’évangéliste", img: "plume.svg", key: "tr:basilique" },
@@ -4248,7 +4310,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateBuranoRubyMarker(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");

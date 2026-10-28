@@ -1928,7 +1928,7 @@ export const PLACES = [
         ]
       }
     ] },
-  { id: "dogana", emoji: "🔮", name: "La boule d'or", lat: 45.43085, lon: 12.33662, r: 60,
+  { id: "dogana", emoji: "🔮", name: "La boule d'or", lat: 45.43085, lon: 12.33662, r: 60, collectibleReward: { id: "masque-or", name: "Le masque d’or", hint: "Le masque d’or est à toi ! Il est apparu sur la carte, près de la boule d’or. Approche-toi et touche-le pour le ranger dans tes objets et gagner 100 points." },
     story: "Tout au bout de la pointe, deux géants portent une grosse boule dorée. Dessus, une statue tourne avec le vent.",
     clue: "Celui qui tourne ne se perd jamais : il montre la route aux navires. Dis bonjour à la place d'en face.",
     chapters: [
