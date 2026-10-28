@@ -4247,6 +4247,60 @@ export const PLACES = [
         "title": "Le chevalier et le dragon",
         "steps": [
           {
+            "idx": 10,
+            "where": "Au rez-de-chaussée, cherche le grand tableau où un chevalier affronte un dragon. Lis son écriteau, ou demande un coup de main à ton accompagnateur.",
+            "q": "Quel saint est ce chevalier ?",
+            "opts": [
+              "Saint Jérôme",
+              "Saint Georges",
+              "Saint Marc"
+            ],
+            "a": 1,
+            "reveal": "C’est saint Georges. Son nom italien est San Giorgio : tu peux le repérer dans le titre du tableau.",
+            "src": [
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+              "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+            ],
+            "cap": "Nom du personnage dans le titre : San Giorgio.",
+            "img": "img/oeuvres/SCH01.webp"
+          },
+          {
+            "idx": 11,
+            "where": "Reste devant le chevalier et le dragon. Lis le nom de l’artiste sur l’écriteau ; un adulte peut t’aider à le déchiffrer.",
+            "q": "Quel peintre a réalisé ce tableau ?",
+            "opts": [
+              "Giovanni Bellini",
+              "Jacopo Tintoretto",
+              "Vittore Carpaccio"
+            ],
+            "a": 2,
+            "reveal": "Vittore Carpaccio a peint ce tableau. Dans cette salle, plusieurs de ses grandes toiles racontent des histoires comme les pages d’un livre.",
+            "src": [
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+              "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+            ],
+            "cap": "Nom de l’artiste : Vittore Carpaccio.",
+            "img": "img/oeuvres/SCH01.webp"
+          },
+          {
+            "idx": 12,
+            "where": "Pour ce défi, enquête sur le nom complet de la Scuola. Tu peux demander de l’aide à l’adulte qui t’accompagne.",
+            "q": "Quel autre saint accompagne Georges dans le nom « Santi Giorgio e Trifone » ?",
+            "opts": [
+              "Saint Tryphon",
+              "Saint Nicolas",
+              "Saint Antoine"
+            ],
+            "a": 0,
+            "reveal": "Trifone est le nom italien de Tryphon. La Scuola Dalmata dei Santi Giorgio e Trifone porte les noms de saint Georges et de saint Tryphon.",
+            "src": [
+              "https://www.scuoladalmatavenezia.com/",
+              "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+            ],
+            "cap": "Dénomination officielle de la Scuola : Santi Giorgio e Trifone.",
+            "img": "img/oeuvres/SCH01.webp"
+          },
+          {
             "idx": 0,
             "where": "Au rez-de-chaussée, retrouve « Saint Georges et le dragon », le grand tableau avec le chevalier.",
             "q": "Quel animal porte le chevalier ?",
@@ -4344,6 +4398,60 @@ export const PLACES = [
       {
         "title": "Un lion au couvent",
         "steps": [
+          {
+            "idx": 13,
+            "where": "Change de tableau : cherche celui où un lion entre dans une cour et fait fuir les religieux. Lis son écriteau, avec un adulte si besoin.",
+            "q": "Quel saint accompagne le lion ?",
+            "opts": [
+              "Saint François",
+              "Saint Marc",
+              "Saint Jérôme"
+            ],
+            "a": 2,
+            "reveal": "C’est saint Jérôme, appelé San Girolamo en italien. Le titre raconte son arrivée au couvent avec le lion.",
+            "src": [
+              "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+              "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+            ],
+            "cap": "Nom du personnage dans le titre : San Girolamo.",
+            "img": "img/oeuvres/SCH02.webp"
+          },
+          {
+            "idx": 14,
+            "where": "Reste devant le lion et son compagnon. Cette question porte sur la légende : interroge ton accompagnateur si tu ne la connais pas.",
+            "q": "D’après la légende, qu’a retiré Jérôme de la patte du lion pour le soigner ?",
+            "opts": [
+              "Un petit caillou",
+              "Une épine",
+              "Un morceau de verre"
+            ],
+            "a": 1,
+            "reveal": "Selon la légende, Jérôme a retiré une épine de la patte du lion. L’animal est alors devenu son compagnon. Cette histoire explique leur présence ensemble dans les peintures.",
+            "src": [
+              "https://www.themorgan.org/collection/hours-of-catherine-of-cleves/314",
+              "https://www.nationalgallery.org.uk/paintings/glossary/st-jerome"
+            ],
+            "cap": "Épisode de la légende ; l’épine n’est pas un détail à chercher sur cette toile.",
+            "img": "img/oeuvres/SCH02.webp"
+          },
+          {
+            "idx": 15,
+            "where": "Le vieil homme près du lion était aussi un grand savant. Pour ce défi, tu peux consulter l’écriteau ou questionner ton accompagnateur.",
+            "q": "Quel livre saint Jérôme a-t-il traduit en latin ?",
+            "opts": [
+              "La Bible",
+              "L’Odyssée",
+              "Les Fables d’Ésope"
+            ],
+            "a": 0,
+            "reveal": "Saint Jérôme est connu pour son travail de traduction de la Bible en latin, associé à la Vulgate. C’est pour cela qu’on le représente aussi dans des tableaux entouré de livres.",
+            "src": [
+              "https://www.themorgan.org/collection/hours-of-catherine-of-cleves/314",
+              "https://www.nationalgallery.org.uk/paintings/domenichino-the-vision-of-saint-jerome"
+            ],
+            "cap": "Contexte historique du personnage ; ce renseignement peut être donné par l’accompagnateur.",
+            "img": "img/oeuvres/SCH02.webp"
+          },
           {
             "idx": 5,
             "where": "Au rez-de-chaussée, retrouve « Saint Jérôme et le lion » : des religieux s’enfuient dans une cour.",

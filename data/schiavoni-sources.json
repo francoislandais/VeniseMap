@@ -1,9 +1,45 @@
 {
   "lieu": "Scuola Dalmata di San Giorgio degli Schiavoni",
   "consulte_le": "2026-10-28",
-  "perimetre": "Les deux œuvres de ce lieu présentes dans la base : SCH01 et SCH02. Cinq questions d’observation par œuvre ; aucun détail provenant d’une autre peinture du même sujet.",
+  "perimetre": "Les deux œuvres du lieu présentes dans la base : SCH01 et SCH02. Trois questions d’identification et de contexte précèdent les cinq questions d’observation conservées à l’identique pour chaque œuvre.",
   "reperage": "Salle inférieure selon le site officiel. Retrouver les peintures par leur sujet, sans imposer un numéro d’accrochage susceptible de changer.",
   "questions": [
+    {
+      "idx": 10,
+      "oeuvre": "SCH01",
+      "question": "Quel saint est ce chevalier ?",
+      "reponse": "Saint Georges",
+      "detail_verifie": "Nom du personnage dans le titre : San Giorgio.",
+      "type_preuve": "Identification et contexte documentés. Lecture d’un écriteau quand possible ; aide explicite de l’accompagnateur autorisée.",
+      "sources": [
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+        "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+      ]
+    },
+    {
+      "idx": 11,
+      "oeuvre": "SCH01",
+      "question": "Quel peintre a réalisé ce tableau ?",
+      "reponse": "Vittore Carpaccio",
+      "detail_verifie": "Nom de l’artiste : Vittore Carpaccio.",
+      "type_preuve": "Identification et contexte documentés. Lecture d’un écriteau quand possible ; aide explicite de l’accompagnateur autorisée.",
+      "sources": [
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+        "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+      ]
+    },
+    {
+      "idx": 12,
+      "oeuvre": "SCH01",
+      "question": "Quel autre saint accompagne Georges dans le nom « Santi Giorgio e Trifone » ?",
+      "reponse": "Saint Tryphon",
+      "detail_verifie": "Dénomination officielle de la Scuola : Santi Giorgio e Trifone.",
+      "type_preuve": "Identification et contexte documentés. Lecture d’un écriteau quand possible ; aide explicite de l’accompagnateur autorisée.",
+      "sources": [
+        "https://www.scuoladalmatavenezia.com/",
+        "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+      ]
+    },
     {
       "idx": 0,
       "oeuvre": "SCH01",
@@ -64,6 +100,42 @@
       "sources": [
         "https://commons.wikimedia.org/wiki/File:Vittore_Carpaccio_010.jpg",
         "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/"
+      ]
+    },
+    {
+      "idx": 13,
+      "oeuvre": "SCH02",
+      "question": "Quel saint accompagne le lion ?",
+      "reponse": "Saint Jérôme",
+      "detail_verifie": "Nom du personnage dans le titre : San Girolamo.",
+      "type_preuve": "Identification et contexte documentés. Lecture d’un écriteau quand possible ; aide explicite de l’accompagnateur autorisée.",
+      "sources": [
+        "https://www.scuoladalmatavenezia.com/le-opere-della-scuola/",
+        "https://www.savevenice.org/project/carpaccio-cycle-in-the-scuola-dalmata"
+      ]
+    },
+    {
+      "idx": 14,
+      "oeuvre": "SCH02",
+      "question": "D’après la légende, qu’a retiré Jérôme de la patte du lion pour le soigner ?",
+      "reponse": "Une épine",
+      "detail_verifie": "Épisode de la légende ; l’épine n’est pas un détail à chercher sur cette toile.",
+      "type_preuve": "Identification et contexte documentés. Lecture d’un écriteau quand possible ; aide explicite de l’accompagnateur autorisée.",
+      "sources": [
+        "https://www.themorgan.org/collection/hours-of-catherine-of-cleves/314",
+        "https://www.nationalgallery.org.uk/paintings/glossary/st-jerome"
+      ]
+    },
+    {
+      "idx": 15,
+      "oeuvre": "SCH02",
+      "question": "Quel livre saint Jérôme a-t-il traduit en latin ?",
+      "reponse": "La Bible",
+      "detail_verifie": "Contexte historique du personnage ; ce renseignement peut être donné par l’accompagnateur.",
+      "type_preuve": "Identification et contexte documentés. Lecture d’un écriteau quand possible ; aide explicite de l’accompagnateur autorisée.",
+      "sources": [
+        "https://www.themorgan.org/collection/hours-of-catherine-of-cleves/314",
+        "https://www.nationalgallery.org.uk/paintings/domenichino-the-vision-of-saint-jerome"
       ]
     },
     {
