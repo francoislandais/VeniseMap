@@ -7,6 +7,8 @@ import { openCortoRendezvous } from "./corto-rendezvous.js";
 import { openGondolierRendezvous } from "./gondolier-rendezvous.js";
 import { SCHIAVONI_GEMS, createSchiavoniGems } from "./schiavoni-gems.js";
 import { createGabrielMessages, isGabriel } from "./data/corto-gabriel.js";
+import { apiFetch } from "./api.js";
+import { createPhotoLibrary } from "./photo-sync.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -90,7 +92,7 @@ function mergeState(a, b) {
   const cfg = (b.cfgT || 0) > (a.cfgT || 0) ? b : a;
   return { kids: [(cfg.kids || [{}])[0]], start: cfg.start, onboarded: a.onboarded || b.onboarded, cfgT: Math.max(a.cfgT || 0, b.cfgT || 0), resetAt: Math.max(a.resetAt || 0, b.resetAt || 0), done };
 }
-let syncTimer, syncEpoch = 0, syncAbort = null;
+let syncTimer, syncEpoch = 0, syncAbort = null, photoLibrary = null;
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
   clearTimeout(syncTimer); if (!document.hidden) syncTimer = setTimeout(sync, 800);
@@ -112,7 +114,7 @@ async function sync() {
   const controller = new AbortController(); syncAbort = controller;
   backfillQuestionWorks();
   try {
-    const r = await fetch("api/sync", { method: "POST", headers: apiHeaders(), body: JSON.stringify(S), signal: controller.signal });
+    const r = await apiFetch("api/sync", { method: "POST", headers: apiHeaders(), body: JSON.stringify(S), signal: controller.signal });
     if (r.status === 410) { await retireDeletedPlayer(); return; }
     if (r.status === 403) { syncStatus = "🔒 accès à la partie indisponible"; if (tab === "settings") renderSettings(); return; }
     if (!r.ok) throw new Error(r.status);
@@ -129,6 +131,7 @@ async function sync() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
     syncStatus = "✅ synchronisé " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     if (before !== JSON.stringify(S)) refreshAll();
+    photoLibrary?.schedule(0);
   } catch (error) { if (error?.name !== "AbortError") syncStatus = "📴 hors-ligne (les points sont gardés sur ce téléphone)"; }
   finally { if (syncAbort === controller) syncAbort = null; }
   if (tab === "settings") renderSettings();
@@ -179,7 +182,7 @@ async function loadRewardPlacements() {
   try { rewardPlacements = JSON.parse(localStorage.getItem(REWARD_CACHE + PLAYER_ID)) || {}; } catch { rewardPlacements = {}; }
   if (document.hidden) return;
   try {
-    const r = await fetch("api/rewards", { headers: apiHeaders() });
+    const r = await apiFetch("api/rewards", { headers: apiHeaders() });
     if (!r.ok) return;
     const data = await r.json();
     if (!data.placements || typeof data.placements !== "object") return;
@@ -292,7 +295,7 @@ function modal(html, onClose) {
 }
 
 let adminUnlocked = ADMIN_CONTEXT, adminPromptOpen = false, adminPlayers = [], adminRewards = {}, adminCode = "";
-if (ADMIN_CONTEXT) fetch("api/admin/session", { headers: apiHeaders() }).then((r) => r.ok ? r.json() : Promise.reject()).then((data) => { adminPlayers = data.players || []; adminRewards = data.rewards || {}; if (tab === "settings") renderSettings(); }).catch(() => { location.replace(location.pathname.replace(/preview\.html$/, "") + "?open-preview=1"); });
+if (ADMIN_CONTEXT) apiFetch("api/admin/session", { headers: apiHeaders() }).then((r) => r.ok ? r.json() : Promise.reject()).then((data) => { adminPlayers = data.players || []; adminRewards = data.rewards || {}; if (tab === "settings") renderSettings(); }).catch(() => { location.replace(location.pathname.replace(/preview\.html$/, "") + "?open-preview=1"); });
 function requestAdminAccess(target) {
   if (adminPromptOpen) return;
   adminPromptOpen = true;
@@ -307,7 +310,7 @@ function requestAdminAccess(target) {
     if (input.value.length !== 4) return;
     const submit = $("button[type=submit]", form); submit.disabled = true; error.hidden = true;
     try {
-      const r = await fetch("api/admin/unlock", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ code: input.value }) });
+      const r = await apiFetch("api/admin/unlock", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ code: input.value }) });
       if (!adminPromptOpen) return;
       if (!r.ok) { const details = await r.json().catch(() => ({})); error.textContent = r.status === 429 ? "Trop d'essais. Réessaie dans une minute." : details.error === "code incorrect" ? "Code incorrect." : "Accès indisponible. Vérifie la connexion à la partie."; error.hidden = false; input.value = ""; input.focus(); return; }
       const data = await r.json();
@@ -321,7 +324,7 @@ function requestAdminAccess(target) {
   setTimeout(() => input.focus(), 50);
 }
 
-/* ───────── Photos (gardées sur le téléphone, IndexedDB) ───────── */
+/* ───────── Photos : copie locale hors ligne et photothèque synchronisée par joueur ───────── */
 const PHOTO_SESSION_KEY = "vq_photo_session_v1";
 // Un espace local de photos par nouvelle partie et par joueur.
 function newPhotoSession() { return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + "-" + Math.random().toString(36).slice(2); }
@@ -355,41 +358,21 @@ async function migrateLegacyPhotos() {
   } finally { db.close(); }
   try { localStorage.setItem("vq_photo_owner_migrated_v2", "1"); } catch {}
 }
-async function putPhoto(key, rec, owner = photoOwner()) {
-  if (owner !== photoOwner()) return;
-  const db = await idb();
-  if (owner !== photoOwner()) { db.close(); return; }
-  try { return await new Promise((res, rej) => { const t = db.transaction("p", "readwrite"); t.objectStore("p").put({ ...rec, owner }, owner + ":" + key); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
-  finally { db.close(); }
-}
-async function getPhoto(key) {
-  try {
-    const owner = photoOwner(), db = await idb();
-    try { return await new Promise((res) => { const q = db.transaction("p").objectStore("p").get(owner + ":" + key); q.onsuccess = () => res(q.result?.owner === owner && photoOwner() === owner ? q.result : null); q.onerror = () => res(null); }); }
-    finally { db.close(); }
-  } catch { return null; }
-}
-async function allPhotos() {
-  try {
-    const owner = photoOwner(), db = await idb();
-    try { return await new Promise((res) => { const s = db.transaction("p").objectStore("p"), ks = s.getAllKeys(); ks.onsuccess = () => { const v = s.getAll(); v.onsuccess = () => res(ks.result.map((k, i) => [k, v.result[i]]).filter(([, rec]) => rec?.owner === owner)); v.onerror = () => res([]); }; ks.onerror = () => res([]); }); }
-    finally { db.close(); }
-  } catch { return []; }
-}
-async function clearAllPhotos() {
-  const db = await idb();
-  try { await new Promise((res, rej) => { const t = db.transaction("p", "readwrite"); t.objectStore("p").clear(); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
-  finally { db.close(); }
-}
-async function clearPlayerPhotos(player) {
-  const owner = photoSession() + ":" + player;
-  const db = await idb();
-  try { await new Promise((res, rej) => {
-    const tx = db.transaction("p", "readwrite"), store = tx.objectStore("p"), keys = store.getAllKeys();
-    keys.onsuccess = () => keys.result.filter((key) => String(key).startsWith(owner + ":")).forEach((key) => store.delete(key));
-    keys.onerror = () => rej(keys.error);
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-  }); } finally { db.close(); }
+photoLibrary = createPhotoLibrary({
+  player: () => PLAYER_ID, owner: photoOwner, epoch: () => S.resetAt || 0,
+  headers: apiHeaders, request: apiFetch, disabled: () => ADMIN_CONTEXT || !JEU,
+  onReset: () => { void sync(); },
+  onChange: () => { if (tab === "photos") renderPhotos(false); },
+  onStatus: () => updatePhotoSyncStatus(),
+});
+const putPhoto = (key, rec, owner = photoOwner()) => photoLibrary.put(key, rec, owner);
+const getPhoto = (key) => photoLibrary.get(key).catch(() => null);
+const allPhotos = () => photoLibrary.all().catch(() => []);
+const clearPlayerPhotos = (player) => photoLibrary.clearPlayer(player);
+function updatePhotoSyncStatus() {
+  const el = $("#photo-sync-status"); if (!el || ADMIN_CONTEXT) return;
+  const status = photoLibrary.status();
+  el.textContent = status.state === "ready" ? "Photos sauvegardées et synchronisées." : status.state === "offline" ? "Photos gardées sur ce téléphone. Synchronisation dès le retour de la connexion." : "Synchronisation des photos…";
 }
 function shrink(file, max = 900) {
   return new Promise((res) => {
@@ -1784,7 +1767,7 @@ if (LOCAL_DEV && Object.keys(PLACE_ICONS).length) {
   q(".ic-r").oninput = (e) => setSize(+e.target.value);
   q(".ic-pin").onclick = () => { if (!sel) return; const c = cfg(sel), zr = map.getZoom(), z = Math.round(zr * 100) / 100, p = iconPos(sel, zr); c.pos = (c.pos || []).filter((k) => Math.abs(k[0] - z) > 0.019); c.pos.push([z, +p[0].toFixed(6), +p[1].toFixed(6)]); say("Repère posé à ce zoom"); updateIcons(); refresh(); };
   q(".ic-st").onclick = (e) => { const pd = e.target.closest("[data-pd]"); if (pd) { const k = iconPosKeys(sel); k.splice(+pd.dataset.pd, 1); cfg(sel).pos = k; updateIcons(); refresh(); return; } const d = e.target.closest("[data-d]"); if (d) { const st = iconStops(sel); st.splice(+d.dataset.d, 1); cfg(sel).stops = st; updateIcons(); refresh(); return; } const c = e.target.closest("[data-z]"); if (c) map.easeTo({ zoom: +c.dataset.z, duration: 400 }); };
-  q(".ic-sv").onclick = async () => { try { const r = await fetch("api/place-icons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(ICONCFG) }); say(r.ok ? "Enregistré ✔ (data/place-icons.json)" : "Échec : serveur sans --dev ?"); } catch { say("Échec de l'enregistrement"); } };
+  q(".ic-sv").onclick = async () => { try { const r = await apiFetch("api/place-icons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(ICONCFG) }); say(r.ok ? "Enregistré ✔ (data/place-icons.json)" : "Échec : serveur sans --dev ?"); } catch { say("Échec de l'enregistrement"); } };
   map.on("zoom", refresh); window.__icons = ICONCFG;
 }
 
@@ -1808,8 +1791,8 @@ $("#up-me").onclick = async () => {
   const cur = { ...PROFILE, name: myName(), avatar: me().avatar };
   let others = [], switchTo = null;
   const [boardResult, pairResult] = await Promise.allSettled([
-    fetch("api/board", { headers: apiHeaders() }),
-    fetch("api/player/switch", { headers: apiHeaders() }),
+    apiFetch("api/board", { headers: apiHeaders() }),
+    apiFetch("api/player/switch", { headers: apiHeaders() }),
   ]);
   try { const r = boardResult.value; if (r?.ok) others = ((await r.json()).players || []).filter((p) => !p.mine).map((p) => ({ ...p, grade: LEVELS[level(p.points)].name })); } catch {}
   try { const r = pairResult.value; if (r?.ok) { switchTo = (await r.json()).player; if (switchTo?.id) switchTo.photo = loadProfileFor(switchTo.id)?.photo || null; } } catch {}
@@ -1820,11 +1803,12 @@ $("#up-me").onclick = async () => {
 };
 async function switchPlayer(targetId) {
   try {
-    const pairResponse = await fetch("api/player/switch", { headers: apiHeaders() });
+    const pairResponse = await apiFetch("api/player/switch", { headers: apiHeaders() });
     if (!pairResponse.ok || (await pairResponse.json()).player?.id !== targetId) throw new Error("Ce changement de joueur n’est pas autorisé.");
     await sync();
+    await photoLibrary.sync();
     if (retiringPlayer) return;
-    const stateResponse = await fetch("api/state", { headers: { ...apiHeaders(), "X-Player": targetId } });
+    const stateResponse = await apiFetch("api/state", { headers: { ...apiHeaders(), "X-Player": targetId } });
     if (!stateResponse.ok) throw new Error("Le profil de l’autre joueur est indisponible.");
     const remote = await stateResponse.json(), targetKey = `vq_player_state_v1:${targetId}`;
     let next = remote;
@@ -2596,7 +2580,7 @@ function conclusionEditor(sh, p, elements, defaults) {
     const action = e.target.closest("button")?.dataset.ce; if (!action) return;
     if (action === "toggle") { editing = !editing; sh.classList.toggle("chap-editing", editing); tools.hidden = !editing; if (editing) showAll(); select(null); return; }
     if (action === "flip") { bar.classList.toggle("at-bottom"); return; }
-    if (action === "save") { try { const r = await fetch("api/conclusion-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CONCLUSION_LAYOUT) }); status.textContent = r.ok ? "Enregistré ✔" : "Échec : serveur sans --dev ?"; } catch { status.textContent = "Échec de l’enregistrement"; } return; }
+    if (action === "save") { try { const r = await apiFetch("api/conclusion-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CONCLUSION_LAYOUT) }); status.textContent = r.ok ? "Enregistré ✔" : "Échec : serveur sans --dev ?"; } catch { status.textContent = "Échec de l’enregistrement"; } return; }
     if (!selected) { status.textContent = "Touche d'abord un élément."; return; }
     if (action === "text") { if (selected === "emblem") { status.textContent = "La vignette n'a pas de texte."; return; } field.hidden = !field.hidden; if (!field.hidden) field.focus(); return; }
     if (action === "reset") { delete layout[selected]; apply(selected); select(selected); fitChapTalk(); status.textContent = "Élément réinitialisé"; return; }
@@ -3009,7 +2993,7 @@ function renderDoge(v = $("#v-doge"), id = "doge", onDone = null) {
   const M = MONTAGES[id] || MONTAGES.doge;
   v.innerHTML = `<button type="button" class="mont-back" aria-label="Fermer la photo">×</button>
     <div class="mont-art"><canvas id="dg" class="dg" width="${M.W}" height="${M.H}"></canvas><button type="button" class="dg-cam pulse" id="dg-pick" aria-label="Prendre une photo">${CAM_SVG}</button></div>
-    <details class="mont-credit"><summary aria-label="Informations sur le tableau">ⓘ</summary><p>La photo reste sur ton téléphone. ${M.credit}</p></details>`;
+    <details class="mont-credit"><summary aria-label="Informations sur le tableau">ⓘ</summary><p>Ta photo est sauvegardée dans les souvenirs de ton joueur et synchronisée entre ses téléphones. ${M.credit}</p></details>`;
   const cv = $("#dg", v), draw = () => dgDraw(cv, M);
   const ready = MONT_IMGS[M.src] ? Promise.resolve() : new Promise((ok) => { const im = new Image(); im.onload = () => { MONT_IMGS[M.src] = im; ok(); }; im.onerror = ok; im.src = M.src; });
   ready.then(draw);
@@ -3064,10 +3048,12 @@ function openPhotoView(it) {
   $(".pv-back", o).onclick = () => { if (history.state && history.state.vqView) history.back(); else viewClose && viewClose(); };
   $(".pv-share", o).onclick = async () => { const f = new File([it.r.blob], "souvenir.jpg", { type: "image/jpeg" }); try { if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: "Mon souvenir de Venise" }); else { const a = document.createElement("a"); a.href = it.u; a.download = "souvenir.jpg"; a.click(); } } catch {} };
 }
-function renderPhotos() {
+function renderPhotos(refresh = true) {
   const v = $("#v-photos");
+  if (refresh) { void sync(); photoLibrary.schedule(0); }
   menuSay("Tes photos souvenirs ! Termine une épreuve pour en prendre une nouvelle.");
-  v.innerHTML = `<div class="pgrid" id="pgrid"></div>`;
+  v.innerHTML = `${ADMIN_CONTEXT ? "" : '<p class="muted photo-sync-status" id="photo-sync-status" role="status" aria-live="polite"></p>'}<div class="pgrid" id="pgrid"></div>`;
+  updatePhotoSyncStatus();
   allPhotos().then(async (ps) => {
     const g = $("#pgrid", v); if (!g || tab !== "photos") return;
     ps = ps.filter(([k, r]) => r && r.mont && r.blob).sort((x, y) => y[1].t - x[1].t);
@@ -3276,7 +3262,7 @@ function musicListeningEditor(overlay, p, elements, defaults, phase = "opening")
     if (action === "toggle") { editing = !editing; overlay.classList.toggle("mq-editing", editing); tools.hidden = !editing; select(null); return; }
     if (action === "flip") { bar.classList.toggle("at-top"); return; }
     if (action === "save") {
-      try { const response = await fetch("api/music-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(MUSIC_LAYOUT) }); if (!response.ok) throw new Error("save"); localStorage.removeItem("vq_music_layout_draft"); status.textContent = "Enregistré dans la mise en page locale ✔"; }
+      try { const response = await apiFetch("api/music-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(MUSIC_LAYOUT) }); if (!response.ok) throw new Error("save"); localStorage.removeItem("vq_music_layout_draft"); status.textContent = "Enregistré dans la mise en page locale ✔"; }
       catch { remember(); status.textContent = "Enregistré sur cet appareil ; démarre l’aperçu avec --dev pour publier ce réglage."; }
       return;
     }
@@ -4047,11 +4033,7 @@ async function resetPlaceProgress(places) {
   places.forEach((p) => { delete introSeen[p.id]; });
   save(); refreshAll();
   const photos = (await allPhotos()).filter(([, rec]) => rec?.place && ids.has(rec.place));
-  if (photos.length) {
-    const db = await idb();
-    await new Promise((resolve, reject) => { const tx = db.transaction("p", "readwrite"); photos.forEach(([key]) => tx.objectStore("p").delete(key)); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
-    db.close();
-  }
+  if (photos.length) await photoLibrary.remove(photos.map(([key]) => key));
   return { keys: keys.length, photos: photos.length };
 }
 async function renderDev() {
@@ -4128,7 +4110,7 @@ async function renderRewardEditor() {
     const button = $("#reward-save", v), status = $("#reward-status", v), selectedTarget = $("#reward-target", v).value;
     button.disabled = true; status.textContent = "Enregistrement…";
     try {
-      const r = await fetch("api/admin/reward", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ code: adminCode, playerId: player.id, reward: rewardEditorChoice.reward, target: selectedTarget }) });
+      const r = await apiFetch("api/admin/reward", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ code: adminCode, playerId: player.id, reward: rewardEditorChoice.reward, target: selectedTarget }) });
       const data = await r.json(); if (!r.ok || !data.ok) throw new Error(data.error || "Échec de l'enregistrement");
       adminRewards[player.id] = data.placements;
       if (PLAYER_ID === player.id) { rewardPlacements = data.placements; try { localStorage.setItem(REWARD_CACHE + PLAYER_ID, JSON.stringify(rewardPlacements)); } catch {} applyConfiguredGrants(); }
@@ -4166,7 +4148,7 @@ function renderSettings() {
     if (!confirm(`Supprimer ${name} et son score ? Ses photos locales seront effacées quand son appareil se reconnectera.`)) return;
     button.disabled = true;
     try {
-      const r = await fetch("api/admin/player/delete", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ code: adminCode, playerId }) });
+      const r = await apiFetch("api/admin/player/delete", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ code: adminCode, playerId }) });
       const data = await r.json(); if (!r.ok || !data.ok) throw new Error(data.error || "suppression impossible");
       adminPlayers = data.players; delete adminRewards[playerId];
       if (playerId === PLAYER_ID) { await retireDeletedPlayer(); return; }
@@ -4182,15 +4164,16 @@ function renderSettings() {
   if (ADMIN_CONTEXT) $("#reset", v).hidden = true;
   $("#reset", v).onclick = async () => {
     if (ADMIN_CONTEXT) { toast("Choisis un joueur dans le tableau de bord administrateur."); return; }
-    if (!confirm("Effacer toute la progression, le profil et toutes les photos enregistrées dans le jeu sur cet appareil ?")) return;
+    if (!confirm("Effacer toute la progression, le profil et les photos de ce joueur sur tous ses téléphones ?")) return;
     if (!confirm("Vraiment tout ? Cette action est définitive.")) return;
     syncEpoch++; clearTimeout(syncTimer);
-    const previousPhotoSession = photoSession();
+    const previousPhotoSession = photoSession(), previousResetAt = S.resetAt || 0;
     const nextPhotoSession = newPhotoSession();
     try { localStorage.setItem(PHOTO_SESSION_KEY, nextPhotoSession); if (localStorage.getItem(PHOTO_SESSION_KEY) !== nextPhotoSession) throw new Error("stockage indisponible"); }
     catch { toast("Réinitialisation annulée : impossible de protéger les photos du nouveau joueur."); return; }
-    try { await clearAllPhotos(); }
-    catch { try { localStorage.setItem(PHOTO_SESSION_KEY, previousPhotoSession); } catch {} toast("Réinitialisation annulée : impossible d'effacer toutes les photos."); return; }
+    S.resetAt = Date.now();
+    try { await clearPlayerPhotos(PLAYER_ID); }
+    catch { S.resetAt = previousResetAt; try { localStorage.setItem(PHOTO_SESSION_KEY, previousPhotoSession); } catch {} toast("Réinitialisation annulée : impossible d'effacer toutes les photos."); return; }
     try { localStorage.removeItem("vq_active"); localStorage.removeItem(HELD_KEY); localStorage.removeItem(HELD_POS); localStorage.removeItem("vq_dev_enabled_v2"); } catch {}
     if (typeof viewClose === "function") viewClose();
     heldId = null; heldEl?.remove(); heldEl = null; objectAssembly.clear(); dgPhoto = null;
@@ -4232,7 +4215,7 @@ function downloadOfflinePack(report) {
   offlineDownload = (async () => {
     if (!('caches' in window)) throw new Error("Le stockage hors connexion n’est pas disponible sur ce téléphone.");
     report("Inventaire des contenus…", 0);
-    const response = await fetch("api/offline-assets", { cache: "no-store", signal: controller.signal });
+    const response = await apiFetch("api/offline-assets", { cache: "no-store", signal: controller.signal });
     if (!response.ok) throw new Error("Impossible de préparer les fichiers du jeu.");
     const manifest = await response.json();
     if (!Array.isArray(manifest.files) || !manifest.files.length) throw new Error("La liste des fichiers du jeu est vide.");
@@ -4302,7 +4285,7 @@ const PLACES_TOTAL = PLACES.filter((p) => !p.final).length;
 async function renderBoard() {
   const el = $("#board"); if (!el) return;
   try {
-    const r = await fetch("api/board", { headers: apiHeaders() }); if (!r.ok) throw new Error(r.status);
+    const r = await apiFetch("api/board", { headers: apiHeaders() }); if (!r.ok) throw new Error(r.status);
     const players = (await r.json()).players || [];
     if (!players.length) { el.innerHTML = `<p class="muted">Aucun joueur pour l'instant.</p>`; return; }
     el.innerHTML = players.map((p, i) => {
@@ -4335,7 +4318,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");
@@ -4409,6 +4392,7 @@ async function startFlow() {
   startGeo();
 }
 visibleInterval(sync, 45000);
+visibleInterval(() => { if (tab === "photos") void photoLibrary.sync(); }, 10000);
 addEventListener("online", sync);
 let pausedMedia = [], pausedAudioContexts = [];
 function suspendBackgroundWork() {

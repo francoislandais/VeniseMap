@@ -1,4 +1,4 @@
-const VERSION = "v2.330.5";
+const VERSION = "v2.331.0";
 const SHELL = `vq-shell-${VERSION}`;
 // Cœur de l'appli précaché ; le reste peut être préparé depuis le profil du joueur.
 const FILES = ["./", "index.html", "style.css", "app.js", "data.js", "corto-lieux.js", "intro.js", "mapstyle.js", "config.js", "manifest.webmanifest", "vendor/maplibre-gl.js", "vendor/maplibre-gl.css", "fonts/special-elite-latin.woff2", "img/map-icon.webp", "img/objets/coquille.svg", "img/objets/perle.svg", "img/objets/plume.svg", "img/objets/coffre-code.svg", "img/objets/parchemin.svg", "img/objets/partition.svg", "img/objets/cle-bronze.svg", "img/objets/fiole-lagune.svg", "img/objets/verre-murano.svg", "img/objets/boussole.svg", "img/objets/masque.svg", "img/objets/sceau-lion.svg", "img/objets/diamant.svg", "img/objets/ruban-soie.svg", "img/objets/lanterne.svg", "img/intro/bg.webp", "img/home-icon.webp", "img/bridge-icon.webp", "data/petits-canaux.json", "data/outfits.json", "data/bridges.json", "data/facts.json", "icons/icon-192.png", "icons/icon-512.png", "img/corto-face.webp", "img/corto-content.webp", "img/corto-venise-pastel.webp"];
@@ -10,7 +10,7 @@ FILES.push("img/objets/coquillage-murano.svg");
 FILES.push("img/objets/rubis-burano.svg");
 FILES.push("img/objets/masque-or.webp");
 FILES.push("img/montage/schiavoni.jpg");
-FILES.push("data/corto-gabriel.js");
+FILES.push("data/corto-gabriel.js", "api.js", "photo-sync.js");
 FILES.push("schiavoni-gems.js", "data/schiavoni-sources.json", "data/oeuvres.json", "img/places/schiavoni.webp", "img/places/credits.json", "img/objets/gemmes-LICENSE.txt", ...["amethyste", "emeraude", "saphir"].map((name) => `img/objets/schiavoni-${name}.svg`), ...["SCH01", "SCH02"].flatMap((id) => [`img/oeuvres/${id}.webp`, `img/oeuvres/t/${id}.webp`]));
 FILES.push("data/masques.json", "img/masque-venitien-transparent.png", "audio/mask-triumph.mp3");
 FILES.push("icons/corto-192.png", "icons/corto-512.png", "icons/corto-maskable-512.png", "icons/corto-apple-touch-180.png");
@@ -35,7 +35,7 @@ self.addEventListener("fetch", (e) => {
   const r = e.request; if (r.method !== "GET") return;
   const u = new URL(r.url);
   if (u.pathname.startsWith("/admin/")) return;
-  if (u.pathname.startsWith("/api/") || u.pathname.includes("/data/teams")) return; // synchronisation d'équipe : jamais en cache
+  if (/\/api\//.test(u.pathname) || u.pathname.includes("/data/teams")) return; // progression et photos privées : jamais dans le cache public
   if (u.hostname === "tiles.stadiamaps.com") {
     e.respondWith(caches.open("vq-tiles").then(async (cache) => {
       const saved = await cache.match(r);
