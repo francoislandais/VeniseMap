@@ -6,6 +6,7 @@ import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
 import { openCortoRendezvous } from "./corto-rendezvous.js";
 import { openGondolierRendezvous } from "./gondolier-rendezvous.js";
 import { SCHIAVONI_GEMS, createSchiavoniGems } from "./schiavoni-gems.js";
+import { createGabrielMessages, isGabriel } from "./data/corto-gabriel.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -1737,8 +1738,12 @@ async function collectBuranoRuby() {
 }
 
 $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientRect());
-// Pastille de Corto (en bas à gauche, toujours visible) : un toucher fait parler Corto — pour l'instant il salue seulement ; plus tard il donnera ici ses indices.
-$("#corto-btn").onclick = () => cortoSays("Bonjour matelot, comment ça va ?");
+// Messages personnels de Corto pour Gabriel ; l’aperçu administrateur permet aussi de les relire.
+const nextGabrielMessage = createGabrielMessages();
+$("#corto-btn").onclick = () => {
+  if (!mapWorkVisible()) return;
+  cortoSays(ADMIN_CONTEXT || isGabriel(PROFILE?.name || myName()) ? nextGabrielMessage() : "Bonjour matelot, comment ça va ?");
+};
 // Pastille maison (à côté de Corto, toujours visible) : ouvre l'espace de l'enfant (profil, défis, ponts, photos, trophées, réglages).
 $("#home-btn").onclick = () => {
   if (tab !== "map") return;
