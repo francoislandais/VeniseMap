@@ -2611,7 +2611,7 @@ async function chapEnd(p, replay, preview = false) {
   bubble.classList.remove("typing");
   bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span>${hasSecret ? `<span class="chap-secret-clue">${esc(defaults.secret)}</span>` : ""}`;
   fitChapTalk();
-  if (!preview && (p.reward || p.collectibleReward || p.id === "murano" && complete(p)) && !has("fin:" + p.id)) {
+  if (!preview && (p.reward || p.collectibleReward || p.musicChallenge || p.id === "murano" && complete(p)) && !has("fin:" + p.id)) {
     award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "dogana") updateDoganaMaskMarker();
   }
   let planButton = null, photoButton = null;
@@ -3124,7 +3124,7 @@ function floatMusicFragment(photo, im, fragment, start) {
 }
 // Trésors cachés sur les photos (une fois le mot de Corto entendu) : étoiles à tapoter et, sur la photo du saint, l'objet magique.
 function addTreasures(photo, im, pt, p, { onClaim = () => {}, onMusic = () => {}, preview = false } = {}) {
-  if (!p || (!preview && !has("fin:" + p.id))) return;
+  if (!p || (!preview && !has("fin:" + p.id) && !p.musicChallenge)) return;
   const place = () => { // position d'un point (fx, fy) de l'image, que l'image soit entière ou recadrée (cover)
     const r = im.getBoundingClientRect(), pr = photo.getBoundingClientRect(), nw = im.naturalWidth, nh = im.naturalHeight; if (!nw) return null;
     const cover = im.style.objectFit === "cover", sc = cover ? Math.max(r.width / nw, r.height / nh) : Math.min(r.width / nw, r.height / nh), ow = nw * sc, oh = nh * sc;
