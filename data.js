@@ -4239,8 +4239,8 @@ export const PLACES = [
     "clue": "Ouvre l’œil, détective : observe les animaux, les gestes et les petits détails. Deux tableaux peuvent rejoindre ton livre.",
     "collectibleReward": {
       "id": "schiavoni-gems",
-      "lead": "Trois pierres précieuses t’attendent !",
-      "hint": "Une améthyste violette, une émeraude verte et un saphir bleu viennent d’apparaître sur ta carte, autour de la Scuola. Retrouve-les près des ponts de la Comenda, de la Corte Nova et de Sant’Antonin. Chacune vaut 50 points !"
+      "lead": "Des pierres précieuses viennent d’apparaître.",
+      "hint": "Cherche-les bien !"
     },
     "chapters": [
       {
