@@ -6,12 +6,14 @@ import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
 import { openCortoRendezvous } from "./corto-rendezvous.js";
 import { openGondolierRendezvous } from "./gondolier-rendezvous.js";
 import { MONTEVERDI_QUIZ, openMonteverdiStory } from "./monteverdi-rendezvous.js";
-import { ST_MARC_QUIZ, ST_MARC_BOOK } from "./data/stmarc-interaction.js";
+import { ST_MARC_QUIZ, ST_MARC_BOOK, ST_MARC_CROQUETTE } from "./data/stmarc-interaction.js";
 import { SCHIAVONI_GEMS, createSchiavoniGems } from "./schiavoni-gems.js";
 import { createGabrielMessages, isGabriel } from "./data/corto-gabriel.js";
 import { apiFetch } from "./api.js";
 import { createPhotoLibrary } from "./photo-sync.js";
 import { openMarcChest, openMarcBook } from "./marc-chest.js";
+import { openSacredCroquette } from "./marc-recipe.js";
+import { createLionCompanion } from "./lion-companion.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -854,6 +856,8 @@ const WALKERS = [
   { id: "gondolier", name: "le gondolier", to: "au gondolier", de: "du gondolier", route: "gondolier-route.json", img: "img/gondolier-avatar.webp", h: 3, near: 60, w: 64, msg: "Le gondolier te salue d'un coup de chapeau… (il aura bientôt quelque chose à te raconter !)" },
   { id: "lion", name: "le lion ailé", to: "au lion ailé", de: "du lion ailé", route: "lion-route.json", farLines: ["Le lion ailé est dans les airs ! Lève les yeux et attends qu'il passe au-dessus de toi pour lui parler.", "Il vole haut, {g}. Bon courage ! Attends qu'il passe au-dessus de toi.", "Lève les yeux, {g} : le lion ailé survole Venise. Attends qu'il passe près de toi.", "Le lion ailé est en plein vol. Lève les yeux et bon courage pour l'attraper, {g} !", "Impossible de lui parler d'ici : il est dans le ciel. Attends qu'il passe au-dessus de toi."], motion: { cruise: 12, ramp: 8, period: 2160, landings: [{ at: 700, dur: 110 }, { at: 1650, dur: 90 }] }, heading: true, img: "img/lion-avatar.webp", rig: { body: "img/lion-body.webp", rear: "img/lion-rear.webp", front: "img/lion-front.webp", wings: "img/lion-wings.webp", ratio: "325/360" }, h: 5, near: 60, w: 50, msg: "Le lion ailé bat doucement des ailes et te regarde d'un air fier… (il aura bientôt quelque chose à te raconter !)" },
 ];
+const LION_FOLLOW_KEY = "story:stmarc:lion-follower";
+const lionCompanion = createLionCompanion({ map, getLion: () => WALKERS.find(W => W.id === "lion"), getPlayer: () => pos, recruited: () => has(LION_FOLLOW_KEY), visible: () => mapWorkVisible() && !$(".wq,.doge-msg:not(.menu-say),.cer,.marc-magic") });
 
 // Doge vexé : il file de HUFF_M mètres en courant (6 s), reste là-bas 20 min, puis revient vite à sa vraie place (état propre à l'appareil).
 const HUFF_M = 110, HUFF_RUN = 6, HUFF_STAY = 1200;
@@ -1043,8 +1047,37 @@ function walkerTap(W) {
 // Le livre doit être réellement trouvé et tenu en main sur la carte avant la remise à saint Marc.
 let marcDropHandler = null;
 const marcBookInHand = () => heldId === "evangile-marc" && !!heldEl && objectFoundFor("evangile-marc");
+function giveSacredCroquetteToMarc() {
+  if (has(LION_FOLLOW_KEY) || !objectList().some((item) => item.id === 'croquette-sacree' && item.found)) return false;
+  lionCompanion.summon();
+  award(LION_FOLLOW_KEY, 0, meIdx());
+  award('craft:marc-recipe:croquette-given', 0, meIdx());
+  award('craft:marc-recipe:spent:croquette-sacree', 0, meIdx());
+  award('trade:gondolier:spent:object:croquette-sacree', 0, meIdx());
+  objectAssembly.delete('croquette-sacree');
+  if (heldId === 'croquette-sacree') {
+    heldEl?.remove(); heldEl = null; heldId = null; saveHeld();
+    try { localStorage.removeItem(HELD_POS); } catch {}
+  }
+  save(); refreshAll();
+  return true;
+}
+function dropCroquetteOnMarc(dragged, event) {
+  if (tab !== 'map' || heldId !== 'croquette-sacree' || has(LION_FOLLOW_KEY) || document.querySelector('.wq')) return false;
+  const marc = WALKERS.find((walker) => walker.id === 'stmarc');
+  if (!marc?.marker) return false;
+  const marker = marc.marker.getElement();
+  if (marker.style.visibility === 'hidden') return false;
+  const target = (marker.querySelector('.doge-av') || marker).getBoundingClientRect();
+  const item = dragged.getBoundingClientRect();
+  const inside = (x, y) => x >= target.left - 18 && x <= target.right + 18 && y >= target.top - 18 && y <= target.bottom + 18;
+  if (!inside(event.clientX, event.clientY) && !inside(item.left + item.width / 2, item.top + item.height / 2)) return false;
+  if (!giveSacredCroquetteToMarc()) return false;
+  openWalkerQuiz(marc, { croquetteDelivered: true });
+  return true;
+}
 // Rencontre en grand : le personnage grandit en haut de l'écran et pose sa question ; mauvaise réponse -> il se vexe, rapetisse et s'enfuit en courant.
-function openWalkerQuiz(W) {
+function openWalkerQuiz(W, { croquetteDelivered = false } = {}) {
   const el = W.marker.getElement(), r0 = el.getBoundingClientRect();
   const ov = document.createElement("div"); ov.className = "wq";
   const opts = W.quiz.opts.map((o) => ({ ...o })).sort(() => Math.random() - 0.5);
@@ -1064,7 +1097,61 @@ function openWalkerQuiz(W) {
     img.animate([{ transform: "none" }, { transform: from, opacity: 0.2 }], { duration: 420, easing: "ease-in", fill: "forwards" });
     ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, fill: "forwards" }).onfinish = () => { ov.remove(); el.style.visibility = ""; if (cb) cb(); };
   };
+  if (croquetteDelivered && W.id === 'stmarc') {
+    ov.classList.add('stmarc-thanks');
+    txt.textContent = ST_MARC_CROQUETTE.thanks;
+    box.innerHTML = '<button class="b-btn go-next wq-bye">Allons retrouver ton lion !</button>';
+    $('.wq-bye', ov).onclick = () => close();
+    return;
+  }
   const saintMarcRequest = () => {
+    if (has(LION_FOLLOW_KEY)) {
+      txt.textContent = "Mon lion ne te quittera plus jusqu’à ton départ de Venise !";
+      box.innerHTML = '<button class="b-btn go-next wq-bye">À bientôt, saint Marc</button>';
+      $(".wq-bye", ov).onclick = () => close();
+      return;
+    }
+    const croquetteId = "croquette-sacree", croquette = objectList().find((o) => o.id === croquetteId && o.found);
+    if (croquette && (heldId === croquetteId || !marcBookInHand())) {
+      txt.textContent = "Une merveilleuse odeur flotte dans l’air…";
+      if (heldId !== croquetteId || !heldEl) {
+        box.innerHTML = `<p class="wq-marc-hint">${esc(ST_MARC_CROQUETTE.prompt)} Prends la croquette dans tes objets, puis glisse-la sur mon portrait.</p><button class="b-btn go-next wq-bye">Je vais chercher ma croquette</button>`;
+        $(".wq-bye", ov).onclick = () => close();
+        return;
+      }
+      ov.classList.add("stmarc-offer");
+      box.innerHTML = `<p class="wq-marc-hint">Glisse la croquette sacrée sur mon portrait pour appeler mon lion !</p><button class="b-btn go-next wq-bye">Plus tard</button>`;
+      $(".wq-bye", ov).onclick = () => close();
+      const sweet = heldEl, origin = { left: parseFloat(sweet.style.left), top: parseFloat(sweet.style.top) };
+      const target = document.createElement("span"); target.className = "wq-marc-target"; target.setAttribute("aria-hidden", "true"); ov.appendChild(target);
+      const placeTarget = () => { if (!target.isConnected) return; const r = img.getBoundingClientRect(); target.style.cssText = `left:${r.left + r.width * .27}px;top:${r.top + r.height * .07}px;width:${r.width * .48}px;height:${r.height * .57}px`; };
+      placeTarget(); setTimeout(placeTarget, 550); addEventListener("resize", placeTarget);
+      let restored = false;
+      restoreMarcBook = () => { if (restored) return; restored = true; removeEventListener("resize", placeTarget); target.remove(); if (!sweet.isConnected) return; sweet.style.left = origin.left + "px"; sweet.style.top = origin.top + "px"; sweet.classList.remove("marc-presented-book"); };
+      sweet.style.visibility = ""; sweet.classList.add("marc-offering");
+      const offerCroquette = (dragged) => {
+        if (dragged !== sweet || !ov.isConnected || heldId !== croquetteId) return false;
+        const r = target.getBoundingClientRect(), b = sweet.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+        if (cx < r.left - 18 || cx > r.right + 18 || cy < r.top - 18 || cy > r.bottom + 18) { target.classList.remove("miss"); void target.offsetWidth; target.classList.add("miss"); return false; }
+        marcDropHandler = null; target.remove(); ov.classList.remove("stmarc-offer"); ov.classList.add("stmarc-thanks");
+        sweet.classList.add("marc-presented-book");
+        marcDropHandler = null;
+        giveSacredCroquetteToMarc();
+        txt.textContent = ST_MARC_CROQUETTE.thanks;
+        box.innerHTML = '<button class="b-btn go-next wq-bye">À bientôt, saint Marc</button>';
+        $(".wq-bye", ov).onclick = () => close();
+        img.animate([{ transform: "scale(1)" }, { transform: "scale(1.08)" }, { transform: "scale(1)" }], { duration: 750, easing: "ease-in-out" });
+        return true;
+      };
+      offerCroquette.objectId = croquetteId; marcDropHandler = offerCroquette;
+      return;
+    }
+    if (has("craft:marc-chest:opened")) {
+      txt.textContent = ST_MARC_CROQUETTE.prompt;
+      box.innerHTML = '<button class="b-btn go-next wq-bye">Je vais réunir les ingrédients</button>';
+      $(".wq-bye", ov).onclick = () => close();
+      return;
+    }
     if (has("story:stmarc:book")) {
       txt.textContent = ST_MARC_BOOK.again;
       box.innerHTML = '<button class="b-btn go-next wq-bye">À bientôt, saint Marc</button>';
@@ -1117,6 +1204,7 @@ function openWalkerQuiz(W) {
       setTimeout(() => restoreMarcBook?.(), 1200);
       return true;
     };
+    marcDropHandler.objectId = "evangile-marc";
   };
   box.addEventListener("click", (e) => {
     const b = e.target.closest(".wq-opt"); if (!b) return; const o = opts[+b.dataset.i]; if (!o) return;
@@ -1168,16 +1256,21 @@ function scheduleWalkTick(delay = ecoOn() ? 125 : 83) {
 function stopWalkTick() { cancelAnimationFrame(walkFrame); clearTimeout(walkRetry); walkFrame = walkRetry = 0; }
 function walkTick(ts) {
   if (document.hidden) return;
-  if (!mapWorkVisible()) { scheduleWalkTick(250); return; }
+  if (!mapWorkVisible()) { lionCompanion.pause(); scheduleWalkTick(250); return; }
   const k = walkPrev ? Math.min(6, Math.max(1, (ts - walkPrev) / 16.7)) : 1; walkPrev = ts; // lissage recalé sur le temps réel écoulé
   const now = nowMs();
   for (const W of WALKERS) if (W.motion && W.marker) { const v = motionSpeed(W.motion, now) / W.motion.cruise, c = W.marker.getElement().classList; c.toggle("flying", v > 0.2); c.toggle("landed", v <= 0.2); }
   for (const W of WALKERS) if (W.marker) W.marker.getElement().classList.toggle("angry", !!W.huff && now - W.huff.t0 < (DEV ? 5 : 60) * 1000); // fâché : éclair et halo rouge : 5 s en mode dev, 1 min en réel
   const smooth = map.getZoom() >= 16.5 || WALKERS.some((W) => W.huff && now - W.huff.t0 < (HUFF_RUN + 1) * 1000);
   const slow = ts - walkLast > 5000; if (slow) walkLast = ts;
-  for (const W of WALKERS) if (W.marker && (smooth || slow || W.motion)) { const q = W.id === "lion" ? smoothAdj(W, now) : walkerAt(W, now); W.marker.setLngLat([q.lon, q.lat]); } // le lion reste animé à tout zoom, avec moins de recalculs
+  for (const W of WALKERS) if (W.marker && (smooth || slow || W.motion)) {
+    const following = W.id === "lion" ? lionCompanion.update(ts) : null;
+    W.companionHeading = following;
+    const q = following || (W.id === "lion" ? smoothAdj(W, now) : walkerAt(W, now));
+    W.marker.setLngLat([q.lon, q.lat]);
+  } // le lion reste animé à tout zoom, avec moins de recalculs
   for (const W of WALKERS) if (W.heading && W.marker) { // le lion regarde là où il va : retourné (gauche/droite) et incliné selon la direction à l'écran
-    const a = rawAt(W, now), b = rawAt(W, now + 700), pa = map.project([a.lon, a.lat]), pb = map.project([b.lon, b.lat]), dx = pb.x - pa.x, dy = pb.y - pa.y, n = Math.hypot(dx, dy);
+    const a = rawAt(W, now), b = rawAt(W, now + 700), pa = map.project([a.lon, a.lat]), pb = map.project([b.lon, b.lat]), dx = W.companionHeading?.dx ?? pb.x - pa.x, dy = W.companionHeading?.dy ?? pb.y - pa.y, n = Math.hypot(dx, dy);
     if (n > 0.04) { // à l'arrêt (posé) il garde son dernier cap
       if (Math.abs(dx) > 0.25 * n) W.left = dx < 0;
       const tgt = Math.max(-38, Math.min(38, (W.left ? Math.atan2(-dy, -dx) : Math.atan2(dy, dx)) * 57.2958));
@@ -1909,6 +2002,10 @@ $("#bridge-btn").onclick = (e) => openBridges(e.currentTarget.getBoundingClientR
 const nextGabrielMessage = createGabrielMessages();
 $("#corto-btn").onclick = () => {
   if (!mapWorkVisible()) return;
+  if (has(LION_FOLLOW_KEY)) {
+    cortoSays("C’est le doge qui va être impressionné s’il te voit accompagné de ce lion majestueux !");
+    return;
+  }
   cortoSays(ADMIN_CONTEXT || isGabriel(PROFILE?.name || myName()) ? nextGabrielMessage() : "Bonjour matelot, comment ça va ?");
 };
 // Pastille maison (à côté de Corto, toujours visible) : ouvre l'espace de l'enfant (profil, défis, ponts, photos, trophées, réglages).
@@ -3762,6 +3859,7 @@ const OBJECTS = [
   { id: "rubis-burano", name: "Le rubis de Burano", img: "rubis-burano.svg", key: BURANO_RUBY_KEY },
   { id: "coffre-masque", name: "Le coffre au masque d’or", img: "coffre-masque.png", key: "o:coffre-masque" },
   { id: "evangile-marc", name: "L’Évangile selon saint Marc", img: "evangile-marc.png", key: "o:evangile-marc" },
+  { id: "croquette-sacree", name: "La croquette sacrée", img: "croquette-sacree.svg", key: "o:croquette-sacree" },
   { id: "masque-or", name: "Le masque d’or", img: "masque-or.webp", key: DOGANA_MASK_KEY },
   { id: "cle-gondolier", name: "La clé du gondolier", img: "img/narrative/gondolier-gold-key.png", key: "o:cle-gondolier" },
   { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
@@ -3785,7 +3883,7 @@ const objectFoundFor = (id, player = meIdx()) => {
 };
 const maskGemObjects = () => Object.keys(S.done).filter((key) => /^o:mask-gem:\d+:m\d+$/.test(key) && has(key) && S.done[key].w === meIdx()).map((key) => ({ id: key.replace(/[^a-z0-9-]/g, "-"), name: "Gemme du carnaval", img: "diamant.svg", key }));
 const oliveObjects = () => [0, 1, 2].map((index) => ({ id: `olive-torcello-${index + 1}`, name: `Olive de Torcello ${index + 1}`, img: "olive-torcello.webp", key: oliveKey(index) })).filter((object) => has(object.key) && S.done[object.key].w === meIdx());
-const objectList = () => [...OBJECTS, ...maskGemObjects(), ...oliveObjects()].map((o) => ({ ...o, img: o.img.startsWith("img/") ? o.img : "img/objets/" + o.img, found: o.id === "coffre-masque" && has("craft:marc-chest:opened") ? false : objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
+const objectList = () => [...OBJECTS, ...maskGemObjects(), ...oliveObjects()].map((o) => ({ ...o, img: o.img.startsWith("img/") ? o.img : "img/objets/" + o.img, found: o.id === "coffre-masque" && has("craft:marc-chest:opened") || has(`craft:marc-recipe:spent:${o.id}`) ? false : objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
 const objectArtwork = (o) => o.id === "coffre-masque" ? '<span class="marc-chest-sprite" aria-hidden="true"></span>' : `<img src="${o.img}" alt="">`;
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = `vq_held:${PLAYER_ID}`, HELD_SIZE = 88;
@@ -3822,12 +3920,13 @@ function mountHeld(id, fromRect) {
   const zone = () => { let z = $("#ranger"); if (!z) { z = document.createElement("div"); z.id = "ranger"; z.innerHTML = '<b>Ranger</b><span></span>'; document.body.appendChild(z); } return z; };
   const inZone = () => { const z = $("#ranger"); if (!z) return false; const a = z.getBoundingClientRect(), b = el.getBoundingClientRect(); return Math.hypot(a.left + a.width / 2 - (b.left + b.width / 2), a.top + a.height / 2 - (b.top + b.height / 2)) < a.width / 2 + 10; };
   el.onpointerdown = (e) => { e.preventDefault(); const r = el.getBoundingClientRect(); st = { x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false }; try { el.setPointerCapture(e.pointerId); } catch {} };
-  const offeringMarc = () => id === "evangile-marc" && !!marcDropHandler;
+  const offeringMarc = () => !!marcDropHandler && id === (marcDropHandler.objectId || "evangile-marc");
   el.onpointermove = (e) => { if (!st) return; if (tab === "objects") { if (Math.hypot(e.clientX - st.x, e.clientY - st.y) >= 6) st.blocked = true; return; } if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return; if (!st.moved && tab === "map" && !offeringMarc()) { const z = zone(); $("span", z).textContent = o.name; z.classList.add("on"); } st.moved = true; el.classList.add("drag"); const q = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy, size: parseFloat(el.style.width) }); el.style.left = q.left + "px"; el.style.top = q.top + "px"; const zz = $("#ranger"); if (zz && !offeringMarc()) zz.classList.toggle("hot", inZone()); };
   const hideZone = () => { const z = $("#ranger"); if (z) z.classList.remove("on", "hot"); };
-  const end = () => { if (!st) return; const moved = st.moved, blocked = st.blocked; st = null; el.classList.remove("drag"); if (blocked) return;
+  const end = (e) => { if (!st) return; const moved = st.moved, blocked = st.blocked; st = null; el.classList.remove("drag"); if (blocked) return;
     if (moved) {
       if (offeringMarc()) { marcDropHandler(el); hideZone(); return; }
+      if (dropCroquetteOnMarc(el, e)) { hideZone(); return; }
       if (tab === "map" && inZone()) { storeHeld(el); hideZone(); return; }
       hideZone(); try { localStorage.setItem(HELD_POS, JSON.stringify({ left: parseFloat(el.style.left), top: parseFloat(el.style.top), size: parseFloat(el.style.width), docked: false })); } catch {}
     } else if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
@@ -3842,7 +3941,7 @@ function storeHeld(el) {
 visibleInterval(() => {
   if (!heldEl) return;
   const bare = tab === "map" && $("#sheet").hidden && $("#quest").hidden && $("#modal").hidden && !document.body.classList.contains("corto-talk") && !document.body.classList.contains("intro-open") && !document.querySelector(".cer,.wview,.pview,.mont,.finale,.doge-msg:not(.menu-say),.pf,.cam,.ocam,.wq,.in2,.plan-photo");
-  const showingMarcBook = heldId === "evangile-marc" && !!document.querySelector(".wq.stmarc-offer,.wq.stmarc-thanks");
+  const showingMarcBook = ["evangile-marc", "croquette-sacree"].includes(heldId) && !!document.querySelector(".wq.stmarc-offer,.wq.stmarc-thanks");
   heldEl.classList.toggle("marc-offering", showingMarcBook);
   heldEl.style.visibility = showingMarcBook || bare || tab === "objects" ? "" : "hidden";
 }, 200);
@@ -3859,6 +3958,13 @@ function holdObject(btn) {
 // Zone de mélange locale : un objet déposé quitte sa case et reste entièrement dans le cercle.
 const OBJECT_PIECE_SIZE = 54;
 const objectAssembly = new Map();
+const MARC_RECIPE_GROUPS = [
+  { ids: ["olive-torcello-1", "fruit-squero-olive"], name: "une olive" },
+  { ids: ["fruit-squero-datte"], name: "une datte" },
+  { ids: ["fruit-squero-gousse"], name: "une gousse de févier" },
+  { ids: ["fruit-squero-micocoule"], name: "une micocoule" },
+  { ids: ["rubis-burano"], name: "la poudre de rubis" },
+];
 const assemblyRadius = (board) => Math.max(0, Math.min(board.clientWidth, board.clientHeight) / 2 - OBJECT_PIECE_SIZE / 2 - 4);
 function assemblyPoint(board, clientX, clientY) {
   const r = board.getBoundingClientRect();
@@ -3900,6 +4006,23 @@ function tryMarcRecipe() {
       marcChestBusy = false; objectAssembly.delete("evangile-marc");
       if (tab === "objects") renderObjects();
     } });
+    return;
+  }
+  const inventory = objectList();
+  const recipe = MARC_RECIPE_GROUPS.map((group) => group.ids.find((id) => objectAssembly.has(id)) || null);
+  if (!has("craft:marc-recipe:complete") && recipe.every((id) => id && inventory.some((o) => o.id === id && o.found))) {
+    marcChestBusy = true;
+    openSacredCroquette({ ingredients: recipe.map((id) => inventory.find((o) => o.id === id)), onClaim: () => {
+      if (has("craft:marc-recipe:complete")) return;
+      award("craft:marc-recipe:complete", 0, meIdx());
+      award("o:croquette-sacree", 0, meIdx());
+      for (const id of recipe) {
+        award(`craft:marc-recipe:spent:${id}`, 0, meIdx());
+        award(`trade:gondolier:spent:object:${id}`, 0, meIdx());
+      }
+      objectAssembly.clear();
+      save(); refreshAll();
+    }, onClose: () => { marcChestBusy = false; if (tab === "objects") renderObjects(); } });
     return;
   }
   if (has("craft:marc-chest:opened") || !objectAssembly.has("coffre-masque") || !objectAssembly.has("masque-or")) return;

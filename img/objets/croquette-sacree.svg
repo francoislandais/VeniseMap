@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 340" role="img" aria-labelledby="title desc">
+  <title id="title">Croquette sacrée</title><desc id="desc">Une petite croquette dorée entourée d'une auréole lumineuse.</desc>
+  <defs>
+    <radialGradient id="halo"><stop stop-color="#fff9d2" stop-opacity=".95"/><stop offset=".55" stop-color="#ffe27c" stop-opacity=".5"/><stop offset="1" stop-color="#ffd65c" stop-opacity="0"/></radialGradient>
+    <linearGradient id="crust" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#fff3ae"/><stop offset=".32" stop-color="#f8cd64"/><stop offset=".72" stop-color="#dc8f32"/><stop offset="1" stop-color="#98501f"/></linearGradient>
+    <linearGradient id="glaze" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff8d8" stop-opacity=".9"/><stop offset="1" stop-color="#fff8d8" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-.3" y="-.3" width="1.6" height="1.8"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <ellipse cx="200" cy="168" rx="174" ry="162" fill="url(#halo)"/>
+  <ellipse cx="205" cy="282" rx="105" ry="21" fill="#40220e" opacity=".28" filter="url(#shadow)"/>
+  <path d="M95 191c5-48 48-88 105-91 60-3 106 36 107 91 2 52-46 94-105 96-61 3-112-39-107-96Z" fill="url(#crust)" stroke="#9b5421" stroke-width="7"/>
+  <path d="M111 184c10-36 45-62 89-65 42-3 77 16 93 47-40 28-135 43-182 18Z" fill="url(#glaze)"/>
+  <g fill="#fff2ad" opacity=".92"><circle cx="148" cy="173" r="5"/><circle cx="183" cy="137" r="4"/><circle cx="229" cy="153" r="5"/><circle cx="266" cy="189" r="4"/><circle cx="163" cy="220" r="4"/><circle cx="216" cy="241" r="5"/><circle cx="252" cy="218" r="3"/></g>
+  <path d="M200 44v23M119 64l13 19M281 64l-13 19" stroke="#fff4b2" stroke-width="7" stroke-linecap="round"/>
+</svg>

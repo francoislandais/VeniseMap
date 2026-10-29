@@ -2391,3 +2391,30 @@ body.objects-open .menu-say{display:none!important}
 /* Le livre du coffre reste touchable une fois le masque retiré. */
 .marc-magic .marc-key,.marc-magic .marc-front,.marc-magic .marc-open-back,.marc-magic .marc-large,.marc-magic .marc-aura{pointer-events:none}
 @keyframes marc-book-glow{50%{filter:drop-shadow(0 0 22px #ffdc82)}}
+
+.croquette-ritual{position:fixed;inset:0;z-index:2800;display:grid;place-items:center;overflow:hidden;background:radial-gradient(ellipse at center,rgba(25,38,65,.96),rgba(8,14,31,.98));color:#fff2cb;touch-action:manipulation}
+.croquette-caption{position:absolute;top:calc(12% + var(--safe-t));z-index:2;margin:0;padding:0 20px;text-align:center;font:700 clamp(22px,6vw,34px)/1.2 "Caveat",cursive;text-shadow:0 0 16px #ffe69b}
+.croquette-stars{position:absolute;inset:12%;pointer-events:none}
+.croquette-stars i{position:absolute;left:50%;top:50%;font-style:normal;font-size:clamp(18px,5vw,32px);color:#fff1a8;text-shadow:0 0 12px #fff,0 0 26px #ffd669;opacity:0;animation:croquetteWhirl 2.45s ease-in-out both;animation-delay:calc(var(--i)*-0.09s);--angle:calc(var(--i)*20deg)}
+@keyframes croquetteWhirl{0%{opacity:0;transform:rotate(var(--angle)) translateX(8px) scale(.2)}18%{opacity:1}82%{opacity:1;transform:rotate(calc(var(--angle) + 650deg)) translateX(clamp(34px,19vw,140px)) scale(1.1)}100%{opacity:0;transform:rotate(calc(var(--angle) + 820deg)) translateX(0) scale(.1)}}
+.croquette-mix-items{position:absolute;inset:12%;pointer-events:none}
+.croquette-mix-items span{position:absolute;left:50%;top:50%;width:clamp(46px,14vw,70px);height:clamp(46px,14vw,70px);margin:-35px;opacity:0;animation:ingredientWhirl 2.6s cubic-bezier(.2,.7,.25,1) both;animation-delay:calc(var(--i)*.035s);filter:drop-shadow(0 5px 9px #0009)}
+.croquette-mix-items img{width:100%;height:100%;object-fit:contain}
+@keyframes ingredientWhirl{0%{opacity:0;transform:rotate(calc(var(--i)*72deg)) translateX(clamp(72px,27vw,180px)) rotate(calc(var(--i)*-72deg)) scale(.65)}18%{opacity:1}58%{opacity:1;transform:rotate(calc(var(--i)*72deg + 430deg)) translateX(clamp(56px,22vw,145px)) rotate(calc(var(--i)*-72deg - 430deg)) scale(1)}100%{opacity:0;transform:rotate(calc(var(--i)*72deg + 920deg)) translateX(0) rotate(calc(var(--i)*-72deg - 920deg)) scale(.12)}}
+.croquette-reveal{position:relative;z-index:3;display:grid;justify-items:center;gap:10px;width:min(76vw,370px);padding:22px;border:2px solid rgba(255,232,162,.8);border-radius:30px;background:linear-gradient(145deg,#fff6d9,#e6c58a);color:#382317;box-shadow:0 0 0 8px #fff2b01a,0 0 45px 14px #ffda6b66;opacity:0;transform:scale(.12);pointer-events:none;transition:opacity .45s,transform .65s cubic-bezier(.2,1.5,.3,1);touch-action:manipulation}
+.croquette-reveal img{display:block;width:min(52vw,230px);height:min(48vw,210px);object-fit:contain;filter:drop-shadow(0 12px 14px #74400b66)}
+.croquette-reveal span{font:700 clamp(25px,7vw,38px)/1.05 "Caveat",cursive;text-align:center}.croquette-reveal small{display:block;margin-top:9px;font:600 15px/1.3 system-ui,sans-serif}
+.croquette-ritual.revealed .croquette-stars i,.croquette-ritual.revealed .croquette-mix-items span{animation-play-state:paused;opacity:0}
+.croquette-ritual.revealed .croquette-reveal{opacity:1;transform:scale(1);pointer-events:auto;animation:croquetteGlow 1.7s ease-in-out infinite alternate}
+.croquette-reveal:disabled{cursor:wait}
+@keyframes croquetteGlow{to{box-shadow:0 0 0 12px #fff2b026,0 0 60px 20px #ffda6b99}}
+@media(prefers-reduced-motion:reduce){.croquette-stars i,.croquette-mix-items span{animation:none;opacity:0}.croquette-ritual.revealed .croquette-reveal{animation:none;transition:none}}
+
+/* Le lion appelé traverse la carte, puis accompagne le joueur. */
+.pin.doge.follows-player{z-index:40}
+.pin.doge.follows-player::before{content:"";position:absolute;z-index:0;left:50%;bottom:-12px;width:180%;aspect-ratio:1;transform:translateX(-50%) scale(var(--ws,1));border:1px solid #75caff66;border-radius:50%;background:radial-gradient(circle,#4aafff45,#4aafff20 55%,#4aafff00 76%);box-shadow:0 0 20px #4aaaff55;pointer-events:none}
+.pin.doge.follows-player .doge-sc{position:relative;z-index:1}
+.pin.doge.lion-arriving .lion-rig{filter:drop-shadow(0 0 6px #9edaff)}
+.pin.doge.lion-arriving.flying .lr-wings{animation:lrwf .42s ease-in-out infinite}
+.pin.doge.follows-player.landed .lr-wings{animation:lrw 3.6s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.pin.doge.lion-arriving.flying .lr-wings{animation-duration:1.2s}}
