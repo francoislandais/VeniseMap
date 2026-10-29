@@ -625,7 +625,7 @@ function onPos(lat, lon, acc, manual = false) {
   }
   if (!userMarker.isDragging || !userMarker.isDragging()) userMarker.setLngLat([lon, lat]);
   // Un nouveau fix GPS rapproche immédiatement Monteverdi, même au zoom où les marcheurs se mettent à jour lentement.
-  if (monteverdiNearGabriel()) {
+  if (monteverdiNearPlayer()) {
     const monteverdi = WALKERS.find((walker) => walker.id === "monteverdi");
     if (monteverdi?.marker) {
       const nearby = walkerAt(monteverdi);
@@ -903,13 +903,10 @@ function motionSpeed(M, t) {
 const CLK = { t0: Date.now(), p0: performance.now() };
 function nowMs() { const v = CLK.t0 + (performance.now() - CLK.p0); if (Math.abs(v - Date.now()) > 1500) { CLK.t0 = Date.now(); CLK.p0 = performance.now(); return CLK.t0; } return v; }
 const GONDOLIER_VISIT = { until: Date.parse("2026-10-28T08:00:00+01:00"), lat: 45.43174, lon: 12.32853, shore: 5 };
-// Rencontre ponctuelle demandée pour Gabriel : Monteverdi revient à sa route après la réponse récompensée.
-const GABRIEL_MONTEVERDI_ID = "p-228c5f8e73ff4943aaacba24b21ac699";
-function monteverdiNearGabriel() {
-  return PLAYER_ID === GABRIEL_MONTEVERDI_ID && !!pos && !has("bonus:monteverdi:concert-liked");
-}
+// Monteverdi est à portée de tous les joueurs localisés, quel que soit leur profil ou leur progression.
+function monteverdiNearPlayer() { return !!pos; }
 function rawAt(W, t) {
-  if (W.id === "monteverdi" && monteverdiNearGabriel()) {
+  if (W.id === "monteverdi" && monteverdiNearPlayer()) {
     // Environ 45 m de la position GPS : visible et touchable, sans masquer le joueur.
     return { lat: pos.lat + 0.00019, lon: pos.lon + 0.00048, shore: 0 };
   }
