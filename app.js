@@ -850,7 +850,7 @@ updateWalkScale();
 const WALKERS = [
   { id: "doge", name: "le doge", to: "au doge", de: "du doge", route: "doge-route.json", img: "img/doge-avatar.webp", big: "img/doge-big.webp", bigHappy: "img/doge-big-happy.webp", bigAngry: "img/doge-big-angry.webp", quiz: DOGE_QUIZ, h: 5.5, near: DOGE_NEAR, w: 50, msg: "Le doge te salue d'un air solennel… (il aura bientôt quelque chose à te raconter !)" },
   { id: "monteverdi", name: "Monteverdi", to: "à Monteverdi", de: "de Monteverdi", route: "monteverdi-frari-route.json", img: "img/monteverdi-avatar.webp", big: "img/monteverdi-avatar.webp", quiz: MONTEVERDI_QUIZ, h: 0.45, near: 60, w: 40 },
-  { id: "stmarc", name: "saint Marc", to: "à saint Marc", de: "de saint Marc", route: "stmarc-route.json", img: "img/stmarc-avatar.webp", big: "img/stmarc-avatar.webp", quiz: ST_MARC_QUIZ, h: 4, near: 60, w: 46 },
+  { id: "stmarc", name: "saint Marc", to: "à saint Marc", de: "de saint Marc", route: "stmarc-route.json", img: "img/stmarc-avatar.webp", big: "img/stmarc-avatar.webp", quiz: ST_MARC_QUIZ, h: 0.15, near: 60, w: 46 },
   { id: "gondolier", name: "le gondolier", to: "au gondolier", de: "du gondolier", route: "gondolier-route.json", img: "img/gondolier-avatar.webp", h: 3, near: 60, w: 64, msg: "Le gondolier te salue d'un coup de chapeau… (il aura bientôt quelque chose à te raconter !)" },
   { id: "lion", name: "le lion ailé", to: "au lion ailé", de: "du lion ailé", route: "lion-route.json", farLines: ["Le lion ailé est dans les airs ! Lève les yeux et attends qu'il passe au-dessus de toi pour lui parler.", "Il vole haut, {g}. Bon courage ! Attends qu'il passe au-dessus de toi.", "Lève les yeux, {g} : le lion ailé survole Venise. Attends qu'il passe près de toi.", "Le lion ailé est en plein vol. Lève les yeux et bon courage pour l'attraper, {g} !", "Impossible de lui parler d'ici : il est dans le ciel. Attends qu'il passe au-dessus de toi."], motion: { cruise: 12, ramp: 8, period: 2160, landings: [{ at: 700, dur: 110 }, { at: 1650, dur: 90 }] }, heading: true, img: "img/lion-avatar.webp", rig: { body: "img/lion-body.webp", rear: "img/lion-rear.webp", front: "img/lion-front.webp", wings: "img/lion-wings.webp", ratio: "325/360" }, h: 5, near: 60, w: 50, msg: "Le lion ailé bat doucement des ailes et te regarde d'un air fier… (il aura bientôt quelque chose à te raconter !)" },
 ];
@@ -1134,7 +1134,7 @@ function openWalkerQuiz(W) {
       b.classList.add("wrong"); ov.classList.add("vexed"); if (W.bigAngry) img.src = W.bigAngry;
       img.animate([{ transform: "rotate(0)" }, { transform: "rotate(-7deg) translateX(-8px)" }, { transform: "rotate(7deg) translateX(8px)" }, { transform: "rotate(-6deg) translateX(-6px)" }, { transform: "rotate(6deg) translateX(6px)" }, { transform: "rotate(0)" }], { duration: 700, iterations: 2 });
       setTimeout(() => close(() => {
-        const cur = huffOff(W, Date.now()); W.huff = { t0: Date.now(), from: cur, m: cur + HUFF_M }; // Il repart d'où il en était et file encore plus loin.
+        const cur = huffOff(W, Date.now()); W.huff = { t0: Date.now(), from: cur, m: cur + (W.id === "stmarc" ? 40 : HUFF_M) }; // Il repart d'où il en était et file encore plus loin.
         try { localStorage.setItem(`vq_huff_${W.id}:${PLAYER_ID}`, JSON.stringify(W.huff)); } catch {}
         el.classList.add("run"); setTimeout(() => el.classList.remove("run"), (HUFF_RUN + 1) * 1000);
       }), 2300);
@@ -1144,7 +1144,7 @@ function openWalkerQuiz(W) {
 async function startWalker(W) {
   try {
     let pts = await (await fetch(W.route)).json();
-    if (W.id !== "gondolier") pts = detourRoute(pts); // les personnages à terre ou en vol contournent les pastilles ; le gondolier reste sur l'eau, intact
+    if (W.id !== "gondolier" && W.id !== "stmarc") pts = detourRoute(pts); // saint Marc suit sa boucle intérieure du Ghetto ; le gondolier reste sur l'eau
     const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + dist(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]));
     W.R = { pts, cum, total: cum[cum.length - 1] };
     try { W.huff = JSON.parse(localStorage.getItem(`vq_huff_${W.id}:${PLAYER_ID}`) || "null"); } catch { W.huff = null; }

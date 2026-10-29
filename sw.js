@@ -1,4 +1,4 @@
-const VERSION = "v2.336.5";
+const VERSION = "v2.336.6";
 const SHELL = `vq-shell-${VERSION}`;
 // Cœur de l'appli précaché ; le reste peut être préparé depuis le profil du joueur.
 const FILES = ["./", "index.html", "style.css", "app.js", "data.js", "corto-lieux.js", "intro.js", "mapstyle.js", "config.js", "manifest.webmanifest", "vendor/maplibre-gl.js", "vendor/maplibre-gl.css", "fonts/special-elite-latin.woff2", "img/map-icon.webp", "img/objets/coquille.svg", "img/objets/perle.svg", "img/objets/plume.svg", "img/objets/coffre-code.svg", "img/objets/parchemin.svg", "img/objets/partition.svg", "img/objets/cle-bronze.svg", "img/objets/fiole-lagune.svg", "img/objets/verre-murano.svg", "img/objets/boussole.svg", "img/objets/masque.svg", "img/objets/sceau-lion.svg", "img/objets/diamant.svg", "img/objets/ruban-soie.svg", "img/objets/lanterne.svg", "img/intro/bg.webp", "img/home-icon.webp", "img/bridge-icon.webp", "data/petits-canaux.json", "data/outfits.json", "data/bridges.json", "data/facts.json", "icons/icon-192.png", "icons/icon-512.png", "img/corto-face.webp", "img/corto-content.webp", "img/corto-venise-pastel.webp"];
@@ -19,6 +19,7 @@ FILES.push("data/masques.json", "img/masque-venitien-transparent.png", "audio/ma
 FILES.push("icons/corto-192.png", "icons/corto-512.png", "icons/corto-maskable-512.png", "icons/corto-apple-touch-180.png");
 FILES.push(...[1, 2, 3, 4, 5].map((n) => `img/masque-carnaval-${n}.webp`));
 FILES.push("data/doge-interaction.js", "data/stmarc-interaction.js");
+FILES.push("stmarc-route.json");
 FILES.push("monteverdi-rendezvous.js", "monteverdi-frari-route.json", "img/monteverdi-avatar.webp", "img/narrative/venise-lavis-03.png");
 FILES.push("corto-rendezvous.js", "corto-rendezvous-editor.js", "gondolier-rendezvous.js", "gondolier-rendezvous-editor.js", "data/corto-rendezvous-layout.json", "data/gondolier-rendezvous-layout.json", "img/intro/e1.webp", "img/narrative/corto-tempete.png", "img/narrative/corto-gondolier-fin.png", "img/narrative/gondolier-gold-key.png", "img/narrative/gondolier-debut-tempete.png");
 FILES.push("corto-sound.js", "audio/corto-wind.mp3", "audio/corto-thunder.mp3");
