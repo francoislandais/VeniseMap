@@ -2106,11 +2106,17 @@ function resumeSuspended() {
   try { history.pushState({ vqBridge: 1 }, ""); } catch {}
 }
 function closeSheet() {
+  const revealPugniChest = openId === "chap" && chapCur?.id === "pugni" && !!$("#sheet.chap-conclusion") && tab === "map" && JEU && pugniChestUnlocked() && !pugniChestTaken();
   conclusionEditorAbort?.abort(); conclusionEditorAbort = null;
   document.body.classList.remove("chap-open"); suspended = null; stopMusic(500); stopChapAudio(); closeLoc();
   if ((openId === "bridges" || openId === "chap") && history.state && history.state.vqBridge) { destroying = true; history.back(); return; } // popstate rappellera closeSheet
   document.body.classList.remove("bridge-open");
-  openId = null; const sh = $("#sheet"); sh.hidden = true; sh.onclick = null; sh.innerHTML = ""; $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext(); scheduleGeoSync(); }
+  openId = null; const sh = $("#sheet"); sh.hidden = true; sh.onclick = null; sh.innerHTML = ""; $("#bridge-btn").hidden = tab !== "map" || !!quest; renderNext(); scheduleGeoSync();
+  if (revealPugniChest) {
+    updatePugniChestMarker();
+    map.easeTo({ center: [PUGNI_CHEST.lon, PUGNI_CHEST.lat], zoom: Math.max(map.getZoom(), 17.5), duration: 650 });
+  }
+}
 function closeMedal() {
   const sh = $("#sheet"), medal = $("#medal"); if (!medal || !medalOrigin) { closeSheet(); return; }
   const { dx, dy, s } = medalOrigin; medalOrigin = null;
