@@ -2387,3 +2387,7 @@ body.objects-open .menu-say{display:none!important}
 @keyframes marcOfferMiss{50%{transform:scale(1.15);border-color:#fff}}
 @media(max-height:650px){.wq.stmarc-offer .wq-txt{font-size:21px}.wq.stmarc-offer .wq-marc-hint{font-size:15px}}
 @media(prefers-reduced-motion:reduce){.wq.stmarc-offer .wq-marc-target{animation:none}}
+
+/* Le livre du coffre reste touchable une fois le masque retiré. */
+.marc-magic .marc-key,.marc-magic .marc-front,.marc-magic .marc-open-back,.marc-magic .marc-large,.marc-magic .marc-aura{pointer-events:none}
+@keyframes marc-book-glow{50%{filter:drop-shadow(0 0 22px #ffdc82)}}

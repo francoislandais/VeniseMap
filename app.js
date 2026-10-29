@@ -3898,7 +3898,10 @@ function tryMarcRecipe() {
   }
   if (has("craft:marc-chest:opened") || !objectAssembly.has("coffre-masque") || !objectAssembly.has("masque-or")) return;
   const owned = objectList();
-  if (!["coffre-masque", "masque-or"].every(id => owned.some(o => o.id === id && o.found))) return;
+  if (!["coffre-masque", "masque-or"].every(id => owned.some(o => o.id === id && o.found))) {
+    toast(LOCAL_DEV ? "Ces objets sont en aperçu. Touche « Tester coffre + masque » pour essayer la combinaison." : "Trouve le coffre et le masque d’or avant de les combiner.");
+    return;
+  }
   marcChestBusy = true;
   const rewardMarc = (key, amount, cx, cy) => {
     if (has(key)) return marcRewardFlight;
@@ -3922,7 +3925,7 @@ function tryMarcRecipe() {
   });
 }
 function seedMarcAdminTest(replay = false) {
-  if (!ADMIN_CONTEXT || (!replay && has("test:marc-chest:v1"))) return;
+  if (!(ADMIN_CONTEXT || LOCAL_DEV) || (!replay && has("test:marc-chest:v1"))) return;
   if (replay) for (const key of ["o:evangile-marc", "craft:marc-chest:opened", "bonus:marc-chest:opening", "bonus:marc-chest:book", grantKey(meIdx(), "object:evangile-marc")]) unaward(key);
   for (const key of ["o:coffre-masque", DOGANA_MASK_KEY, "test:marc-chest:v1"]) award(key, 0, meIdx());
   objectAssembly.clear(); save();
@@ -3957,13 +3960,13 @@ function bindObjectDrag(button) {
   button.onclick = (e) => { if (e.detail === 0) holdObject(button); };
 }
 function renderObjects() {
-  seedMarcAdminTest();
+  if (ADMIN_CONTEXT) seedMarcAdminTest();
   const v = $("#v-objects"), scrollTop = $(".ob-scroll", v)?.scrollTop || 0, objects = objectList();
   const shown = (PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found)).filter(o => o.id === "evangile-marc" ? o.found : o.id === "coffre-masque" ? !has("craft:marc-chest:opened") : true);
   menuSay(shown.length ? "Collectionne ces objets ici et vois ce que tu peux faire avec." : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
   v.innerHTML = `<div class="ob-scroll" tabindex="0" role="region" aria-label="Objets de l’inventaire"><div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? objectArtwork(o) : `<span class="ob-em">${esc(o.emoji || "📜")}</span>`}</button>`).join("")}</div>${shown.length ? "" : '<p class="muted">Tu n’as encore trouvé aucun objet.</p>'}</div><div class="ob-workspace"><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Combine tes objets ici</span></div></div>`;
-  if (ADMIN_CONTEXT) {
-    const test = document.createElement("button"); test.type = "button"; test.className = "btn ghost marc-test"; test.textContent = "↻ Rejouer le coffre au masque";
+  if (ADMIN_CONTEXT || LOCAL_DEV) {
+    const test = document.createElement("button"); test.type = "button"; test.className = "btn ghost marc-test"; test.textContent = ADMIN_CONTEXT ? "↻ Rejouer le coffre au masque" : "↻ Tester coffre + masque";
     test.onclick = () => { if (marcChestBusy) return; seedMarcAdminTest(true); renderObjects(); }; $(".ob-workspace", v).appendChild(test);
   }
   $$(".ob", v).forEach(bindObjectDrag);
