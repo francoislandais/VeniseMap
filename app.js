@@ -711,7 +711,7 @@ function devCompleteChapter(p, fromMapButton = false) {
   if (has("fin:" + p.id)) unaward("fin:" + p.id);
   if (p.id === "murano") for (const key of ["o:coquillage-murano", "bonus:murano-shell"]) if (has(key)) unaward(key);
   if (p.id === "squero") for (const fruit of SQUERO_FRUITS) for (const key of [fruit.key, `trade:gondolier:spent:object:fruit-squero-${fruit.id}`]) if (has(key)) unaward(key);
-  if (p.id === "pugni") for (const key of ["o:coffre-masque", "bonus:pugni-chest", "trade:gondolier:spent:object:coffre-masque"]) if (has(key)) unaward(key);
+  if (p.id === "pugni") resetPugniChestDevReplay();
   if (p.id === "schiavoni") for (const gem of SCHIAVONI_GEMS) if (has(gem.key)) unaward(gem.key);
   if (p.id === "frari") for (const key of ["o:cle-gondolier", "bonus:trade:gondolier"]) if (has(key)) unaward(key);
   if (has("tr:" + p.id)) unaward("tr:" + p.id);
@@ -1677,10 +1677,15 @@ async function collectSqueroFruit(fruit) {
 }
 
 // Le vieux coffre du pont des Poings rejoint les objets du livre. Il ne s'ouvre qu'avec le masque d'or, plus tard.
-const PUGNI_CHEST = { lat: 45.433197, lon: 12.324586, radius: 38, key: "o:coffre-masque", bonus: "bonus:pugni-chest", stars: 50 };
+const PUGNI_CHEST = { lat: 45.433230, lon: 12.324850, radius: 50, key: "o:coffre-masque", bonus: "bonus:pugni-chest", stars: 50 };
 let pugniChestMarker = null;
 const pugniChestUnlocked = () => has("fin:pugni") || complete(place("pugni"));
 const pugniChestTaken = () => objectFoundFor("coffre-masque") || has("craft:marc-chest:opened") || has("trade:gondolier:spent:object:coffre-masque");
+// Une reprise locale de l'épreuve doit rejouer la découverte, même après le test du coffre dans les objets.
+function resetPugniChestDevReplay() {
+  if (!LOCAL_DEV) return;
+  for (const key of [PUGNI_CHEST.key, PUGNI_CHEST.bonus, "trade:gondolier:spent:object:coffre-masque", "craft:marc-chest:opened", "bonus:marc-chest:opening", "bonus:marc-chest:book", grantKey(meIdx(), "object:coffre-masque")]) if (has(key)) unaward(key);
+}
 function updatePugniChestMarker() {
   if (!JEU || !pugniChestUnlocked() || pugniChestTaken()) {
     if (pugniChestMarker && !pugniChestMarker.busy) { pugniChestMarker.marker.remove(); pugniChestMarker = null; }
@@ -2739,7 +2744,7 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
 const endBravo = () => `Bravo, ${cortoAddress()} !`;
-const endSecret = (p) => p.id === "murano" ? "Un coquillage magique était caché sur cette île… et il vient d’apparaître ! Cherche-le sur ta carte, dans un coin tranquille de Murano, près de Santa Maria degli Angeli." : p.id === "squero" ? "Regarde sur la carte, entre le chantier et le pont des Poings : quatre fruits t'attendent sur le chemin." : p.id === "pugni" ? "Regarde sur ta carte, tout près du pont : approche-toi du coffre pour le récupérer." : p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
+const endSecret = (p) => p.id === "murano" ? "Un coquillage magique était caché sur cette île… et il vient d’apparaître ! Cherche-le sur ta carte, dans un coin tranquille de Murano, près de Santa Maria degli Angeli." : p.id === "squero" ? "Regarde sur la carte, entre le chantier et le pont des Poings : quatre fruits t'attendent sur le chemin." : p.id === "pugni" ? (pugniChestTaken() ? "Tu as déjà récupéré ce coffre." : "Regarde sur ta carte, tout près du pont : approche-toi du coffre pour le récupérer.") : p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
 function conclusionEditor(sh, p, elements, defaults) {
   conclusionEditorAbort?.abort();
   const layout = (CONCLUSION_LAYOUT[p.id] ||= {});
@@ -2787,6 +2792,7 @@ function conclusionEditor(sh, p, elements, defaults) {
 }
 async function chapEnd(p, replay, preview = false) {
   await clearTalk();
+  if (p.id === "pugni" && LOCAL_DEV && !preview && complete(p) && !has("fin:pugni") && has("test:marc-chest:v1")) resetPugniChestDevReplay();
   const sh = $("#sheet"); sh.classList.remove("chap-reveal"); sh.classList.add("chap-conclusion"); sh.dataset.k = "one";
   const devSkip = $(".dev-skip", sh); if (devSkip) devSkip.remove();
   const icon = PLACE_ICONS[p.id], emblem = document.createElement("div");
@@ -2794,7 +2800,7 @@ async function chapEnd(p, replay, preview = false) {
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
   const hasSecret = p.id === "murano" || p.id === "squero" || p.id === "pugni" || !!(p.reward || p.musicChallenge || p.collectibleReward);
-  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.id === "squero" ? "Je crois qu'il y a de bonnes choses à ramasser dans les environs…" : p.id === "pugni" ? "Il me semble apercevoir un vieux coffre qui flotte dans l'eau vaseuse, non loin du pont…" : p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.id === "squero" ? "Je crois qu'il y a de bonnes choses à ramasser dans les environs…" : p.id === "pugni" ? (pugniChestTaken() ? "Ce vieux coffre a déjà rejoint ton aventure." : "Il me semble apercevoir un vieux coffre qui flotte dans l'eau vaseuse, non loin du pont…") : p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
