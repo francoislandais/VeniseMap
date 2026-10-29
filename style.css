@@ -2236,3 +2236,30 @@ body.music-victory-active #home-btn{z-index:2300;pointer-events:none}
 body.menu-open #admin-position-tip,body.chap-open #admin-position-tip{display:none}
 #admin-reset-player{position:fixed;top:calc(68px + var(--safe-t));right:10px;z-index:530;padding:9px 12px;border:1px solid rgba(255,255,255,.7);border-radius:999px;background:rgba(8,38,57,.9);color:#fff;font:700 12px/1.2 Arial,sans-serif;box-shadow:0 2px 9px rgba(0,8,18,.32)}
 #admin-reset-player[hidden],body.menu-open #admin-reset-player,body.chap-open #admin-reset-player{display:none!important}
+
+/* Coffre au masque d’or : recette et découverte du manuscrit. */
+.marc-chest-sprite{display:block;width:100%;height:100%;background:url('img/objets/coffre-masque.png') left center/200% 100% no-repeat;pointer-events:none}
+#v-objects .ob .marc-chest-sprite{width:50px;height:50px}
+.ob-ghost img{width:100%;height:100%;object-fit:contain}
+.marc-test{display:block;margin:16px auto;font-size:12px}
+.marc-magic{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#3b2446f5,#110e21fc);overflow:hidden;isolation:isolate}
+.marc-close{position:absolute;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:9;border:1px solid #e6cd92aa;border-radius:50%;width:42px;height:42px;font-size:28px;color:#ffe9b0;background:#20172e;cursor:pointer}
+.marc-scene{position:relative;width:min(90vw,520px,76dvh);aspect-ratio:896/872;transform:scale(.46);opacity:.1;isolation:isolate}
+.marc-large,.marc-open{position:absolute;inset:0;transition:opacity .75s}
+.marc-open{background-position:right center;transform:translateX(5%);opacity:0}
+.marc-front{clip-path:inset(46% 0 0 0);z-index:4}
+.marc-key{position:absolute;z-index:5;left:53.5%;top:65.1%;width:46.5%;height:44%;object-fit:fill;transform:translate(-50%,-50%) translate(-36%,-102%) scale(.8) rotate(-12deg);filter:drop-shadow(0 0 14px #ffdc73)}
+.marc-aura{position:absolute;inset:0;border-radius:50%;background:radial-gradient(ellipse,#ffe39d40,transparent 65%);animation:marc-aura 3s ease-in-out infinite}
+.marc-click{position:absolute;left:53.5%;top:65%;width:36%;aspect-ratio:1;border:4px solid #fff6c0;border-radius:50%;box-shadow:0 0 24px #ffd16b,inset 0 0 20px #ffd16b;opacity:0;pointer-events:none;z-index:6}
+.marc-book{position:absolute;z-index:3;left:54%;top:29%;width:37%;height:48%;padding:0;border:0;background:none;transform:translate(-50%,0);opacity:0;pointer-events:none;transition:opacity .9s;cursor:pointer}
+.marc-book img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 12px #ffdf8b)}
+.marc-opened .marc-large{opacity:0}.marc-opened .marc-open,.marc-opened .marc-book{opacity:1}.marc-opened .marc-book{pointer-events:auto}
+.marc-opened .marc-book:not(:disabled){animation:marc-book-glow 1.8s ease-in-out infinite}
+.marc-taken .marc-book{z-index:8;animation:none}.marc-taken .marc-front,.marc-taken .marc-open-back{opacity:.3}
+.marc-title{position:absolute;bottom:max(7%,env(safe-area-inset-bottom));left:8%;right:8%;margin:0;text-align:center;font-family:Georgia,serif;font-size:clamp(20px,5vw,30px);color:#ffe6a3;text-shadow:0 0 15px #ffd978}
+.marc-stars{position:absolute;inset:0;pointer-events:none;z-index:7;opacity:0;transition:opacity .4s}.marc-locked .marc-stars{opacity:1}
+.marc-stars i{position:absolute;left:calc(8% + mod(var(--i)*29,84)*1%);top:calc(8% + mod(var(--i)*37,80)*1%);color:#fff1ae;font-style:normal;font-size:calc(10px + mod(var(--i),4)*4px);animation:marc-star 1.4s calc(var(--i)*-.17s) ease-in-out infinite}
+@keyframes marc-star{0%,100%{opacity:.15;transform:scale(.5) rotate(0)}50%{opacity:1;transform:scale(1.3) rotate(90deg)}}
+@keyframes marc-aura{50%{opacity:.4;transform:scale(1.2)}}
+@keyframes marc-book-glow{50%{filter:drop-shadow(0 0 22px #ffdc82);translate:0 -5px}}
+@media(prefers-reduced-motion:reduce){.marc-magic *{animation:none!important;transition:none!important}}

@@ -9,6 +9,7 @@ import { SCHIAVONI_GEMS, createSchiavoniGems } from "./schiavoni-gems.js";
 import { createGabrielMessages, isGabriel } from "./data/corto-gabriel.js";
 import { apiFetch } from "./api.js";
 import { createPhotoLibrary } from "./photo-sync.js";
+import { openMarcChest } from "./marc-chest.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -3562,6 +3563,8 @@ const OBJECTS = [
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
   { id: "coquillage-murano", name: "Le coquillage magique de Murano", img: "coquillage-murano.svg", key: MURANO_SHELL_KEY },
   { id: "rubis-burano", name: "Le rubis de Burano", img: "rubis-burano.svg", key: BURANO_RUBY_KEY },
+  { id: "coffre-masque", name: "Le coffre au masque d’or", img: "coffre-masque.png", key: "o:coffre-masque" },
+  { id: "evangile-marc", name: "L’Évangile selon saint Marc", img: "evangile-marc.png", key: "o:evangile-marc" },
   { id: "masque-or", name: "Le masque d’or", img: "masque-or.webp", key: DOGANA_MASK_KEY },
   { id: "cle-gondolier", name: "La clé du gondolier", img: "img/narrative/gondolier-gold-key.png", key: "o:cle-gondolier" },
   { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
@@ -3585,7 +3588,8 @@ const objectFoundFor = (id, player = meIdx()) => {
 };
 const maskGemObjects = () => Object.keys(S.done).filter((key) => /^o:mask-gem:\d+:m\d+$/.test(key) && has(key) && S.done[key].w === meIdx()).map((key) => ({ id: key.replace(/[^a-z0-9-]/g, "-"), name: "Gemme du carnaval", img: "diamant.svg", key }));
 const oliveObjects = () => [0, 1, 2].map((index) => ({ id: `olive-torcello-${index + 1}`, name: `Olive de Torcello ${index + 1}`, img: "olive-torcello.webp", key: oliveKey(index) })).filter((object) => has(object.key) && S.done[object.key].w === meIdx());
-const objectList = () => [...OBJECTS, ...maskGemObjects(), ...oliveObjects()].map((o) => ({ ...o, img: o.img.startsWith("img/") ? o.img : "img/objets/" + o.img, found: objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
+const objectList = () => [...OBJECTS, ...maskGemObjects(), ...oliveObjects()].map((o) => ({ ...o, img: o.img.startsWith("img/") ? o.img : "img/objets/" + o.img, found: o.id === "coffre-masque" && has("craft:marc-chest:opened") ? false : objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
+const objectArtwork = (o) => o.id === "coffre-masque" ? '<span class="marc-chest-sprite" aria-hidden="true"></span>' : `<img src="${o.img}" alt="">`;
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = `vq_held:${PLAYER_ID}`, HELD_SIZE = 88;
 let heldEl = null, heldId = null; try { heldId = localStorage.getItem(HELD_KEY) || null; } catch {}
@@ -3611,7 +3615,7 @@ const heldSpot = () => {
 function mountHeld(id, fromRect) {
   const o = objectList().find((x) => x.id === id && (x.found || PREVIEW_OBJECTS)); if (!o) { heldId = null; saveHeld(); return; }
   if (heldEl) heldEl.remove();
-  const el = document.createElement("div"); el.className = "held-ob"; el.dataset.o = id; el.innerHTML = o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${o.emoji}</span>`;
+  const el = document.createElement("div"); el.className = "held-ob"; el.dataset.o = id; el.innerHTML = o.img ? objectArtwork(o) : `<span class="ob-em">${o.emoji}</span>`;
   const p = heldSpot(); el.style.cssText = `left:${p.left}px;top:${p.top}px;width:${p.size}px;height:${p.size}px`;
   if (p.docked) try { localStorage.setItem(HELD_POS, JSON.stringify(p)); } catch {}
   document.body.appendChild(el); heldEl = el;
@@ -3673,7 +3677,7 @@ function renderObjectAssembly() {
   objectAssembly.forEach((point, id) => {
     const object = objectList().find((o) => o.id === id); if (!object) return;
     const piece = document.createElement("button"); piece.type = "button"; piece.className = "ob-piece";
-    piece.setAttribute("aria-label", `Remettre ${object.name} dans les objets`); piece.title = object.name; piece.innerHTML = object.img ? `<img src="${object.img}" alt="">` : `<span class="ob-em">${esc(object.emoji || "📜")}</span>`;
+    piece.setAttribute("aria-label", `Remettre ${object.name} dans les objets`); piece.title = object.name; piece.innerHTML = object.img ? objectArtwork(object) : `<span class="ob-em">${esc(object.emoji || "📜")}</span>`;
     board.appendChild(piece); assemblyPlace(piece, board, point);
     let start = null;
     piece.onpointerdown = (e) => { e.preventDefault(); start = { x: e.clientX, y: e.clientY, moved: false }; try { piece.setPointerCapture(e.pointerId); } catch {} };
@@ -3682,6 +3686,32 @@ function renderObjectAssembly() {
     piece.onpointercancel = () => { start = null; };
     piece.onclick = (e) => { if (e.detail === 0) { objectAssembly.delete(id); renderObjectAssembly(); } };
   });
+  tryMarcRecipe();
+}
+let marcChestBusy = false;
+function tryMarcRecipe() {
+  if (marcChestBusy || has("craft:marc-chest:opened") || !objectAssembly.has("coffre-masque") || !objectAssembly.has("masque-or")) return;
+  const owned = objectList();
+  if (!["coffre-masque", "masque-or"].every(id => owned.some(o => o.id === id && o.found))) return;
+  marcChestBusy = true;
+  openMarcChest({
+    canClaim: () => !has("craft:marc-chest:opened"),
+    onClaim: () => {
+      if (has("craft:marc-chest:opened")) return false;
+      award("craft:marc-chest:opened", 0, meIdx());
+      award("o:evangile-marc", 0, meIdx());
+      objectAssembly.delete("coffre-masque"); objectAssembly.delete("masque-or");
+      if (heldId === "coffre-masque") { heldEl?.remove(); heldEl = null; heldId = null; saveHeld(); }
+      save(); refreshAll(); return true;
+    },
+    onClose: () => { marcChestBusy = false; objectAssembly.delete("coffre-masque"); objectAssembly.delete("masque-or"); if (tab === "objects") renderObjects(); },
+  });
+}
+function seedMarcAdminTest(replay = false) {
+  if (!ADMIN_CONTEXT || (!replay && has("test:marc-chest:v1"))) return;
+  if (replay) for (const key of ["o:evangile-marc", "craft:marc-chest:opened", grantKey(meIdx(), "object:evangile-marc")]) unaward(key);
+  for (const key of ["o:coffre-masque", DOGANA_MASK_KEY, "test:marc-chest:v1"]) award(key, 0, meIdx());
+  objectAssembly.clear(); save();
 }
 function bindObjectDrag(button) {
   let start = null, ghost = null;
@@ -3695,7 +3725,7 @@ function bindObjectDrag(button) {
     if (!start) return;
     if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 7) return;
     start.moved = true;
-    if (!ghost) { ghost = document.createElement("img"); ghost.className = "ob-ghost"; ghost.src = $("img", button).src; ghost.alt = ""; document.body.appendChild(ghost); }
+    if (!ghost) { ghost = document.createElement("div"); ghost.className = "ob-ghost"; ghost.innerHTML = objectArtwork(objectList().find(o => o.id === button.dataset.o)); document.body.appendChild(ghost); }
     ghost.style.left = `${e.clientX}px`; ghost.style.top = `${e.clientY}px`;
   };
   button.onpointerup = (e) => {
@@ -3713,10 +3743,15 @@ function bindObjectDrag(button) {
   button.onclick = (e) => { if (e.detail === 0) holdObject(button); };
 }
 function renderObjects() {
+  seedMarcAdminTest();
   const v = $("#v-objects"), objects = objectList();
-  const shown = PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found);
+  const shown = (PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found)).filter(o => o.id === "evangile-marc" ? o.found : o.id === "coffre-masque" ? !has("craft:marc-chest:opened") : true);
   menuSay(shown.length ? "Collectionne ces objets ici et vois ce que tu peux faire avec." : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
-  v.innerHTML = shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? `<img src="${o.img}" alt="">` : `<span class="ob-em">${esc(o.emoji || "📜")}</span>`}</button>`).join("")}</div><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Combine tes objets ici</span></div>` : "";
+  v.innerHTML = shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? objectArtwork(o) : `<span class="ob-em">${esc(o.emoji || "📜")}</span>`}</button>`).join("")}</div><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Combine tes objets ici</span></div>` : "";
+  if (ADMIN_CONTEXT) {
+    const test = document.createElement("button"); test.type = "button"; test.className = "btn ghost marc-test"; test.textContent = "↻ Rejouer le coffre au masque";
+    test.onclick = () => { if (marcChestBusy) return; seedMarcAdminTest(true); renderObjects(); }; v.appendChild(test);
+  }
   $$(".ob", v).forEach(bindObjectDrag);
   renderObjectAssembly();
 }
