@@ -210,6 +210,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
   // Introduction : 7 écrans plein page, fondu enchaîné, navigation par toucher ou par les petits boutons précédent / suivant. Images + texte, sans bulle.
   return new Promise(async (resolve) => {
     let LAYOUT = {}; try { const r = await fetch("data/intro-layout.json?" + Date.now()); if (r.ok) LAYOUT = await r.json(); } catch {} // réglages de position/taille enregistrés depuis l'éditeur
+    if (opts.signal?.aborted) { resolve(null); return; }
     const EDITABLE = { hello: { img: ".hl-img", hi: ".hl-hi", q: ".hl-q" }, who: { lab: ".wh-lab", name: ".wh-in", cam: ".wh-cam", ok: ".wh-ok" }, welcome: { face: ".wl-face", head: ".wl-top p", name: ".wl-name", name2: ".wl-name2", sea: ".wl-sea", img: ".wl-img", mid: ".wl-mid" }, other: { img: ".in2-img", txt: ".in2-txt", ask: ".in2-ask", btn: ".in2-btn" } };
     const edKey = (to) => SCREENS[to].key; // clé stable de chaque écran (s1…s6, who) : les réglages enregistrés ne bougent pas si on insère un écran
     const elsOf = (d, sc) => { const map = { ...EDITABLE[["hello", "welcome", "who"].includes(sc.layout) ? sc.layout : "other"] }; if (sc.face) map.face = ".in2-face"; if (sc.ask) map.txt = ".in2-txt p:not(.in2-ask)"; if (sc.bye) map.bye = ".in2-bye"; if (sc.parts) sc.parts.forEach((_, n) => (map["p" + (n + 1)] = `.in2-part[data-k=p${n + 1}]`)); /* écran avec question + bouton : le texte, la question et le bouton sont trois éléments indépendants */ const o = {}; for (const k in map) { const e = d.querySelector(map[k]); if (e) o[k] = e; } return o; };
@@ -297,7 +298,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       { key: "s5", img: 5, layout: "center-top", face: true, parts: ["Parfait, alors c'est décidé !", "Voici mon bateau.", "Il sera bientôt amarré à l'embarcadère de **Santo Spirito**. Retrouvons-nous là-bas quand tu seras prêt."], text: () => "" },
       { key: "s6", base: "s5", bye: "À bientôt", img: 5, layout: "center-top", face: true, parts: ["Mais avant notre rencontre, je vais faire une nouvelle fois le tour de la lagune pour admirer, depuis mon voilier, les splendeurs de cette cité sur l'eau qui ne cesse de m'émerveiller."], text: () => "" },
     ];
-    const SCREENS = ALL; // l'écran d'identité s'affiche toujours ; en rejeu il reprend le profil existant (nom, photo) et permet de le modifier
+    const SCREENS = opts.readOnly ? ALL.filter(sc => sc.key !== "who") : ALL; // l'écran d'identité s'affiche toujours ; en rejeu il reprend le profil existant (nom, photo) et permet de le modifier
     const cur0 = opts.profile || null;
     let photoRes = cur0 && cur0.photo ? { photo: cur0.photo, cut: !!cur0.cut, frame: cur0.frame } : null; // { photo, cut, frame } : la tête de l'enfant (reprise du profil en rejeu)
     SCREENS.forEach((sc) => { if (sc.img == null) return; const i = new Image(); i.src = IMG(sc.img); }); // préchargées
@@ -328,7 +329,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     };
     stopDepartureMusic = stopDep;
     let pausedIntroAudio = [];
-    document.addEventListener("visibilitychange", () => {
+    const introVisibility = () => {
       if (document.hidden) {
         pausedIntroAudio = [amb, mus, dep].filter((audio) => !audio.paused);
         for (const audio of [amb, mus, dep]) { clearInterval(audio._t); audio.pause(); }
@@ -336,7 +337,8 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
         for (const audio of pausedIntroAudio) audio.play().catch(() => {});
         pausedIntroAudio = [];
       }
-    });
+    };
+    document.addEventListener("visibilitychange", introVisibility);
     const depStart = () => { if (depOn || ambDead) return; depOn = true; fadeA(mus, 0, 1500, () => mus.pause()); dep.play().then(() => { if (!ambDead) fadeA(dep, DEP_VOL, 2000); }).catch(() => {}); };
     const ambStop = (ms, keepDep) => { if (ambDead) return; ambDead = true; for (const a of keepDep && depOn ? [amb, mus] : [amb, mus, dep]) fadeA(a, 0, ms, () => { a.pause(); a.src = ""; }); };
     ambStart();
@@ -369,6 +371,15 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       return d;
     };
     const finish = (soft) => {
+      if (opts.readOnly) {
+        ambDead = true; for (const audio of [amb, mus, dep]) { clearInterval(audio._t); audio.pause(); audio.src = ""; }
+        clearTimeout(depStopTimer); clearTimeout(fitT); curTyping?.cancel(); opening?.skip();
+        document.removeEventListener("visibilitychange", introVisibility); if (stopDepartureMusic === stopDep) stopDepartureMusic = null;
+        window.removeEventListener("resize", fitSoon); window.removeEventListener("orientationchange", fitSoon);
+        if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
+        opts.signal?.removeEventListener("abort", finishReplay); restore(); root.remove();
+        document.body.classList.remove("intro-open"); resolve(opts.profile || null); opts.onClose?.(); return;
+      }
       const profile = photoRes ? { name, photo: photoRes.photo, ...(photoRes.cut ? { cut: true } : {}), ...(photoRes.frame ? { frame: photoRes.frame } : {}) } : { name, avatar: (cur0 && cur0.avatar) || AVATARS[Math.floor(Math.random() * AVATARS.length)] };
       if (cur0 && cur0.photo && cur0.photo === profile.photo) { profile.outfit = cur0.outfit; profile.outfitPhoto = cur0.outfitPhoto; profile.outfitOverlay = cur0.outfitOverlay; profile.outfitOverlayHat = cur0.outfitOverlayHat; profile.outfitOverlayBody = cur0.outfitOverlayBody; profile.outfitLayout = cur0.outfitLayout; profile.outfitOverlayVersion = cur0.outfitOverlayVersion; profile.outfitShift = cur0.outfitShift; } // même photo : on garde la tenue
       saveProfile(profile);
@@ -385,6 +396,11 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
       let gone = false; const bye = () => { if (gone) return; gone = true; document.removeEventListener("pointerdown", bye, true); window.removeEventListener("resize", wrapAround); msg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).onfinish = () => msg.remove(); };
       setTimeout(() => document.addEventListener("pointerdown", bye, true), 1500);
     };
+    const finishReplay = () => finish(true);
+    if (opts.readOnly) {
+      const close = document.createElement("button"); close.type = "button"; close.className = "history-intro-close"; close.textContent = "Fermer"; close.onclick = finishReplay; root.appendChild(close);
+      opts.signal?.addEventListener("abort", finishReplay, { once: true });
+    }
     const vv = window.visualViewport;
     const lift = () => { // remonte le contenu juste assez pour que le champ reste visible au-dessus du clavier
       const wrap = root.querySelector(".in2-s:last-of-type .wh"), inp = root.querySelector("#in2-name"); if (!wrap || !inp || !vv) return;
@@ -506,7 +522,7 @@ export function runIntro(opts = {}) { // opts.replay : « Revoir l'histoire » (
     let editing = false, selEl = null, selKey = null;
     const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
     let canEdit = false;
-    try { canEdit = local && localStorage.getItem("vq_dev_enabled_v2") === "1"; } catch {} // éditeur réservé au mode développeur local
+    try { canEdit = !opts.readOnly && local && localStorage.getItem("vq_dev_enabled_v2") === "1"; } catch {} // éditeur réservé au mode développeur local
     const handle = document.createElement("div"); handle.className = "in2-handle"; handle.hidden = true; root.appendChild(handle);
     const placeHandle = () => { if (!selEl || !editing) { handle.hidden = true; return; } const r = selEl.getBoundingClientRect(); handle.style.left = Math.min(innerWidth - 14, r.right) + "px"; handle.style.top = Math.min(lockedH - 14, r.bottom) + "px"; handle.hidden = false; };
     const select = (k) => { root.querySelectorAll(".in2-sel").forEach((e) => e.classList.remove("in2-sel")); selKey = k; selEl = null; if (k) { const e = elsOf(cur, SCREENS[idx])[k]; if (e) { selEl = e; e.classList.add("in2-sel"); } } placeHandle(); };

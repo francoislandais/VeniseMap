@@ -112,9 +112,9 @@ function createStormSound() {
 }
 
 let opening = false;
-export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwnedObjects, hasKey, hasSeen, onTrade, editable = false } = {}) {
+export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwnedObjects, hasKey, hasSeen, onTrade, editable = false, replay = false } = {}) {
   if (opening || document.querySelector(".corto-rendezvous")) return;
-  const seen = !!hasSeen?.();
+  const seen = !replay && !!hasSeen?.();
   const sound = seen ? null : createStormSound();
   sound?.start();
   opening = true;
@@ -205,6 +205,7 @@ export async function openGondolierRendezvous({ onComplete, onKeyToBook, getOwne
     painting.style.scale = number(c.size, 1, 1, 1.8);
   };
   const renderTrade = (host) => {
+    if (replay) { host.innerHTML = '<button type="button" class="gr-trade-open">Terminer</button>'; host.firstElementChild.onclick = () => close(); return; }
     if (hasKey?.()) {
       host.innerHTML = `<p class="gr-trade-answer">Ma clé est maintenant dans ton livre, moussaillon. Prends-en soin !</p>`;
       return;

@@ -143,7 +143,7 @@ const PAGES = [
   },
 ];
 
-export async function openCortoRendezvous() {
+export async function openCortoRendezvous({ readOnly = false } = {}) {
   if (opening || document.querySelector(".corto-rendezvous")) return;
   silenceIntroDeparture();
   opening = true;
@@ -303,6 +303,6 @@ export async function openCortoRendezvous() {
   closeButton.onclick = close;
   prev.onclick = back;
   show();
-  if (canEdit) editor = createCortoEditor({ overlay, stage, layout, defaults: PAGES, getIndex: () => index, getLayoutKey: () => PAGES[index].layoutKey ?? index, getScene: () => scene, applyLayout, showPage: (to) => { index = Math.max(0, Math.min(PAGES.length - 1, to)); show(); }, editable, draftKey, revealAll: () => typing?.finish() });
+  if (canEdit && !readOnly) editor = createCortoEditor({ overlay, stage, layout, defaults: PAGES, getIndex: () => index, getLayoutKey: () => PAGES[index].layoutKey ?? index, getScene: () => scene, applyLayout, showPage: (to) => { index = Math.max(0, Math.min(PAGES.length - 1, to)); show(); }, editable, draftKey, revealAll: () => typing?.finish() });
   overlay.focus();
 }

@@ -14,6 +14,7 @@ import { createPhotoLibrary } from "./photo-sync.js";
 import { openMarcChest, openMarcBook } from "./marc-chest.js";
 import { openSacredCroquette } from "./marc-recipe.js";
 import { createLionCompanion } from "./lion-companion.js";
+import { playHistoryScene, closeHistoryReplay, replayDialogue, replayCollectible, replayLion } from "./story-replay.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -157,6 +158,9 @@ const unaward = (k) => { S.done[k] = { t: Date.now(), p: 0, d: 1 }; };
 const points = () => Object.values(S.done).reduce((n, v) => n + (v.d ? 0 : v.p || 0), 0);
 const pointsOf = (i) => Object.values(S.done).reduce((n, v) => n + (!v.d && (v.w == null || v.w === "all" || v.w === i) ? v.p || 0 : 0), 0);
 let tab = "map", lastTab = "days", menuOpen = false, menuReturnPending = false;
+if (!$("#v-history")) { const view = document.createElement("section"); view.id = "v-history"; view.className = "view"; view.hidden = true; $("#v-music").after(view); }
+if (!$("[data-tab=history]")) { const button = document.createElement("button"); button.type = "button"; button.dataset.tab = "history"; button.textContent = "Histoire"; $("#up-bar .up-tabs").appendChild(button); }
+
 const meIdx = () => 0;
 const me = () => S.kids[0] || { name: "", avatar: "🙂" };
 const myName = () => me().name || "Joueur";
@@ -785,6 +789,7 @@ function updateBoatInteraction(b) {
 function meetCortoAtBoat(event) {
   if (!boatNear(boatAt()) || !mapWorkVisible() || !$("#sheet").hidden || !$("#modal").hidden) return;
   event.stopPropagation();
+  if (!has("story:seen:corto")) { award("story:seen:corto", 0, meIdx()); save(); }
   openCortoRendezvous();
 }
 function centerBoatPreview(b) {
@@ -2429,6 +2434,7 @@ function openBridges() {
   tryBridge();
 }
 addEventListener("popstate", () => {
+  if (closeHistoryReplay()) { try { history.pushState({ vqMenu: 1 }, ""); } catch {} return; }
   if (viewClose) { viewClose(); return; } if (montClose) { montClose(); return; }
   if (menuReturnPending) {
     menuReturnPending = false;
@@ -2834,7 +2840,7 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
   if (DEV && !conclusionOnly) { const sk = document.createElement("button"); sk.type = "button"; sk.className = "dev-skip"; sk.textContent = "⏭ Fin"; sk.onclick = () => skipEnd && skipEnd(); sh.appendChild(sk); } // mode dev : sauter à l'écran final
   if (LOCAL_DEV && p.musicChallenge) { const b = document.createElement("button"); b.type = "button"; b.className = "dev-music"; b.textContent = "🔧 Dev · Défi musical"; b.onclick = () => openMusicChallenge(p.musicChallenge.entry, p, () => {}, true); sh.appendChild(b); }
   sh.onclick = null; // dans une épreuve, un toucher à côté des bulles et des boutons ne ferme rien : on y reste
-  try { history.pushState({ vqBridge: 1 }, ""); } catch {}
+  if (!preview) try { history.pushState({ vqBridge: 1 }, ""); } catch {}
   sh.style.backgroundColor = "#0a1c28";
   $(".chap-bg", sh).animate([{ opacity: 0, transform: "scale(1)" }, { opacity: 1, transform: "scale(1.04)", offset: .08 }, { opacity: 1, transform: "scale(1.16)" }], { duration: 20000, easing: "ease-out", fill: "forwards" }); // l'image reste en fond, avec un très lent zoom
   setTimeout(() => { if (openId === "chap") { if (conclusionOnly) chapEnd(p, replay, preview); else runChapters(p, replay); } }, 350);
@@ -2858,7 +2864,7 @@ function conclusionEditor(sh, p, elements, defaults) {
   fitChapTalk();
   const controller = new AbortController(); conclusionEditorAbort = controller;
   window.addEventListener("resize", () => apply("emblem"), { signal: controller.signal });
-  if (!LOCAL_DEV) return;
+  if (!LOCAL_DEV || document.body.classList.contains("history-replaying")) return;
   const emblem = $(".chap-victory", sh), bt = $("#b-talk", sh), lead = elements.lead, clue = elements.secret, planButton = elements.plan, photoButton = $(".chap-end-photo", sh);
   const names = { bravo: "Bravo", completion: "Fin des épreuves", emblem: "Vignette", lead: "Annonce", secret: "Secret", plan: "Bouton du plan" };
   const bar = document.createElement("div"); bar.className = "chap-edit-bar";
@@ -2915,6 +2921,7 @@ async function chapEnd(p, replay, preview = false) {
     if (MONTAGES[p.id]) { photoButton = document.createElement("button"); photoButton.type = "button"; photoButton.className = "chap-end-photo"; photoButton.setAttribute("aria-label", "Prendre une photo souvenir"); photoButton.innerHTML = CAM_SVG; photoButton.onclick = () => openMontage(p.id); actions.appendChild(photoButton); }
     fitChapTalk();
   }
+  if (preview && document.body.classList.contains("history-replaying")) { planButton?.remove(); photoButton?.remove(); planButton = photoButton = null; }
   conclusionEditor(sh, p, { bravo: $(".chap-victory-bravo", emblem), completion: $(".chap-victory-line", emblem), emblem: $(".chap-victory-emblem", emblem), lead: $(".chap-secret-lead", bubble), ...(hasSecret ? { secret: $(".chap-secret-clue", bubble) } : {}), ...(planButton ? { plan: planButton } : {}) }, defaults);
   const routePlanButton = () => {
     if (!planButton) return;
@@ -3169,16 +3176,16 @@ function setTab(t) {
     adminUnlocked = false; adminPlayers = []; adminRewards = {}; adminCode = "";
     $("#v-settings").replaceChildren(); $("#v-dev").replaceChildren(); $("#v-rewards").replaceChildren();
   }
-  tab = t; document.body.classList.toggle("objects-open", t === "objects"); if (t !== "map") lastTab = t;
+  tab = t; document.body.classList.toggle("history-open", t === "history"); document.body.classList.toggle("objects-open", t === "objects"); if (t !== "map") lastTab = t;
   if (t !== "map" && !menuOpen) { menuOpen = true; if (!menuReturnPending) { try { history.pushState({ vqMenu: 1 }, ""); } catch {} } } if (t === "map") menuOpen = false;
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   const onTab = $("#up-bar .up-tabs button.on"); if (onTab && onTab.scrollIntoView) setTimeout(() => onTab.scrollIntoView({ inline: "center", block: "nearest" }), 30);
   $("#up-bar").hidden = t === "map"; $("#up-bg").hidden = t === "map"; document.body.classList.toggle("menu-open", t !== "map"); { const ms = $("#menu-say"); if (ms) ms.hidden = t === "map"; } if (t !== "map") document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px"); if (!suspended) closeSheet(); if (quest) closeQuest();
-  ["days", "objects", "bridges", "photos", "works", "music", "settings", "dev", "rewards"].forEach((v) => ($("#v-" + v).hidden = v !== t));
+  ["days", "objects", "bridges", "photos", "works", "music", "history", "settings", "dev", "rewards"].forEach((v) => ($("#v-" + v).hidden = v !== t));
   if ($("#tab-dev")) $("#tab-dev").hidden = t !== "dev";
   $("#bridge-btn").hidden = t !== "map";
-  if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "music") renderMusicCollection(); if (t === "settings") renderSettings(); if (t === "dev") renderDev(); if (t === "rewards") renderRewardEditor();
+  if (t === "days") renderDays(); if (t === "objects") { renderObjects(); syncHeldPosition(); } if (t === "bridges") renderBridges(); if (t === "photos") renderPhotos(); if (t === "works") renderWorks(); if (t === "history") renderHistory(); if (t === "music") renderMusicCollection(); if (t === "settings") renderSettings(); if (t === "dev") renderDev(); if (t === "rewards") renderRewardEditor();
   if (t === "map") { setTimeout(() => map.resize(), 50); renderNext(); } else $("#next").hidden = true;
   if (t !== "map") closeSheetKeep();
   scheduleGeoSync();
@@ -4125,6 +4132,51 @@ addEventListener("resize", () => {
   syncHeldPosition();
 });
 
+/* Histoire : catalogue de relecture. Les callbacks ne remettent aucune récompense. */
+let historyRender = 0;
+async function renderHistory() {
+  const token = ++historyRender, view = $("#v-history"), oldScroll = view.scrollTop;
+  const time = (...keys) => Math.min(...keys.map(k => S.done[k]?.t).filter(Number.isFinite), Infinity);
+  const scenes = [];
+  const add = (id, label, at, run) => scenes.push({ id, label, at, run, order: scenes.length });
+  add("intro", "L’introduction", -3, ({close,signal}) => runIntro({ replay:true, readOnly:true, name:myName(), profile:PROFILE, signal, onClose:close }));
+  add("corto", "Corto raconte l’histoire", -2, () => openCortoRendezvous({ readOnly: true }));
+  add("gondolier", "La première rencontre avec le gondolier", -1, () => openGondolierRendezvous({ replay:true }));
+  add("gondolier-key", "L’échange avec le gondolier et sa clé", time("o:cle-gondolier"), ({close}) => openGondolierRendezvous({hasSeen:()=>true,hasKey:()=>false,getOwnedObjects:()=>objectList().filter(o=>o.found&&o.id!=="cle-gondolier").slice(0,12).concat([{id:"souvenir-relecture",name:"Un souvenir",img:"img/objets/coquille.svg"}]),onTrade:()=>({accepted:true,message:"Cette clé d’or est à toi."}),onKeyToBook:close}));
+  add("monteverdi", "La rencontre avec Monteverdi", time("pn:monteverdi"), () => openMonteverdiStory());
+  add("gold-mask", "La découverte du masque d’or", time(DOGANA_MASK_KEY), ({close}) => replayCollectible({img:DOGANA_MASK.img,title:"Le masque d’or",spin:true,onClose:close}));
+  add("chest", "Le masque d’or ouvre le coffre", time("craft:marc-chest:opened"), ({close}) => openMarcChest({canClaim:()=>true,onClaim:()=>true,onClose:close}));
+  add("book", "La première page du livre de saint Marc", time("o:evangile-marc"), ({close}) => openMarcBook({onClose:close}));
+  add("marc-book", "Le livre retrouvé de saint Marc", time("story:stmarc:book"), ({close}) => replayDialogue({img:"img/stmarc-avatar.webp",lines:[ST_MARC_BOOK.ask,ST_MARC_BOOK.thanks],onClose:close}));
+  add("recipe-page", "La recette des croquettes sacrées", time("craft:marc-recipe:complete"), ({close}) => {const dispose=openMarcBook({onClose:close});const input=$("#marc-page-number");input.value="694";const timer=setInterval(()=>{const b=$(".marc-page-picker button");if(b&&!b.disabled){clearInterval(timer);b.form.requestSubmit();}},100);return()=>{clearInterval(timer);dispose();};});
+  add("croquette", "La préparation de la croquette sacrée", time("craft:marc-recipe:complete"), ({close}) => openSacredCroquette({ingredients:["fruit-squero-olive","fruit-squero-datte","fruit-squero-gousse","fruit-squero-micocoule","rubis-burano"].map(id=>objectList().find(o=>o.id===id)).filter(Boolean),onClaim:()=>{},onClose:close}));
+  add("marc-croquette", "La croquette offerte à saint Marc", time("craft:marc-recipe:croquette-given"), ({close}) => replayDialogue({img:"img/stmarc-avatar.webp",lines:[ST_MARC_CROQUETTE.prompt,ST_MARC_CROQUETTE.thanks],onClose:close}));
+  add("lion", "Le lion ailé rejoint le joueur", time(LION_FOLLOW_KEY), ({close}) => {const W=WALKERS.find(w=>w.id==="lion"),ll=W?.R?walkerAt(W):null;return replayLion({player:pos,from:ll,onClose:close});});
+  const earned = Object.values(S.done).filter(v=>!v.d && (v.w==null||v.w==="all"||v.w===meIdx()) && v.p>0).sort((a,b)=>a.t-b.t);
+  const gradeAt = li => { let total=0;for(const v of earned){total+=v.p;if(total>=LEVELS[li].min)return v.t;}return Infinity; };
+  for(const [li,key] of Object.entries(OUTFIT_LEVELS))add("grade-"+key,"Le passage au grade de "+LEVELS[li].name,Math.min(time(`ceremony:grade:${key}:v1`),gradeAt(li)),({close,signal})=>ceremony(key,Number(li),{replay:true,signal,onClose:close}));
+  MASK_IMAGES.forEach((img,i)=>{const collected=Object.entries(S.done).filter(([k,v])=>k.startsWith(`mask:${meIdx()}:`)&&!v.d&&(Number(k.split(":").at(-1).slice(1))-1)%MASK_IMAGES.length===i);add("carnival-"+i,"Le masque vénitien "+(i+1),Math.min(...collected.map(([,v])=>v.t),Infinity),({close})=>replayCollectible({img,title:"Le masque vénitien",spin:true,onClose:close}));});
+  for(const p of PLACES)if(arrived(p.id))add("arrival-"+p.id,"L’arrivée : "+p.name,time("a:"+p.id),({close})=>replayDialogue({img:pic(p.id),lines:[p.story||p.clue||p.name],onClose:close}));
+  for(const p of PLACES)if(complete(p))add("end-"+p.id,"La fin de l’épreuve : "+p.name,time("fin:"+p.id),()=>{openChapters(p,true,true,true);return()=>closeSheet();});
+  for(const o of [...OBJECTS,...oliveObjects(),...maskGemObjects()]) {
+    if(["masque-or","coffre-masque","evangile-marc","croquette-sacree","cle-gondolier"].includes(o.id))continue;
+    const at=time(o.key,grantKey(meIdx(),`object:${o.id}`),`trade:gondolier:spent:object:${o.id}`);
+    if(!Number.isFinite(at))continue;
+    const img=o.img.startsWith("img/")?o.img:"img/objets/"+o.img;
+    add("object-"+o.id,"La découverte : "+o.name,at,({close})=>replayCollectible({img,title:o.name,onClose:close}));
+  }
+  // Every earned work and musical manuscript gets its own line in acquisition order.
+  const [works,music,photos] = await Promise.all([loadWorks(),musicCatalog().catch(()=>[]),allPhotos()]);
+  for(const w of works.oeuvres||[])if(workFound(w.id))add("work-"+w.id,"Le tableau : "+w.titre,time("w:"+w.id),({close})=>replayCollectible({img:w.thumb,title:w.titre,onClose:close}));
+  for(const m of music||[])if(musicFoundFor(m.id)||musicWonFor(m.id))add("music-"+m.id,"Le fragment musical : "+(m.title||m.name||m.id),time(`music:${m.id}:discovery`,grantKey(meIdx(),`music-won:${m.id}`)),({close})=>replayCollectible({img:m.fragment||`img/music/${m.id}-parchemin.png`,title:"Félicitations, "+gradeLc()+" !",spin:true,onClose:close}));
+  for(const [id,photo] of photos)if(photo.blob)add("photo-"+id,"La photo souvenir : "+(place(photo.place)?.name||"Venise"),photo.t||Infinity,({close})=>{const url=URL.createObjectURL(photo.blob);const dispose=replayCollectible({img:url,title:"La photo souvenir",onClose:close});return()=>{URL.revokeObjectURL(url);dispose();};});
+  if(token!==historyRender||tab!=="history")return;
+  scenes.sort((a,b)=>a.at===b.at?a.order-b.order:a.at-b.at);
+  view.replaceChildren();const list=document.createElement("div");list.className="history-list";
+  for(const scene of scenes){const b=document.createElement("button");b.type="button";b.textContent=scene.label;b.dataset.scene=scene.id;b.onclick=()=>playHistoryScene(scene.run).catch(()=>toast("Cette scène n’a pas pu être chargée. Réessaie."));list.appendChild(b);}
+  view.appendChild(list);view.scrollTop=oldScroll;
+}
+
 /* ───────── Œuvres de maîtres : la collection de toiles trouvées au fil des épreuves ─────────
    Base : data/oeuvres.json (61 œuvres, 19 artistes, 16 lieux, 5 questions par œuvre pour les épreuves à venir). Une toile trouvée = S.done["w:" + id] (étoiles POINTS.work), donc synchronisée comme le reste. */
 let WORKS = null;
@@ -4294,10 +4346,11 @@ async function wearOutfit(key, initialShift) { // pose (ou retire) les deux piè
   }
   saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
 }
-async function ceremony(key, li, { record = false } = {}) {
+async function ceremony(key, li, { record = false, replay = false, signal, onClose } = {}) {
   const ceremonyPlayer = PLAYER_ID, ceremonyReset = S.resetAt || 0;
   if (ceremonyBusy) return; ceremonyBusy = true;
-  let ov;
+  let ov, releaseWait; const abortReplay = () => { releaseWait?.(); ov?.getAnimations({subtree:true}).forEach(a => { try { a.finish(); } catch {} }); ov?.remove(); };
+  signal?.addEventListener("abort", abortReplay, { once: true });
   try {
     OUTFITS ||= await (await fetch("data/outfits.json")).json();
     const P = PROFILE, name = myName(), canDress = !!(P && P.photo && OUTFITS[key]);
@@ -4312,8 +4365,9 @@ async function ceremony(key, li, { record = false } = {}) {
     await new Promise((resolve) => {
       const advance = () => { ov.removeEventListener("click", advance); ov.removeEventListener("keydown", onKey); resolve(); };
       const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); advance(); } };
-      ov.addEventListener("click", advance); ov.addEventListener("keydown", onKey); ov.focus({ preventScroll: true });
+      releaseWait = advance; ov.addEventListener("click", advance); ov.addEventListener("keydown", onKey); ov.focus({ preventScroll: true });
     });
+    if (signal?.aborted) return;
     ov.classList.add("cer-dressing");
     if (canDress) {
       const had = P.outfit && OUTFITS[P.outfit] && P.outfit !== key ? P.outfit : null, f = P.frame || false;
@@ -4349,7 +4403,7 @@ async function ceremony(key, li, { record = false } = {}) {
       body.style.opacity = "0"; hat.style.opacity = "0"; clothes.append(body, hat); portrait.appendChild(clothes);
       await body.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 700, fill: "forwards", easing: "ease-out" }).finished; body.style.opacity = "1";
       await hat.animate([{ opacity: 0, transform: "translateY(-48px) rotate(-6deg)" }, { opacity: 1, transform: "translateY(5px) rotate(2deg)", offset: 0.75 }, { opacity: 1, transform: "none" }], { duration: 850, fill: "forwards", easing: "cubic-bezier(.3,.7,.4,1)" }).finished; hat.style.opacity = "1";
-      await wearOutfit(key); confetti(100);
+      if (!replay) await wearOutfit(key); confetti(100);
       say(`Magnifique, ${LEVELS[li].name.toLowerCase()} ${name} ! Cet uniforme te va comme un gant.`);
       const hint = $(".cer-hint", ov); hint.textContent = "Glisse le chapeau ou le col pour l'ajuster · touche ailleurs pour terminer";
       ov.classList.add("cer-adjusting");
@@ -4382,6 +4436,7 @@ async function ceremony(key, li, { record = false } = {}) {
       stage.addEventListener("pointermove", move);
       const endDrag = (e) => { if (drag?.id === e.pointerId) { move(e); drag = null; if (e.type === "pointercancel") ignoreNextClick = false; else setTimeout(() => { ignoreNextClick = false; }, 400); } };
       stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
+      if (signal?.aborted) return;
       await new Promise((resolve) => {
         const finish = (e) => {
           if (e?.type === "click" && ignoreNextClick) { ignoreNextClick = false; return; }
@@ -4389,21 +4444,21 @@ async function ceremony(key, li, { record = false } = {}) {
           ov.removeEventListener("click", finish); ov.removeEventListener("keydown", onKey); resolve();
         };
         const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); finish(); } };
-        ov.addEventListener("click", finish); ov.addEventListener("keydown", onKey);
+        releaseWait = finish; ov.addEventListener("click", finish); ov.addEventListener("keydown", onKey);
       });
-      P.outfitShift = shift; saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
+      if (!replay) { P.outfitShift = shift; saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker(); }
     }
     await ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).finished;
-    if (record && ceremonyPlayer === PLAYER_ID && ceremonyReset === (S.resetAt || 0) && pointsOf(meIdx()) >= LEVELS[li].min) {
+    if (record && !replay && !signal?.aborted && ceremonyPlayer === PLAYER_ID && ceremonyReset === (S.resetAt || 0) && pointsOf(meIdx()) >= LEVELS[li].min) {
       award(`ceremony:grade:${key}:v1`, 0, meIdx()); save();
       try { localStorage.setItem(`vq_cer4_${PLAYER_ID}`, String(li)); } catch {}
     }
-  } finally { ov?.remove(); ceremonyBusy = false; }
+  } finally { signal?.removeEventListener("abort", abortReplay); ov?.remove(); ceremonyBusy = false; onClose?.(); }
 }
 // Rattraper les grades royaux même si l’ancien compteur local les a déjà sautés.
 let ceremonyRetryAt = 0;
 function checkCeremony() {
-  if (!gradeSynced || !PROFILE || ceremonyBusy || openId || tab !== "map" || scoreAnim || Date.now() < ceremonyRetryAt || $(".wq,.finale,.corto-say,.cam,.pf,.intro,.in2,.marc-magic,.croquette-ritual,.mont,.music-quest,.music-found,.doge-msg:not(.menu-say),.lion-arriving")) return;
+  if (document.body.classList.contains("history-replaying") || !gradeSynced || !PROFILE || ceremonyBusy || openId || tab !== "map" || scoreAnim || Date.now() < ceremonyRetryAt || $(".wq,.finale,.corto-say,.cam,.pf,.intro,.in2,.marc-magic,.croquette-ritual,.mont,.music-quest,.music-found,.doge-msg:not(.menu-say),.lion-arriving")) return;
   const li = level(pointsOf(meIdx())), k = `vq_cer4_${PLAYER_ID}`;
   const royal = [5, 6].find(j => j <= li && !has(`ceremony:grade:${OUTFIT_LEVELS[j]}:v1`));
   const run = j => ceremony(OUTFIT_LEVELS[j], j, { record: true }).catch(() => { ceremonyRetryAt = Date.now() + 30000; });
@@ -4726,7 +4781,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateSqueroFruitMarkers(); updatePugniChestMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateSqueroFruitMarkers(); updatePugniChestMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "history") renderHistory(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");
