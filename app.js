@@ -709,6 +709,7 @@ function devCompleteChapter(p, fromMapButton = false) {
   new Set(steps.map((s) => s.work).filter(Boolean)).forEach((id) => { if (!workFound(id)) award("w:" + id, POINTS.work, meIdx()); });
   if (has("fin:" + p.id)) unaward("fin:" + p.id);
   if (p.id === "murano") for (const key of ["o:coquillage-murano", "bonus:murano-shell"]) if (has(key)) unaward(key);
+  if (p.id === "squero") for (const fruit of SQUERO_FRUITS) for (const key of [fruit.key, `trade:gondolier:spent:object:fruit-squero-${fruit.id}`]) if (has(key)) unaward(key);
   if (p.id === "schiavoni") for (const gem of SCHIAVONI_GEMS) if (has(gem.key)) unaward(gem.key);
   if (p.id === "frari") for (const key of ["o:cle-gondolier", "bonus:trade:gondolier"]) if (has(key)) unaward(key);
   if (has("tr:" + p.id)) unaward("tr:" + p.id);
@@ -1553,6 +1554,61 @@ async function collectMuranoShell() {
   }
   flight.remove(); record.busy = false; updateMuranoShellMarker();
   toast("Coquillage magique rangé dans ton livre ! +50 ⭐", 5000);
+}
+
+// Quatre fruits des arbres remarquables, à découvrir sur le chemin après l'épreuve du squero.
+// Points sur des passages publics du parcours San Trovaso → San Barnaba, non sur les arbres eux-mêmes.
+const SQUERO_FRUITS = [
+  { id: "olive", name: "Olive de Torcello", lat: 45.430587, lon: 12.326110, img: "img/objets/olive-torcello.webp" },
+  { id: "datte", name: "Datte de San Servolo", lat: 45.432059, lon: 12.325769, img: "img/objets/datte-san-servolo.svg" },
+  { id: "gousse", name: "Gousse du févier des Jardins royaux", lat: 45.432272, lon: 12.325276, img: "img/objets/gousse-fevier.svg" },
+  { id: "micocoule", name: "Micocoule de Piazzale Roma", lat: 45.432839, lon: 12.324919, img: "img/objets/micocoule.svg" },
+].map((fruit) => ({ ...fruit, key: `o:fruit-squero:${fruit.id}`, radius: 28, stars: 10 }));
+const squeroFruitMarkers = new Map();
+const squeroFruitsUnlocked = () => has("fin:squero") || complete(place("squero"));
+function updateSqueroFruitMarkers() {
+  const unlocked = JEU && squeroFruitsUnlocked();
+  for (const fruit of SQUERO_FRUITS) {
+    let record = squeroFruitMarkers.get(fruit.id);
+    if (!unlocked || objectFoundFor(`fruit-squero-${fruit.id}`) || has(`trade:gondolier:spent:object:fruit-squero-${fruit.id}`)) {
+      if (record && !record.busy) { record.marker.remove(); squeroFruitMarkers.delete(fruit.id); }
+      continue;
+    }
+    if (!record) {
+      const el = document.createElement("button"); el.type = "button"; el.className = "squero-fruit-marker";
+      el.dataset.fruit = fruit.id; el.setAttribute("aria-label", `Ramasser ${fruit.name.toLowerCase()}`);
+      const img = document.createElement("img"); img.src = fruit.img; img.alt = ""; img.draggable = false; el.appendChild(img);
+      const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([fruit.lon, fruit.lat]).addTo(map);
+      record = { marker, el, img, busy: false }; squeroFruitMarkers.set(fruit.id, record);
+      el.addEventListener("pointerdown", (event) => event.stopPropagation());
+      el.addEventListener("click", (event) => { event.stopPropagation(); collectSqueroFruit(fruit); });
+    }
+    record.el.hidden = map.getZoom() < 14;
+    record.el.style.setProperty("--squero-fruit-size", Math.round(Math.min(54, Math.max(40, 37 * 1.3 ** (map.getZoom() - 15)))) + "px");
+  }
+}
+map.on("zoom", updateSqueroFruitMarkers);
+async function collectSqueroFruit(fruit) {
+  const record = squeroFruitMarkers.get(fruit.id);
+  if (!record || record.busy || !mapWorkVisible() || !squeroFruitsUnlocked() || objectFoundFor(`fruit-squero-${fruit.id}`) || has(`trade:gondolier:spent:object:fruit-squero-${fruit.id}`)) return;
+  record.busy = true; record.el.classList.add("is-checking");
+  const player = meIdx(), [fix] = await Promise.all([maskFix(), sleep(450)]);
+  record.el.classList.remove("is-checking");
+  if (!record.el.isConnected || player !== meIdx()) { record.busy = false; return; }
+  if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.acc) || fix.acc > 80) {
+    record.busy = false; cortoSays("Je n'arrive pas à vérifier ta position. Réessaie près du fruit."); return;
+  }
+  const distance = dist(fix.lat, fix.lon, fruit.lat, fruit.lon);
+  if (distance > fruit.radius + Math.min(fix.acc, 15)) {
+    record.busy = false; cortoSays(`Ce fruit est encore à ${fmtD(distance)}. Approche-toi pour le ramasser !`); return;
+  }
+  const box = record.el.getBoundingClientRect(), cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+  await flyOliveToBook(record.el, fruit.img);
+  if (player !== meIdx()) { record.el.hidden = false; record.busy = false; updateSqueroFruitMarkers(); return; }
+  award(fruit.key, fruit.stars, player); save(); refreshAll();
+  starsToCounter(cx, cy, fruit.stars, true);
+  record.busy = false; updateSqueroFruitMarkers();
+  toast(`${fruit.name} dans ton livre ! +${fruit.stars} ⭐`, 4500);
 }
 
 // Le masque central de Burano révèle un rubis à ramasser sur la carte.
@@ -2553,7 +2609,7 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
 const endBravo = () => `Bravo, ${cortoAddress()} !`;
-const endSecret = (p) => p.id === "murano" ? "Un coquillage magique était caché sur cette île… et il vient d’apparaître ! Cherche-le sur ta carte, dans un coin tranquille de Murano, près de Santa Maria degli Angeli." : p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
+const endSecret = (p) => p.id === "murano" ? "Un coquillage magique était caché sur cette île… et il vient d’apparaître ! Cherche-le sur ta carte, dans un coin tranquille de Murano, près de Santa Maria degli Angeli." : p.id === "squero" ? "Regarde sur la carte, entre le chantier et le pont des Poings : quatre fruits t'attendent sur le chemin." : p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
 function conclusionEditor(sh, p, elements, defaults) {
   conclusionEditorAbort?.abort();
   const layout = (CONCLUSION_LAYOUT[p.id] ||= {});
@@ -2607,8 +2663,8 @@ async function chapEnd(p, replay, preview = false) {
   emblem.className = "chap-victory";
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
-  const hasSecret = p.id === "murano" || !!(p.reward || p.musicChallenge || p.collectibleReward);
-  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
+  const hasSecret = p.id === "murano" || p.id === "squero" || !!(p.reward || p.musicChallenge || p.collectibleReward);
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.id === "squero" ? "Je crois qu'il y a de bonnes choses à ramasser dans les environs…" : p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
@@ -2616,8 +2672,8 @@ async function chapEnd(p, replay, preview = false) {
   bubble.classList.remove("typing");
   bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span>${hasSecret ? `<span class="chap-secret-clue">${esc(defaults.secret)}</span>` : ""}`;
   fitChapTalk();
-  if (!preview && (p.reward || p.musicChallenge || (p.collectibleReward || p.id === "murano") && complete(p)) && !has("fin:" + p.id)) {
-    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "dogana") updateDoganaMaskMarker(); if (p.id === "schiavoni") schiavoniGems.update();
+  if (!preview && (p.reward || p.musicChallenge || (p.collectibleReward || p.id === "murano" || p.id === "squero") && complete(p)) && !has("fin:" + p.id)) {
+    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "squero") updateSqueroFruitMarkers(); if (p.id === "dogana") updateDoganaMaskMarker(); if (p.id === "schiavoni") schiavoniGems.update();
   }
   let planButton = null, photoButton = null;
   if (p.plan || p.musicChallenge || MONTAGES[p.id]) {
@@ -3564,6 +3620,7 @@ const BADGES = [
 const PREVIEW_OBJECTS = DEV;
 const OBJECTS = [
   ...SCHIAVONI_GEMS,
+  ...SQUERO_FRUITS.map((fruit) => ({ id: `fruit-squero-${fruit.id}`, name: fruit.name, img: fruit.img, key: fruit.key })),
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
   { id: "coquillage-murano", name: "Le coquillage magique de Murano", img: "coquillage-murano.svg", key: MURANO_SHELL_KEY },
   { id: "rubis-burano", name: "Le rubis de Burano", img: "rubis-burano.svg", key: BURANO_RUBY_KEY },
@@ -4083,7 +4140,7 @@ async function resetPlaceProgress(places) {
     if (key === "finale") return places.length === PLACES.length;
     const [kind, id] = key.split(":");
     const grant = /^grant:\d+:(object|music|music-won):(.+)$/.exec(key);
-    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || (["o:coquillage-murano", "bonus:murano-shell"].includes(key) && ids.has("murano")) || (["o:cle-gondolier", "bonus:trade:gondolier"].includes(key) && ids.has("frari")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? rewardObjectIds.has(grant[2]) || ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
+    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || ((key.startsWith("o:fruit-squero:") || key.startsWith("trade:gondolier:spent:object:fruit-squero-")) && ids.has("squero")) || (["o:coquillage-murano", "bonus:murano-shell"].includes(key) && ids.has("murano")) || (["o:cle-gondolier", "bonus:trade:gondolier"].includes(key) && ids.has("frari")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? rewardObjectIds.has(grant[2]) || ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
   });
   keys.forEach(unaward);
   places.forEach((p) => { delete introSeen[p.id]; });
@@ -4374,7 +4431,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateSqueroFruitMarkers(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");

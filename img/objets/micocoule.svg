@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-label="Micocoules">
+  <defs><radialGradient id="b" cx=".35" cy=".3" r=".8"><stop stop-color="#cc7180"/><stop offset=".42" stop-color="#793d64"/><stop offset="1" stop-color="#352947"/></radialGradient></defs>
+  <path d="M39 11c-2 17-9 20-18 27m18-27c6 18 14 23 22 27m-22-27c1 18 1 25 0 34" fill="none" stroke="#536b3e" stroke-width="4" stroke-linecap="round"/>
+  <path d="M39 15C31 4 21 7 18 14c8 0 13 4 18 9m5-8c9-11 17-8 21-2-8 0-13 5-18 10" fill="#7fa05b" stroke="#506d3c" stroke-width="2"/>
+  <circle cx="20" cy="44" r="13" fill="url(#b)" stroke="#402a43" stroke-width="2"/><circle cx="60" cy="45" r="13" fill="url(#b)" stroke="#402a43" stroke-width="2"/><circle cx="39" cy="57" r="14" fill="url(#b)" stroke="#402a43" stroke-width="2"/>
+  <circle cx="16" cy="38" r="3" fill="#f7c2c3" opacity=".75"/><circle cx="56" cy="38" r="3" fill="#f7c2c3" opacity=".75"/><circle cx="34" cy="51" r="3" fill="#f7c2c3" opacity=".75"/>
+</svg>
