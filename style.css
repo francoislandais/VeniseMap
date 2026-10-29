@@ -2348,3 +2348,28 @@ body.objects-open .menu-say{display:none!important}
 .pugni-chest-bloom .marc-chest-sprite{animation:none}
 @keyframes pugniChestFloat{to{transform:translateY(-5px) rotate(2deg);filter:drop-shadow(0 0 15px #fff6cb) drop-shadow(0 6px 10px #164556)}}
 @media(prefers-reduced-motion:reduce){.pugni-chest-marker .marc-chest-sprite{animation:none}}
+/* Navigation du grimoire : le numéro est un indice, aucune page n’est suggérée. */
+.marc-reading{flex-direction:column;gap:14px;padding:60px 8px max(18px,env(safe-area-inset-bottom));}
+.marc-reading .marc-volume{flex:none;width:min(94vw,760px,calc((100dvh - 148px)*1.15));max-height:none;min-width:160px}
+.marc-page-picker{display:flex;flex:none;align-items:center;justify-content:center;gap:8px;color:#f6e6bf;font-size:14px;max-width:100%}
+.marc-page-picker input{width:76px;min-height:40px;padding:6px 8px;border:1px solid #c9ac70;border-radius:8px;background:#fff3d9;color:#4d2b19;font:18px Georgia,serif;text-align:center}
+.marc-page-picker button{min-height:40px;padding:7px 12px;border:1px solid #c9ac70;border-radius:8px;background:#6b4d31;color:#fff2cf;font-size:14px}
+.marc-page-picker button:disabled{opacity:.5;cursor:wait}.marc-page-picker :focus-visible{outline:2px solid #ffe2a0;outline-offset:3px}
+.marc-page-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.marc-inner-pages .marc-inside-cover{width:48%;border:1px solid #ad8552;border-left:4px double #b79a70;background:radial-gradient(ellipse at 45% 45%,#fff4d4,#ead2a0 75%,#c59b63);box-shadow:inset -10px 0 16px #66422455,-3px 3px 0 #b99a6c;transform:none;overflow:hidden}
+.marc-inner-pages .marc-inside-cover:after,.marc-inner-pages .marc-first-page:before,.marc-inner-pages .marc-first-page:after{display:none}
+.marc-faded-writing{position:absolute;inset:9% 8%;width:84%;height:82%;filter:blur(.45px);opacity:.8;pointer-events:none}
+.marc-folio{position:absolute;right:12%;bottom:3%;font:clamp(11px,2.8vw,17px) Georgia,serif;color:#775337}
+.marc-flipping-leaf{position:absolute;top:3%;bottom:3%;left:44%;right:1%;background:linear-gradient(90deg,#c9ac78,#f9edcb 20%,#e4cd9c);border:1px solid #ae8a54;border-radius:2px 8px 8px 2px;transform-origin:left center;backface-visibility:visible;pointer-events:none;z-index:5;box-shadow:3px 0 12px #30170e40}
+.marc-recipe-ingredients,.marc-recipe-directions{position:absolute;inset:9% 8%;display:flex;flex-direction:column;justify-content:center;color:#492a19;font-family:"Caveat",cursive;font-size:clamp(17px,4.9vw,31px);line-height:1.1}
+.marc-recipe-ingredients h2{font:700 1.1em/1.05 "Caveat",cursive;text-align:center;margin:0 0 10%;color:#6f3020;text-shadow:none}
+.marc-recipe-ingredients ul{list-style:none;padding:0;margin:0}.marc-recipe-ingredients li{margin:0 0 5%;padding:0}
+.marc-recipe-directions{inset:10% 8%;font-size:clamp(18px,5.6vw,35px);line-height:1.12;gap:5%;text-align:center}
+@media(max-height:450px){
+ .marc-reading{padding-top:48px;padding-bottom:8px;gap:8px}
+ .marc-reading .marc-volume{width:min(88vw,calc((100dvh - 112px)*1.15))}
+ .marc-page-picker input,.marc-page-picker button{min-height:34px}
+ .marc-recipe-ingredients{font-size:clamp(14px,4.1vh,22px)}
+ .marc-recipe-directions{font-size:clamp(16px,4.5vh,25px)}
+}
+.marc-inner-pages .marc-first-page{left:49%}
