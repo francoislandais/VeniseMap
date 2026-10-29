@@ -2210,22 +2210,23 @@ const bFill = (el, pad) => {
 const STAR_SVG = '<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M12 2.8l2.75 5.8 6.35.85-4.65 4.4 1.15 6.3L12 17l-5.6 3.15 1.15-6.3L2.9 9.45l6.35-.85z" fill="#F2B51C" stroke="#F2B51C" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 if (DEV) window.__stars = (n) => starsToCounter(innerWidth / 2, innerHeight * 0.6, n, false);
 function starBurst(el, n, counted = false) { const r = el.getBoundingClientRect(); starsToCounter(r.left + r.width / 2, r.top + r.height / 2, n, counted); }
-function starsToCounter(cx, cy, n, counted = false) {
+function starsToCounter(cx, cy, n, counted = false, options = {}) {
   const box = $("#hud-score"), sc = $(".sc-n", box), num = $("b", sc), svg = $("svg", sc); if (!sc) return;
-  const N = Math.max(1, Math.min(n, 14)), per = n / N;
+  const N = Math.max(1, Math.min(n, options.rain ? 60 : 14)), per = n / N, flights = [];
   if (!scoreAnim) scoreAnim = { shown: parseFloat(num.textContent) || 0, left: 0 };
   if (counted) { scoreAnim.shown = Math.max(0, scoreAnim.shown - n); num.textContent = Math.round(scoreAnim.shown); }
   scoreAnim.left += N; sc.classList.add("rx"); box.classList.add("rx");
   const t = svg.getBoundingClientRect(), tx = t.left + t.width / 2, ty = t.top + t.height / 2, sz = 30;
   for (let i = 0; i < N; i++) {
-    const s = document.createElement("div"); s.className = "fly-star"; s.innerHTML = STAR_SVG; s.style.cssText = `left:${cx - sz / 2}px;top:${cy - sz / 2}px;width:${sz}px;height:${sz}px`; document.body.appendChild(s);
-    const a0 = (i / N) * Math.PI * 2 + Math.random() * 0.4, R = 46 + (i % 3) * 18, dx = tx - cx, dy = ty - cy, bx = Math.cos(a0) * R, by = Math.sin(a0) * R;
-    s.animate([
+    const s = document.createElement("div"); s.className = "fly-star"; s.innerHTML = STAR_SVG; const ox = options.rain ? innerWidth * (.08 + Math.random() * .84) : cx, oy = options.rain ? -30 - Math.random() * 90 : cy;
+    s.style.cssText = `left:${ox - sz / 2}px;top:${oy - sz / 2}px;width:${sz}px;height:${sz}px`; document.body.appendChild(s);
+    const a0 = (i / N) * Math.PI * 2 + Math.random() * 0.4, R = 46 + (i % 3) * 18, dx = tx - ox, dy = ty - oy, bx = Math.cos(a0) * R + cx - ox, by = Math.sin(a0) * R + cy - oy;
+    flights.push(s.animate([
       { transform: "translate(0,0) scale(.3) rotate(0deg)", opacity: 0 },
       { transform: `translate(${bx}px,${by}px) scale(1.15) rotate(120deg)`, opacity: 1, offset: 0.28 },
       { transform: `translate(${bx + (dx - bx) * 0.55}px,${by + (dy - by) * 0.55 - 30}px) scale(1) rotate(300deg)`, opacity: 1, offset: 0.65 },
       { transform: `translate(${dx}px,${dy}px) scale(.55) rotate(480deg)`, opacity: 1 },
-    ], { duration: 1000, delay: 120 + i * 85, easing: "cubic-bezier(.45,0,.35,1)", fill: "both" }).finished.then(() => {
+    ], { duration: options.rain ? 1600 : 1000, delay: options.rain ? i * 26 : 120 + i * 85, easing: "cubic-bezier(.45,0,.35,1)", fill: "both" }).finished.then(() => {
       s.remove(); scoreAnim.shown += per; num.textContent = Math.round(scoreAnim.shown);
       svg.animate([{ transform: "scale(1) rotate(0)", filter: "brightness(1)" }, { transform: "scale(1.5) rotate(-16deg)", filter: "brightness(1.5) drop-shadow(0 0 10px #ffd34d)", offset: 0.3 }, { transform: "scale(1.25) rotate(12deg)", offset: 0.6 }, { transform: "scale(1) rotate(0)", filter: "brightness(1)" }], { duration: 300 });
       num.animate([{ transform: "scale(1)" }, { transform: "scale(1.35)", color: "#b07a00", offset: 0.35 }, { transform: "scale(1)" }], { duration: 300 });
@@ -2236,8 +2237,9 @@ function starsToCounter(cx, cy, n, counted = false) {
         for (let k = 0; k < 8; k++) { const sp = document.createElement("i"); sp.className = "sc-spark"; sp.style.cssText = `left:${tx}px;top:${ty}px`; document.body.appendChild(sp); const an = (k / 8) * Math.PI * 2; sp.animate([{ transform: "translate(-50%,-50%) scale(1)", opacity: 1 }, { transform: `translate(${Math.cos(an) * 34 - 4}px,${Math.sin(an) * 34 - 4}px) scale(.2)`, opacity: 0 }], { duration: 700, easing: "ease-out" }).finished.then(() => sp.remove()); }
         const nb = $("#hud-score .sc-n svg"); if (nb) nb.animate([{ filter: "drop-shadow(0 0 0 #ffd34d)" }, { filter: "drop-shadow(0 0 14px #ffd34d) brightness(1.4)" }, { filter: "drop-shadow(0 0 0 #ffd34d)" }], { duration: 900 });
       }
-    });
+    }));
   }
+  return Promise.all(flights);
 }
 function bridgeChoose(ch, stars = 0, centerFrom = null) {
   return new Promise((res) => {
@@ -3690,7 +3692,7 @@ function renderObjectAssembly() {
   });
   tryMarcRecipe();
 }
-let marcChestBusy = false;
+let marcChestBusy = false, marcRewardFlight = Promise.resolve();
 function tryMarcRecipe() {
   if (marcChestBusy) return;
   if (objectAssembly.has("evangile-marc") && objectList().some(o => o.id === "evangile-marc" && o.found)) {
@@ -3705,7 +3707,15 @@ function tryMarcRecipe() {
   const owned = objectList();
   if (!["coffre-masque", "masque-or"].every(id => owned.some(o => o.id === id && o.found))) return;
   marcChestBusy = true;
+  const rewardMarc = (key, amount, cx, cy) => {
+    if (has(key)) return marcRewardFlight;
+    award(key, amount, meIdx()); save(); refreshAll();
+    marcRewardFlight = starsToCounter(cx, cy, amount, true, { rain: true });
+    return marcRewardFlight;
+  };
   openMarcChest({
+    onOpen: (cx, cy) => rewardMarc("bonus:marc-chest:opening", 50, cx, cy),
+    onReveal: (cx, cy) => rewardMarc("bonus:marc-chest:book", 40, cx, cy),
     canClaim: () => !has("craft:marc-chest:opened"),
     onClaim: () => {
       if (has("craft:marc-chest:opened")) return false;
@@ -3720,7 +3730,7 @@ function tryMarcRecipe() {
 }
 function seedMarcAdminTest(replay = false) {
   if (!ADMIN_CONTEXT || (!replay && has("test:marc-chest:v1"))) return;
-  if (replay) for (const key of ["o:evangile-marc", "craft:marc-chest:opened", grantKey(meIdx(), "object:evangile-marc")]) unaward(key);
+  if (replay) for (const key of ["o:evangile-marc", "craft:marc-chest:opened", "bonus:marc-chest:opening", "bonus:marc-chest:book", grantKey(meIdx(), "object:evangile-marc")]) unaward(key);
   for (const key of ["o:coffre-masque", DOGANA_MASK_KEY, "test:marc-chest:v1"]) award(key, 0, meIdx());
   objectAssembly.clear(); save();
 }

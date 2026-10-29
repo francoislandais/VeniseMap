@@ -2293,3 +2293,11 @@ body.menu-open #admin-position-tip,body.chap-open #admin-position-tip{display:no
 .monteverdi-story .mv-top .mv-copy{top:calc(env(safe-area-inset-top,0px) + 10dvh);text-align:left}
 .monteverdi-story .mv-bottom .mv-copy{bottom:calc(env(safe-area-inset-bottom,0px) + 14dvh);text-align:right}
 @media(prefers-reduced-motion:reduce){.monteverdi-story .mv-painting,.monteverdi-story .mv-portrait{animation:none}.monteverdi-story .mv-page{transition:none}}
+
+/* Les gains du coffre tombent en pluie et rejoignent le compteur au premier plan. */
+body.marc-reward-active #hud{z-index:20002}
+body.marc-reward-active .fly-star,body.marc-reward-active .sc-ring,body.marc-reward-active .sc-spark{z-index:20003}
+.marc-presented .marc-book,.marc-presented .marc-book img{animation:none!important;transition:none!important;translate:none}
+body.menu-open.marc-reward-active #hud{visibility:visible!important}
+body.marc-reward-active #hud-kids{visibility:hidden}
+.marc-magic:not(.marc-reading) .marc-close{left:max(14px,env(safe-area-inset-left));right:auto}
