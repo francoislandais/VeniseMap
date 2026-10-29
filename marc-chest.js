@@ -56,3 +56,27 @@ export function openMarcChest({ canClaim, onClaim, onClose }) {
   })();
   return dismiss;
 }
+
+// First recto: real selectable text remains sharp and accessible at every size.
+export function openMarcBook({ onClose }) {
+  const root = document.createElement('div');
+  root.className = 'marc-magic marc-reading';
+  root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'Première page de l’Évangile selon saint Marc');
+  root.innerHTML = `<button type="button" class="marc-close" aria-label="Refermer le livre">×</button><div class="marc-volume"><div class="marc-inside-cover"></div><div class="marc-first-page"><div class="marc-inscription"><p>Ce livre est<br>la propriété de…</p><p class="marc-owner">Saint Marc</p></div></div><div class="marc-turning-cover" aria-hidden="true"><img src="img/objets/evangile-marc.png" alt=""></div></div>`;
+  const previous = document.activeElement;
+  document.body.appendChild(root);
+  const close = root.querySelector('.marc-close'), volume = root.querySelector('.marc-volume'), cover = root.querySelector('.marc-turning-cover');
+  let closed = false; const animations = [];
+  const dismiss = () => {
+    if (closed) return;
+    closed = true; animations.forEach(a => a.cancel()); root.remove(); document.removeEventListener('keydown', keydown); onClose(); if (previous?.isConnected) previous.focus();
+  };
+  const keydown = e => { if (e.key === 'Escape') dismiss(); if (e.key === 'Tab') { e.preventDefault(); close.focus(); } };
+  close.onclick = dismiss; document.addEventListener('keydown', keydown); close.focus();
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const duration = reduced ? 1 : 1500;
+  animations.push(volume.animate([{ transform: 'scale(.5)', opacity: .1 }, { transform: 'scale(1)', opacity: 1 }], { duration: reduced ? 1 : 650, easing: 'ease-out', fill: 'forwards' }));
+  animations.push(cover.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(-168deg)' }], { duration, delay: reduced ? 0 : 250, easing: 'cubic-bezier(.2,.6,.25,1)', fill: 'forwards' }));
+  root.querySelector('.marc-inscription').animate([{ opacity: 0 }, { opacity: 1 }], { duration: reduced ? 1 : 650, delay: reduced ? 0 : 1150, fill: 'both' });
+  return dismiss;
+}

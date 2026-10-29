@@ -2263,3 +2263,18 @@ body.menu-open #admin-position-tip,body.chap-open #admin-position-tip{display:no
 @keyframes marc-aura{50%{opacity:.4;transform:scale(1.2)}}
 @keyframes marc-book-glow{50%{filter:drop-shadow(0 0 22px #ffdc82);translate:0 -5px}}
 @media(prefers-reduced-motion:reduce){.marc-magic *{animation:none!important;transition:none!important}}
+
+@font-face{font-family:"Caveat";src:url('fonts/caveat.ttf') format('truetype');font-weight:400 700;font-style:normal;font-display:swap}
+.marc-reading{background:radial-gradient(ellipse at center,#38213e,#100c1b)}
+.marc-volume{position:relative;width:min(94vw,760px,100dvh);aspect-ratio:1.15;max-height:78dvh;perspective:1400px;filter:drop-shadow(0 14px 22px #0008);isolation:isolate}
+.marc-inside-cover,.marc-first-page,.marc-turning-cover{position:absolute;top:3%;bottom:3%;border-radius:4px 10px 12px 4px;box-sizing:border-box}
+.marc-inside-cover{left:1%;width:43%;transform:perspective(1000px) rotateY(8deg);transform-origin:right;background:linear-gradient(90deg,#70312b,#301214);border:7px solid #71352a;box-shadow:inset 0 0 0 1px #ba914f,inset 0 0 0 10px #4c2021,inset 0 0 35px #120809}
+.marc-inside-cover:after{content:"";position:absolute;inset:12%;border:1px solid #b1864770;border-radius:50%;background:radial-gradient(ellipse,#c38a3422,transparent 65%)}
+.marc-first-page{left:44%;right:1%;padding:8% 5% 8% 6%;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 45% 45%,#fff4d4,#ead2a0 75%,#c59b63);border:1px solid #ad8552;border-right:5px double #b79a70;box-shadow:inset 12px 0 15px #66422455,3px 3px 0 #d6bd8c,6px 6px 0 #a78355;overflow:hidden}
+.marc-first-page:before,.marc-first-page:after{content:"❧";position:absolute;left:0;right:0;text-align:center;color:#8e6934;font-family:Georgia,serif;font-size:clamp(22px,5vw,40px)}
+.marc-first-page:before{top:8%}.marc-first-page:after{bottom:8%;rotate:180deg}
+.marc-inscription{position:relative;width:100%;color:#4d2b19;text-align:center;font-family:"Caveat","Snell Roundhand",cursive;font-weight:500;font-size:clamp(21px,6.8vw,47px);line-height:1.15;rotate:-2deg;text-shadow:0 1px 0 #fff2;overflow-wrap:normal}
+.marc-inscription p{margin:0}.marc-inscription .marc-owner{margin-top:18%;font-weight:700;font-size:1.3em;white-space:nowrap}
+.marc-turning-cover{left:44%;right:1%;transform-origin:left center;transform-style:preserve-3d;pointer-events:none;background:#572123;border:3px solid #9c7437;box-shadow:0 3px 12px #0006;backface-visibility:hidden}
+.marc-turning-cover img{width:100%;height:100%;object-fit:fill;display:block;backface-visibility:hidden}
+@media(max-height:450px){.marc-reading .marc-volume{width:min(80vw,86dvh);max-height:80dvh}.marc-reading .marc-inscription{font-size:clamp(19px,4.6vh,30px)}}

@@ -9,7 +9,7 @@ import { SCHIAVONI_GEMS, createSchiavoniGems } from "./schiavoni-gems.js";
 import { createGabrielMessages, isGabriel } from "./data/corto-gabriel.js";
 import { apiFetch } from "./api.js";
 import { createPhotoLibrary } from "./photo-sync.js";
-import { openMarcChest } from "./marc-chest.js";
+import { openMarcChest, openMarcBook } from "./marc-chest.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -3690,7 +3690,16 @@ function renderObjectAssembly() {
 }
 let marcChestBusy = false;
 function tryMarcRecipe() {
-  if (marcChestBusy || has("craft:marc-chest:opened") || !objectAssembly.has("coffre-masque") || !objectAssembly.has("masque-or")) return;
+  if (marcChestBusy) return;
+  if (objectAssembly.has("evangile-marc") && objectList().some(o => o.id === "evangile-marc" && o.found)) {
+    marcChestBusy = true;
+    openMarcBook({ onClose: () => {
+      marcChestBusy = false; objectAssembly.delete("evangile-marc");
+      if (tab === "objects") renderObjects();
+    } });
+    return;
+  }
+  if (has("craft:marc-chest:opened") || !objectAssembly.has("coffre-masque") || !objectAssembly.has("masque-or")) return;
   const owned = objectList();
   if (!["coffre-masque", "masque-or"].every(id => owned.some(o => o.id === id && o.found))) return;
   marcChestBusy = true;
