@@ -1047,6 +1047,15 @@ function walkerTap(W) {
     });
     return;
   }
+  if (W.id === "monteverdi" && has("pn:monteverdi")) {
+    openMonteverdiStory({ revisit: true, onYes: ({ x, y }) => {
+      const key = "bonus:monteverdi:concert-liked";
+      if (has(key)) return;
+      award(key, 200, meIdx()); save(); refreshAll();
+      starsToCounter(x, y, 200, true, { rain: true });
+    } });
+    return;
+  }
   if (W.quiz) openWalkerQuiz(W); else cortoSays(W.msg);
 }
 // Le livre doit être réellement trouvé et tenu en main sur la carte avant la remise à saint Marc.

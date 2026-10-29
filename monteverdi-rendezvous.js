@@ -21,6 +21,14 @@ const PAGES = [
   "Retrouve-la avant ce soir, jeune matelot !",
 ];
 
+const REVISIT_PAGES = [
+  "Alors, comment était mon concert ?",
+  "Est-ce que ça t’a plu ? C’était mieux que du Jul ou pas ?",
+  "Ça change, hein ?",
+  "Allez, reviens vite me voir.",
+  "Et n’oublie pas de retrouver mon instrument !",
+];
+
 function typeLine(element, text) {
   element.setAttribute("aria-label", text);
   element.textContent = "";
@@ -38,7 +46,7 @@ function typeLine(element, text) {
   return { get done() { return done; }, finish };
 }
 
-export function openMonteverdiStory() {
+export function openMonteverdiStory({ revisit = false, onYes = () => {} } = {}) {
   if (document.querySelector(".monteverdi-story,.corto-rendezvous,.wq")) return;
   const previousFocus = document.activeElement;
   const overlay = document.createElement("div");
@@ -52,9 +60,36 @@ export function openMonteverdiStory() {
   document.body.classList.add("corto-rendezvous-open");
   const stage = overlay.querySelector(".mv-stage"), previous = overlay.querySelector(".cr-prev");
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const pages = revisit ? REVISIT_PAGES : PAGES;
+  let music = null, musicFade = 0;
+  const stopMusic = () => { clearTimeout(musicFade); if (music) { music.pause(); music.currentTime = 0; music = null; } };
+  const celebrate = () => {
+    const portrait = overlay.querySelector(".mv-portrait"), r = portrait.getBoundingClientRect();
+    portrait.animate([
+      { transform: "rotate(0deg) scale(1)" },
+      { transform: "rotate(180deg) scale(1.22)", offset: .55 },
+      { transform: "rotate(360deg) scale(1)" },
+    ], { duration: reduced ? 450 : 1500, easing: "cubic-bezier(.35,.7,.3,1)", fill: "forwards" });
+    onYes({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    stopMusic();
+    music = new Audio("audio/vepres-depart.mp3");
+    music.volume = .55;
+    music.play().catch(() => {});
+    musicFade = setTimeout(() => {
+      const audio = music; if (!audio) return;
+      const start = performance.now(), initial = audio.volume;
+      const fade = (now) => {
+        if (music !== audio) return;
+        audio.volume = Math.max(0, initial * (1 - (now - start) / 1200));
+        if (audio.volume > 0) requestAnimationFrame(fade); else stopMusic();
+      };
+      requestAnimationFrame(fade);
+    }, 4500);
+  };
   let index = 0, scene = null, typing = null, pointerStart = null;
   const close = () => {
     typing?.finish();
+    stopMusic();
     document.removeEventListener("keydown", onKey);
     overlay.remove();
     document.body.classList.remove("corto-rendezvous-open");
@@ -68,9 +103,21 @@ export function openMonteverdiStory() {
     const old = scene;
     stage.appendChild(next); scene = next;
     const copy = next.querySelector(".mv-copy");
-    typing = reduced ? null : typeLine(copy, PAGES[index]);
-    if (reduced) { copy.textContent = PAGES[index]; copy.setAttribute("aria-label", PAGES[index]); }
-    previous.hidden = index === 0;
+    typing = reduced ? null : typeLine(copy, pages[index]);
+    if (reduced) { copy.textContent = pages[index]; copy.setAttribute("aria-label", pages[index]); }
+    previous.hidden = index === 0 || (revisit && index === 2);
+    if (revisit && index === 1) {
+      const answers = document.createElement("div"); answers.className = "mv-answers";
+      answers.innerHTML = '<button type="button" data-answer="yes">Oui, j’ai aimé !</button><button type="button" data-answer="no">Pas vraiment</button>';
+      next.appendChild(answers);
+      answers.onclick = (event) => {
+        const button = event.target.closest("button[data-answer]"); if (!button || answers.dataset.answered) return;
+        answers.dataset.answered = "1"; typing?.finish();
+        if (button.dataset.answer === "yes") celebrate();
+        answers.querySelectorAll("button").forEach((item) => { item.disabled = true; item.classList.toggle("chosen", item === button); });
+        setTimeout(() => { if (overlay.isConnected && index === 1) { index = 2; show(); } }, button.dataset.answer === "yes" ? 1600 : 420);
+      };
+    }
     if (!old) return;
     if (reduced) { old.remove(); next.classList.remove("mv-enter"); return; }
     old.classList.add("mv-exit");
@@ -79,7 +126,8 @@ export function openMonteverdiStory() {
   };
   const advance = () => {
     if (typing && !typing.done) { typing.finish(); return; }
-    if (index < PAGES.length - 1) { index++; show(); } else close();
+    if (revisit && index === 1) return;
+    if (index < pages.length - 1) { index++; show(); } else close();
   };
   const back = () => { if (index > 0) { index--; show(); } };
   const onKey = (event) => {
@@ -91,11 +139,12 @@ export function openMonteverdiStory() {
   previous.onclick = back;
   document.addEventListener("keydown", onKey);
   stage.addEventListener("pointerdown", (event) => {
-    if (!event.isPrimary || event.button !== 0) return;
+    if (!event.isPrimary || event.button !== 0 || event.target.closest(".mv-answers")) return;
     pointerStart = { x: event.clientX, y: event.clientY, time: Date.now() };
   });
   stage.addEventListener("pointerup", (event) => {
     const start = pointerStart; pointerStart = null;
+    if (event.target.closest(".mv-answers")) return;
     if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12 || Date.now() - start.time > 800) return;
     advance();
   });

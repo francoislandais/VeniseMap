@@ -2438,3 +2438,10 @@ body.history-open .menu-say{display:none!important}
 .history-lion{padding:0;display:block}.history-lion-map{position:absolute;inset:0}.history-map-player{padding:10px;border:2px solid #fff;border-radius:50%;background:#254a71;color:#fff;font-size:14px}
 @media(prefers-reduced-motion:reduce){.history-shower i{animation:none}}
 body.intro-open > .history-replay-back{visibility:visible!important}
+
+/* Nouvelle rencontre avec Monteverdi : choix posé sur son aquarelle. */
+.monteverdi-story .mv-answers{position:absolute;z-index:5;left:20px;right:20px;bottom:calc(env(safe-area-inset-bottom,0px) + 14dvh);display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.monteverdi-story .mv-answers button{min-height:44px;padding:10px 18px;border:1px solid #d5e6f1;border-radius:999px;background:#112d53;color:#fff;font:600 16px/1.2 system-ui,sans-serif;box-shadow:0 3px 14px #00152e8c;touch-action:manipulation}
+.monteverdi-story .mv-answers button.chosen{background:#386a91;box-shadow:0 0 18px #e2c670}
+.monteverdi-story .mv-answers button:focus-visible{outline:2px solid #fff2bd;outline-offset:3px}
+@media(max-height:600px){.monteverdi-story .mv-answers{bottom:calc(env(safe-area-inset-bottom,0px) + 8dvh)}.monteverdi-story .mv-answers button{min-height:38px;padding:7px 13px}}
