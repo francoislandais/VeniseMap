@@ -1,4 +1,4 @@
-const VERSION = "v2.337.0";
+const VERSION = "v2.338.0";
 const SHELL = `vq-shell-${VERSION}`;
 // Cœur de l'appli précaché ; le reste peut être préparé depuis le profil du joueur.
 const FILES = ["./", "index.html", "style.css", "app.js", "data.js", "corto-lieux.js", "intro.js", "mapstyle.js", "config.js", "manifest.webmanifest", "vendor/maplibre-gl.js", "vendor/maplibre-gl.css", "fonts/special-elite-latin.woff2", "img/map-icon.webp", "img/objets/coquille.svg", "img/objets/perle.svg", "img/objets/plume.svg", "img/objets/coffre-code.svg", "img/objets/parchemin.svg", "img/objets/partition.svg", "img/objets/cle-bronze.svg", "img/objets/fiole-lagune.svg", "img/objets/verre-murano.svg", "img/objets/boussole.svg", "img/objets/masque.svg", "img/objets/sceau-lion.svg", "img/objets/diamant.svg", "img/objets/ruban-soie.svg", "img/objets/lanterne.svg", "img/intro/bg.webp", "img/home-icon.webp", "img/bridge-icon.webp", "data/petits-canaux.json", "data/outfits.json", "data/bridges.json", "data/facts.json", "icons/icon-192.png", "icons/icon-512.png", "img/corto-face.webp", "img/corto-content.webp", "img/corto-venise-pastel.webp"];
@@ -12,6 +12,7 @@ FILES.push("img/objets/rubis-burano.svg");
 FILES.push("img/objets/masque-or.webp");
 FILES.push("img/montage/schiavoni.jpg");
 FILES.push("fonts/caveat.ttf", "fonts/caveat-OFL.txt");
+FILES.push("data/outfits.json", ...["altesse-hat.png", "altesse-col.png", "serenissime-hat.png", "serenissime-col.png"].map(name => "img/outfit/" + name));
 FILES.push("lion-companion.js", "marc-recipe.js", "img/objets/croquette-sacree.svg");
 FILES.push("marc-chest.js", "img/objets/coffre-masque.png", "img/objets/evangile-marc.png");
 FILES.push("data/corto-gabriel.js", "api.js", "photo-sync.js");

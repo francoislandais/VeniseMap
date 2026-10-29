@@ -99,5 +99,63 @@
    "hy": 0.1,
    "cy": -0.07
   }
+ },
+ "altesse": {
+  "hat": {
+   "ax": 760,
+   "ay": 924,
+   "w": 1500,
+   "size": [
+    1521,
+    1034
+   ],
+   "src": "img/outfit/altesse-hat.png"
+  },
+  "col": {
+   "ax": 853,
+   "ay": 450,
+   "w": 1706,
+   "size": [
+    1706,
+    922
+   ],
+   "src": "img/outfit/altesse-col.png",
+   "fullBust": true
+  },
+  "adj": {
+   "hs": 0.85,
+   "hy": 0.05,
+   "cw": 0.7,
+   "cy": -0.02
+  }
+ },
+ "serenissime": {
+  "hat": {
+   "ax": 840,
+   "ay": 590,
+   "w": 1000,
+   "size": [
+    1748,
+    900
+   ],
+   "src": "img/outfit/serenissime-hat.png"
+  },
+  "col": {
+   "ax": 650,
+   "ay": 430,
+   "w": 1490,
+   "size": [
+    1536,
+    1024
+   ],
+   "src": "img/outfit/serenissime-col.png",
+   "fullBust": true
+  },
+  "adj": {
+   "hs": 1.05,
+   "hy": 0.07,
+   "cw": 0.8,
+   "cy": 0
+  }
  }
 }

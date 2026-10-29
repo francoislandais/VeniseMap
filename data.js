@@ -24,6 +24,8 @@ export const LEVELS = [
   { min: 1100, name: "Marin", emoji: "⛵" },
   { min: 1500, name: "Capitaine", emoji: "🏴‍☠️" },
   { min: 2000, name: "Amiral", emoji: "👑" },
+  { min: 3000, name: "Altesse", emoji: "👑", address: "Votre Altesse" },
+  { min: 4000, name: "Sérénissime Altesse", emoji: "⚜️", address: "Votre Sérénissime Altesse" },
 ];
 
 // Collections libres, à cocher à tout moment (+3 points chacune)

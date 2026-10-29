@@ -4221,7 +4221,7 @@ function enterFs() { const de = document.documentElement, f = de.requestFullscre
 for (const ev of ["pointerup", "touchend", "click"]) addEventListener(ev, () => { if (!fsDone && fsPref()) enterFs(); }, { capture: true, passive: true });
 /* ───────── Tenues de grade : chapeau + col posés sur la tête enregistrée ───────── */
 // Les accessoires (img/outfit/<grade>-hat|col.webp) sont détourés des dessins de référence ; data/outfits.json donne leurs points d'ancrage.
-const GRADE_KEYS = { Mousse: "mousse", Marin: "marin", Capitaine: "capitaine", Amiral: "amiral" }; // les quatre tenues retenues (grades sans tenue : pas de cérémonie d'habillage)
+const GRADE_KEYS = { Mousse: "mousse", Marin: "marin", Capitaine: "capitaine", Amiral: "amiral", Altesse: "altesse", "Sérénissime Altesse": "serenissime", "Sérénissime altesse": "serenissime" }; // les tenues de grade (grades sans tenue : pas de cérémonie d'habillage)
 let OUTFITS = null; const imgCache = {};
 const loadImg = (src) => (imgCache[src] ||= new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }));
 function headMetrics(img, cut, frame) {
@@ -4236,8 +4236,10 @@ function headMetrics(img, cut, frame) {
   return { T, B, cx: (best[0] + best[1]) / 2, Wh: Math.max(10, best[2]) };
 }
 async function composeOutfit(photo, cut, key, o = {}, frame = false) {
-  const [head, hat, col] = await Promise.all([loadImg(photo), loadImg(`img/outfit/${key}-hat.webp`), loadImg(`img/outfit/${key}-col.webp`)]);
-  const cfg = OUTFITS[key], m = headMetrics(head, cut, frame), W = head.naturalWidth, H = head.naturalHeight, pad = Math.round(m.Wh * 0.9);
+  const cfg = OUTFITS[key];
+  if (!cfg) throw new Error(`Tenue inconnue : ${key}`);
+  const [head, hat, col] = await Promise.all([loadImg(photo), loadImg(cfg.hat.src || `img/outfit/${key}-hat.webp`), loadImg(cfg.col.src || `img/outfit/${key}-col.webp`)]);
+  const m = headMetrics(head, cut, frame), W = head.naturalWidth, H = head.naturalHeight, pad = Math.round(m.Wh * 0.9);
   const ad = cfg.adj || {}, hs = (o.hs ?? 1.25) * (ad.hs ?? 1), hy = (o.hy ?? 0) + (ad.hy ?? 0), cw = (o.cw ?? 3.1) * (ad.cw ?? 1), cyy = (o.cy ?? 0) + (ad.cy ?? 0); // adj : retouche propre à chaque tenue (data/outfits.json)
   const CW = Math.max(W, Math.ceil(m.Wh * cw * 1.04)), ox = Math.round((CW - W) / 2); m.cx += ox; // la toile s'élargit pour que le col imposant ne soit pas rogné
   const cv = document.createElement("canvas"); cv.width = CW; cv.height = H + pad; const x = cv.getContext("2d"); x.imageSmoothingQuality = "high";
@@ -4250,9 +4252,11 @@ async function composeOutfit(photo, cut, key, o = {}, frame = false) {
   if (!o.hatOnly && !o.plain) {
     const radius = Math.min(W, H) * 0.49, feather = Math.min(18, radius * 0.13);
     const circleX = ox + W / 2 - cx0, circleY = pad + H * (frame ? 0.45 : 0.5) - cy0;
-    const edge = tx.createRadialGradient(circleX, circleY, radius - feather, circleX, circleY, radius);
-    edge.addColorStop(0, "#000"); edge.addColorStop(1, "transparent");
-    tx.globalCompositeOperation = "destination-in"; tx.fillStyle = edge; tx.fillRect(0, 0, t.width, t.height);
+    if (!cfg.col.fullBust) {
+      const edge = tx.createRadialGradient(circleX, circleY, radius - feather, circleX, circleY, radius);
+      edge.addColorStop(0, "#000"); edge.addColorStop(1, "transparent");
+      tx.globalCompositeOperation = "destination-in"; tx.fillStyle = edge; tx.fillRect(0, 0, t.width, t.height);
+    }
     tx.globalCompositeOperation = "source-over"; x.drawImage(t, cx0, cy0);
   }
   // chapeau : bord inférieur au niveau du front
@@ -4263,12 +4267,14 @@ async function composeOutfit(photo, cut, key, o = {}, frame = false) {
   return cv;
 }
 /* ───────── Cérémonie de changement de grade ───────── */
-const OUTFIT_LEVELS = { 1: "mousse", 2: "marin", 3: "capitaine", 4: "amiral" }; // index de grade (LEVELS) -> tenue
+const OUTFIT_LEVELS = { 1: "mousse", 2: "marin", 3: "capitaine", 4: "amiral", 5: "altesse", 6: "serenissime" }; // index de grade (LEVELS) -> tenue
 const CER_TEXT = {
   mousse: "Tu n'es plus un simple touriste : te voilà MOUSSE ! Le capitaine compte sur toi.",
   marin: "Hissez haut ! Tu deviens MARIN, un vrai loup de mer.",
   capitaine: "Capitaine à bord ! Tu commandes désormais ton propre navire.",
   amiral: "Amiral ! Toute la flotte de Venise est à tes ordres.",
+  altesse: "Altesse ! Venise entière salue tes aventures et ton courage.",
+  serenissime: "Sérénissime Altesse ! Ton nom résonne désormais dans toute la lagune.",
 };
 let ceremonyBusy = false;
 async function wearOutfit(key, initialShift) { // pose (ou retire) les deux pièces sur la photo du profil
@@ -4288,7 +4294,8 @@ async function wearOutfit(key, initialShift) { // pose (ou retire) les deux piè
   }
   saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
 }
-async function ceremony(key, li) {
+async function ceremony(key, li, { record = false } = {}) {
+  const ceremonyPlayer = PLAYER_ID, ceremonyReset = S.resetAt || 0;
   if (ceremonyBusy) return; ceremonyBusy = true;
   let ov;
   try {
@@ -4387,18 +4394,31 @@ async function ceremony(key, li) {
       P.outfitShift = shift; saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker();
     }
     await ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).finished;
+    if (record && ceremonyPlayer === PLAYER_ID && ceremonyReset === (S.resetAt || 0) && pointsOf(meIdx()) >= LEVELS[li].min) {
+      award(`ceremony:grade:${key}:v1`, 0, meIdx()); save();
+      try { localStorage.setItem(`vq_cer4_${PLAYER_ID}`, String(li)); } catch {}
+    }
   } finally { ov?.remove(); ceremonyBusy = false; }
 }
-// Un nouveau grade à tenue a-t-il été atteint ? (au plus une cérémonie à la fois, jamais pendant une épreuve ou une animation)
+// Rattraper les grades royaux même si l’ancien compteur local les a déjà sautés.
+let ceremonyRetryAt = 0;
 function checkCeremony() {
-  if (!PROFILE || ceremonyBusy || openId || tab !== "map" || scoreAnim || $(".wq, .finale, .corto-say, .cam, .pf, .intro")) return;
-  const k = "vq_cer3_" + (PROFILE.name || ""), li = level(pointsOf(meIdx())); let last = null; try { last = localStorage.getItem(k); } catch {}
-  if (last === null) { try { localStorage.setItem(k, String(li)); } catch {} return; } // première fois : pas de cérémonie rétroactive
-  if (li < +last) { try { localStorage.setItem(k, String(li)); } catch {} return; }
-  if (li <= +last) return;
-  try { localStorage.setItem(k, String(li)); } catch {}
-  let hit = null; for (let j = +last + 1; j <= li; j++) if (OUTFIT_LEVELS[j]) hit = j;
-  if (hit !== null) ceremony(OUTFIT_LEVELS[hit], hit);
+  if (!gradeSynced || !PROFILE || ceremonyBusy || openId || tab !== "map" || scoreAnim || Date.now() < ceremonyRetryAt || $(".wq,.finale,.corto-say,.cam,.pf,.intro,.in2,.marc-magic,.croquette-ritual,.mont,.music-quest,.music-found,.doge-msg:not(.menu-say),.lion-arriving")) return;
+  const li = level(pointsOf(meIdx())), k = `vq_cer4_${PLAYER_ID}`;
+  const royal = [5, 6].find(j => j <= li && !has(`ceremony:grade:${OUTFIT_LEVELS[j]}:v1`));
+  const run = j => ceremony(OUTFIT_LEVELS[j], j, { record: true }).catch(() => { ceremonyRetryAt = Date.now() + 30000; });
+  // Les anciens grades ne doivent jamais remplacer une tenue royale après le rattrapage.
+  if (li >= 5) {
+    try { localStorage.setItem(k, String(royal == null ? li : 4)); } catch {}
+    if (royal != null) void run(royal);
+    return;
+  }
+  let last = null;
+  try { last = localStorage.getItem(k) ?? localStorage.getItem("vq_cer3_" + (PROFILE.name || "")); } catch {}
+  if (last == null || li < Number(last)) { try { localStorage.setItem(k, String(li)); } catch {} return; }
+  let hit = null;
+  for (let j = Number(last) + 1; j <= li; j++) if (OUTFIT_LEVELS[j] && !has(`ceremony:grade:${OUTFIT_LEVELS[j]}:v1`)) hit = j;
+  if (hit != null) void run(hit);
 }
 visibleInterval(checkCeremony, 2500);
 if (DEV) { window.__ceremony = (key, li) => ceremony(key, li);
