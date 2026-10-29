@@ -5,6 +5,7 @@ import { LIEUX, PLACE_FAR } from "./corto-lieux.js";
 import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
 import { openCortoRendezvous } from "./corto-rendezvous.js";
 import { openGondolierRendezvous } from "./gondolier-rendezvous.js";
+import { MONTEVERDI_QUIZ, openMonteverdiStory } from "./monteverdi-rendezvous.js";
 import { SCHIAVONI_GEMS, createSchiavoniGems } from "./schiavoni-gems.js";
 import { createGabrielMessages, isGabriel } from "./data/corto-gabriel.js";
 import { apiFetch } from "./api.js";
@@ -845,7 +846,7 @@ function updateWalkScale() { const z = map.getZoom(); $("#map").style.setPropert
 updateWalkScale();
 const WALKERS = [
   { id: "doge", name: "le doge", to: "au doge", de: "du doge", route: "doge-route.json", img: "img/doge-avatar.webp", big: "img/doge-big.webp", bigHappy: "img/doge-big-happy.webp", bigAngry: "img/doge-big-angry.webp", quiz: DOGE_QUIZ, h: 5.5, near: DOGE_NEAR, w: 50, msg: "Le doge te salue d'un air solennel… (il aura bientôt quelque chose à te raconter !)" },
-  { id: "monteverdi", name: "Monteverdi", to: "à Monteverdi", de: "de Monteverdi", route: "monteverdi-route.json", img: "img/monteverdi-avatar.webp", h: 4, near: 60, w: 40, msg: "Monteverdi, le maître de musique de Saint-Marc, te salue… (il aura bientôt quelque chose à te raconter !)" },
+  { id: "monteverdi", name: "Monteverdi", to: "à Monteverdi", de: "de Monteverdi", route: "monteverdi-frari-route.json", img: "img/monteverdi-avatar.webp", big: "img/monteverdi-avatar.webp", quiz: MONTEVERDI_QUIZ, h: 0.45, near: 60, w: 40 },
   { id: "stmarc", name: "saint Marc", to: "à saint Marc", de: "de saint Marc", route: "stmarc-route.json", img: "img/stmarc-avatar.webp", h: 4, near: 60, w: 46, msg: "Saint Marc te salue, l'air soucieux… « As-tu vu mon lion ? Je le cherche partout ! » (il aura bientôt autre chose à te raconter)" },
   { id: "gondolier", name: "le gondolier", to: "au gondolier", de: "du gondolier", route: "gondolier-route.json", img: "img/gondolier-avatar.webp", h: 3, near: 60, w: 64, msg: "Le gondolier te salue d'un coup de chapeau… (il aura bientôt quelque chose à te raconter !)" },
   { id: "lion", name: "le lion ailé", to: "au lion ailé", de: "du lion ailé", route: "lion-route.json", farLines: ["Le lion ailé est dans les airs ! Lève les yeux et attends qu'il passe au-dessus de toi pour lui parler.", "Il vole haut, {g}. Bon courage ! Attends qu'il passe au-dessus de toi.", "Lève les yeux, {g} : le lion ailé survole Venise. Attends qu'il passe près de toi.", "Le lion ailé est en plein vol. Lève les yeux et bon courage pour l'attraper, {g} !", "Impossible de lui parler d'ici : il est dans le ciel. Attends qu'il passe au-dessus de toi."], motion: { cruise: 12, ramp: 8, period: 2160, landings: [{ at: 700, dur: 110 }, { at: 1650, dur: 90 }] }, heading: true, img: "img/lion-avatar.webp", rig: { body: "img/lion-body.webp", rear: "img/lion-rear.webp", front: "img/lion-front.webp", wings: "img/lion-wings.webp", ratio: "325/360" }, h: 5, near: 60, w: 50, msg: "Le lion ailé bat doucement des ailes et te regarde d'un air fier… (il aura bientôt quelque chose à te raconter !)" },
@@ -1060,8 +1061,9 @@ function openWalkerQuiz(W) {
       if (!has("pn:" + W.id)) { award("pn:" + W.id, 3, meIdx()); save(); refreshAll(); starBurst(b, 3, true); }
       img.animate([{ transform: "scale(1)" }, { transform: "scale(1.06) rotate(-2deg)" }, { transform: "scale(1)" }], { duration: 500 });
       txt.textContent = W.quiz.good.replace(/\{g\}/g, gradeLc());
-      box.innerHTML = '<button class="b-btn go-next wq-bye">Merci, ô grand doge !</button>'; box.style.pointerEvents = "";
-      $(".wq-bye", ov).onclick = () => close();
+      const isMonteverdi = W.id === "monteverdi";
+      box.innerHTML = `<button class="b-btn go-next wq-bye">${isMonteverdi ? "Écouter Monteverdi" : "Merci, ô grand doge !"}</button>`; box.style.pointerEvents = "";
+      $(".wq-bye", ov).onclick = () => close(isMonteverdi ? openMonteverdiStory : undefined);
     } else {
       b.classList.add("wrong"); ov.classList.add("vexed"); if (W.bigAngry) img.src = W.bigAngry;
       img.animate([{ transform: "rotate(0)" }, { transform: "rotate(-7deg) translateX(-8px)" }, { transform: "rotate(7deg) translateX(8px)" }, { transform: "rotate(-6deg) translateX(-6px)" }, { transform: "rotate(6deg) translateX(6px)" }, { transform: "rotate(0)" }], { duration: 700, iterations: 2 });

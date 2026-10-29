@@ -2278,3 +2278,18 @@ body.menu-open #admin-position-tip,body.chap-open #admin-position-tip{display:no
 .marc-turning-cover{left:44%;right:1%;transform-origin:left center;transform-style:preserve-3d;pointer-events:none;background:#572123;border:3px solid #9c7437;box-shadow:0 3px 12px #0006;backface-visibility:hidden}
 .marc-turning-cover img{width:100%;height:100%;object-fit:fill;display:block;backface-visibility:hidden}
 @media(max-height:450px){.marc-reading .marc-volume{width:min(80vw,86dvh);max-height:80dvh}.marc-reading .marc-inscription{font-size:clamp(19px,4.6vh,30px)}}
+
+/* Rencontre de Monteverdi : aquarelle, portrait fondu et une réplique par écran. */
+.monteverdi-story{overflow:hidden}
+.monteverdi-story .mv-painting{position:absolute;inset:0;width:108%;height:100%;left:-4%;object-fit:cover;object-position:center 37%;animation:cr-watercolor-drift 20s ease-in-out infinite alternate}
+.monteverdi-story .mv-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(8,20,33,.68),rgba(8,20,33,.09) 43%,rgba(8,20,33,.12) 57%,rgba(8,20,33,.78))}
+.monteverdi-story .mv-portrait{position:absolute;z-index:1;top:22dvh;right:1vw;width:min(58vw,340px);height:56dvh;object-fit:contain;object-position:center top;pointer-events:none;filter:drop-shadow(0 9px 20px rgba(0,0,0,.5));-webkit-mask-image:linear-gradient(to bottom,#000 45%,transparent 100%);mask-image:linear-gradient(to bottom,#000 45%,transparent 100%);animation:mv-portrait-fade 1.1s ease-out both}
+@keyframes mv-portrait-fade{from{opacity:0;transform:translateY(12px);filter:blur(9px)}to{opacity:.86;transform:translateY(0);filter:blur(0) drop-shadow(0 9px 20px rgba(0,0,0,.5))}}
+.monteverdi-story .mv-stage{position:absolute;z-index:2;inset:0;cursor:pointer;touch-action:manipulation}
+.monteverdi-story .mv-page{position:absolute;inset:0;opacity:1;transition:opacity .48s ease}
+.monteverdi-story .mv-page.mv-enter,.monteverdi-story .mv-page.mv-exit{opacity:0}
+.monteverdi-story .mv-page.mv-exit{pointer-events:none}
+.monteverdi-story .mv-copy{position:absolute;left:clamp(20px,6vw,52px);right:clamp(20px,6vw,52px);max-width:620px;margin:0 auto;color:#fff;font:clamp(19px,4.8vw,26px)/1.42 "Special Elite","Courier New",monospace;text-shadow:0 2px 7px rgba(0,0,0,.95),0 0 20px rgba(0,0,0,.65);overflow-wrap:anywhere}
+.monteverdi-story .mv-top .mv-copy{top:calc(env(safe-area-inset-top,0px) + 10dvh);text-align:left}
+.monteverdi-story .mv-bottom .mv-copy{bottom:calc(env(safe-area-inset-bottom,0px) + 14dvh);text-align:right}
+@media(prefers-reduced-motion:reduce){.monteverdi-story .mv-painting,.monteverdi-story .mv-portrait{animation:none}.monteverdi-story .mv-page{transition:none}}
