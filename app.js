@@ -710,6 +710,7 @@ function devCompleteChapter(p, fromMapButton = false) {
   if (has("fin:" + p.id)) unaward("fin:" + p.id);
   if (p.id === "murano") for (const key of ["o:coquillage-murano", "bonus:murano-shell"]) if (has(key)) unaward(key);
   if (p.id === "squero") for (const fruit of SQUERO_FRUITS) for (const key of [fruit.key, `trade:gondolier:spent:object:fruit-squero-${fruit.id}`]) if (has(key)) unaward(key);
+  if (p.id === "pugni") for (const key of ["o:coffre-masque", "bonus:pugni-chest", "trade:gondolier:spent:object:coffre-masque"]) if (has(key)) unaward(key);
   if (p.id === "schiavoni") for (const gem of SCHIAVONI_GEMS) if (has(gem.key)) unaward(gem.key);
   if (p.id === "frari") for (const key of ["o:cle-gondolier", "bonus:trade:gondolier"]) if (has(key)) unaward(key);
   if (has("tr:" + p.id)) unaward("tr:" + p.id);
@@ -1609,6 +1610,65 @@ async function collectSqueroFruit(fruit) {
   starsToCounter(cx, cy, fruit.stars, true);
   record.busy = false; updateSqueroFruitMarkers();
   toast(`${fruit.name} dans ton livre ! +${fruit.stars} ⭐`, 4500);
+}
+
+// Le vieux coffre du pont des Poings rejoint les objets du livre. Il ne s'ouvre qu'avec le masque d'or, plus tard.
+const PUGNI_CHEST = { lat: 45.433197, lon: 12.324586, radius: 38, key: "o:coffre-masque", bonus: "bonus:pugni-chest", stars: 50 };
+let pugniChestMarker = null;
+const pugniChestUnlocked = () => has("fin:pugni") || complete(place("pugni"));
+const pugniChestTaken = () => objectFoundFor("coffre-masque") || has("craft:marc-chest:opened") || has("trade:gondolier:spent:object:coffre-masque");
+function updatePugniChestMarker() {
+  if (!JEU || !pugniChestUnlocked() || pugniChestTaken()) {
+    if (pugniChestMarker && !pugniChestMarker.busy) { pugniChestMarker.marker.remove(); pugniChestMarker = null; }
+    return;
+  }
+  if (!pugniChestMarker) {
+    const el = document.createElement("button"); el.type = "button"; el.className = "pugni-chest-marker";
+    el.setAttribute("aria-label", "Ramasser le vieux coffre près du pont des Poings");
+    el.innerHTML = '<span class="marc-chest-sprite" aria-hidden="true"></span>';
+    const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([PUGNI_CHEST.lon, PUGNI_CHEST.lat]).addTo(map);
+    pugniChestMarker = { marker, el, busy: false };
+    el.addEventListener("pointerdown", (event) => event.stopPropagation());
+    el.addEventListener("click", (event) => { event.stopPropagation(); collectPugniChest(); });
+  }
+  pugniChestMarker.el.hidden = map.getZoom() < 14;
+  pugniChestMarker.el.style.setProperty("--pugni-chest-size", Math.round(Math.min(68, Math.max(48, 44 * 1.3 ** (map.getZoom() - 15)))) + "px");
+}
+map.on("zoom", updatePugniChestMarker);
+async function collectPugniChest() {
+  const record = pugniChestMarker;
+  if (!record || record.busy || !mapWorkVisible() || !pugniChestUnlocked() || pugniChestTaken()) return;
+  record.busy = true; record.el.classList.add("is-checking");
+  const player = meIdx(), [fix] = await Promise.all([maskFix(), sleep(600)]);
+  record.el.classList.remove("is-checking");
+  if (!record.el.isConnected || player !== meIdx()) { record.busy = false; return; }
+  if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.acc) || fix.acc > 80) {
+    record.busy = false; cortoSays("Je n'arrive pas à vérifier ta position. Réessaie près du pont."); return;
+  }
+  const distance = dist(fix.lat, fix.lon, PUGNI_CHEST.lat, PUGNI_CHEST.lon);
+  if (distance > PUGNI_CHEST.radius + Math.min(fix.acc, 20)) {
+    record.busy = false; cortoSays(`Le coffre flotte encore à ${fmtD(distance)}. Rapproche-toi du pont pour l'attraper !`); return;
+  }
+  if (document.querySelector(".doge-msg:not(.menu-say)")) { document.dispatchEvent(new Event("pointerdown")); await sleep(320); }
+  const from = record.el.getBoundingClientRect(), sx = from.left + from.width / 2, sy = from.top + from.height / 2;
+  const cx = innerWidth / 2, cy = innerHeight / 2, size = Math.min(270, innerWidth * .7, innerHeight * .5);
+  const center = `translate(${cx - sx}px,${cy - sy}px) scale(${size / Math.max(from.width, 1)})`;
+  const ghost = document.createElement("div"); ghost.className = "pugni-chest-bloom";
+  ghost.innerHTML = '<span class="marc-chest-sprite" aria-hidden="true"></span>';
+  ghost.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px`;
+  document.body.appendChild(ghost); record.el.style.visibility = "hidden";
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  await ghost.animate([{ transform: "none", opacity: .6 }, { transform: center, opacity: 1 }], { duration: reduced ? 250 : 820, easing: "cubic-bezier(.18,.7,.18,1)", fill: "forwards" }).finished.catch(() => {});
+  if (player !== meIdx() || !mapWorkVisible()) { ghost.remove(); record.el.style.visibility = ""; record.busy = false; return; }
+  award(PUGNI_CHEST.key, 0, player); award(PUGNI_CHEST.bonus, PUGNI_CHEST.stars, player); save(); refreshAll();
+  maskRain(cx, cy); starsToCounter(cx, cy, PUGNI_CHEST.stars, true);
+  await sleep(reduced ? 100 : 620);
+  const bookEl = $("#home-btn"), book = bookEl?.getBoundingClientRect();
+  const tx = book ? book.left + book.width / 2 : cx, ty = book ? book.top + book.height / 2 : cy;
+  bookEl?.classList.add("olive-book-target");
+  await ghost.animate([{ transform: center, opacity: 1 }, { transform: `translate(${tx - sx}px,${ty - sy}px) scale(.12)`, opacity: 0 }], { duration: reduced ? 250 : 950, easing: "cubic-bezier(.3,0,.4,1)", fill: "forwards" }).finished.catch(() => {});
+  ghost.remove(); bookEl?.classList.remove("olive-book-target"); record.busy = false; updatePugniChestMarker();
+  toast("Le coffre au masque est dans ton livre ! +50 ⭐", 5000);
 }
 
 // Le masque central de Burano révèle un rubis à ramasser sur la carte.
@@ -2609,7 +2669,7 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
 const endBravo = () => `Bravo, ${cortoAddress()} !`;
-const endSecret = (p) => p.id === "murano" ? "Un coquillage magique était caché sur cette île… et il vient d’apparaître ! Cherche-le sur ta carte, dans un coin tranquille de Murano, près de Santa Maria degli Angeli." : p.id === "squero" ? "Regarde sur la carte, entre le chantier et le pont des Poings : quatre fruits t'attendent sur le chemin." : p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
+const endSecret = (p) => p.id === "murano" ? "Un coquillage magique était caché sur cette île… et il vient d’apparaître ! Cherche-le sur ta carte, dans un coin tranquille de Murano, près de Santa Maria degli Angeli." : p.id === "squero" ? "Regarde sur la carte, entre le chantier et le pont des Poings : quatre fruits t'attendent sur le chemin." : p.id === "pugni" ? "Regarde sur ta carte, tout près du pont : approche-toi du coffre pour le récupérer." : p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
 function conclusionEditor(sh, p, elements, defaults) {
   conclusionEditorAbort?.abort();
   const layout = (CONCLUSION_LAYOUT[p.id] ||= {});
@@ -2663,8 +2723,8 @@ async function chapEnd(p, replay, preview = false) {
   emblem.className = "chap-victory";
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
-  const hasSecret = p.id === "murano" || p.id === "squero" || !!(p.reward || p.musicChallenge || p.collectibleReward);
-  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.id === "squero" ? "Je crois qu'il y a de bonnes choses à ramasser dans les environs…" : p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
+  const hasSecret = p.id === "murano" || p.id === "squero" || p.id === "pugni" || !!(p.reward || p.musicChallenge || p.collectibleReward);
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.id === "squero" ? "Je crois qu'il y a de bonnes choses à ramasser dans les environs…" : p.id === "pugni" ? "Il me semble apercevoir un vieux coffre qui flotte dans l'eau vaseuse, non loin du pont…" : p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
@@ -2672,8 +2732,8 @@ async function chapEnd(p, replay, preview = false) {
   bubble.classList.remove("typing");
   bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span>${hasSecret ? `<span class="chap-secret-clue">${esc(defaults.secret)}</span>` : ""}`;
   fitChapTalk();
-  if (!preview && (p.reward || p.musicChallenge || (p.collectibleReward || p.id === "murano" || p.id === "squero") && complete(p)) && !has("fin:" + p.id)) {
-    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "squero") updateSqueroFruitMarkers(); if (p.id === "dogana") updateDoganaMaskMarker(); if (p.id === "schiavoni") schiavoniGems.update();
+  if (!preview && (p.reward || p.musicChallenge || (p.collectibleReward || p.id === "murano" || p.id === "squero" || p.id === "pugni") && complete(p)) && !has("fin:" + p.id)) {
+    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "squero") updateSqueroFruitMarkers(); if (p.id === "pugni") updatePugniChestMarker(); if (p.id === "dogana") updateDoganaMaskMarker(); if (p.id === "schiavoni") schiavoniGems.update();
   }
   let planButton = null, photoButton = null;
   if (p.plan || p.musicChallenge || MONTAGES[p.id]) {
@@ -4147,7 +4207,7 @@ async function resetPlaceProgress(places) {
     if (key === "finale") return places.length === PLACES.length;
     const [kind, id] = key.split(":");
     const grant = /^grant:\d+:(object|music|music-won):(.+)$/.exec(key);
-    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || ((key.startsWith("o:fruit-squero:") || key.startsWith("trade:gondolier:spent:object:fruit-squero-")) && ids.has("squero")) || (["o:coquillage-murano", "bonus:murano-shell"].includes(key) && ids.has("murano")) || (["o:cle-gondolier", "bonus:trade:gondolier"].includes(key) && ids.has("frari")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? rewardObjectIds.has(grant[2]) || ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
+    return (["a", "t", "fin", "tr", "st", "ph", "o"].includes(kind) && ids.has(id)) || ((key.startsWith("o:fruit-squero:") || key.startsWith("trade:gondolier:spent:object:fruit-squero-")) && ids.has("squero")) || (["o:coffre-masque", "bonus:pugni-chest", "trade:gondolier:spent:object:coffre-masque"].includes(key) && ids.has("pugni")) || (["o:coquillage-murano", "bonus:murano-shell"].includes(key) && ids.has("murano")) || (["o:cle-gondolier", "bonus:trade:gondolier"].includes(key) && ids.has("frari")) || (kind === "music" && musicIds.has(id)) || (kind === "w" && workIds.has(id)) || !!grant && (grant[1] === "object" ? rewardObjectIds.has(grant[2]) || ids.has(grant[2]) || grant[2] === "coquillage-murano" && ids.has("murano") : musicIds.has(grant[2]));
   });
   keys.forEach(unaward);
   places.forEach((p) => { delete introSeen[p.id]; });
@@ -4438,7 +4498,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateSqueroFruitMarkers(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateSqueroFruitMarkers(); updatePugniChestMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");
