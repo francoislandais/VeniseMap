@@ -633,7 +633,7 @@ function onPos(lat, lon, acc, manual = false) {
     }
   }
   if (boatMarker) updateBoatInteraction(boatAt());
-  if ((first || locateAsked) && !manual && tab === "map") { map.jumpTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 16) }); locateAsked = false; }
+  if ((first || locateAsked) && (!manual || (DEV && first)) && tab === "map") { map.jumpTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 16) }); locateAsked = false; }
   const pn = performance.now(); if (manual || pn - (onPos.last || 0) > 2000) { onPos.last = pn; updateOverlap(); renderNext(); if (openId) updateMedal(); } // pas plus d'une fois toutes les 2 s : évite les micro-saccades de la carte à chaque fix GPS
 }
 /* ───────── Arrivée, pages, finale ───────── */
