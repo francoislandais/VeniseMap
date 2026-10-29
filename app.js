@@ -2936,7 +2936,7 @@ function setTab(t) {
     adminUnlocked = false; adminPlayers = []; adminRewards = {}; adminCode = "";
     $("#v-settings").replaceChildren(); $("#v-dev").replaceChildren(); $("#v-rewards").replaceChildren();
   }
-  tab = t; if (t !== "map") lastTab = t;
+  tab = t; document.body.classList.toggle("objects-open", t === "objects"); if (t !== "map") lastTab = t;
   if (t !== "map" && !menuOpen) { menuOpen = true; if (!menuReturnPending) { try { history.pushState({ vqMenu: 1 }, ""); } catch {} } } if (t === "map") menuOpen = false;
   menuDock().hidden = t === "map";
   $$("#up-bar .up-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
@@ -3822,15 +3822,16 @@ function bindObjectDrag(button) {
 }
 function renderObjects() {
   seedMarcAdminTest();
-  const v = $("#v-objects"), objects = objectList();
+  const v = $("#v-objects"), scrollTop = $(".ob-scroll", v)?.scrollTop || 0, objects = objectList();
   const shown = (PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found)).filter(o => o.id === "evangile-marc" ? o.found : o.id === "coffre-masque" ? !has("craft:marc-chest:opened") : true);
   menuSay(shown.length ? "Collectionne ces objets ici et vois ce que tu peux faire avec." : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
-  v.innerHTML = shown.length ? `<div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? objectArtwork(o) : `<span class="ob-em">${esc(o.emoji || "📜")}</span>`}</button>`).join("")}</div><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Combine tes objets ici</span></div>` : "";
+  v.innerHTML = `<div class="ob-scroll" tabindex="0" role="region" aria-label="Objets de l’inventaire"><div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? objectArtwork(o) : `<span class="ob-em">${esc(o.emoji || "📜")}</span>`}</button>`).join("")}</div>${shown.length ? "" : '<p class="muted">Tu n’as encore trouvé aucun objet.</p>'}</div><div class="ob-workspace"><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Combine tes objets ici</span></div></div>`;
   if (ADMIN_CONTEXT) {
     const test = document.createElement("button"); test.type = "button"; test.className = "btn ghost marc-test"; test.textContent = "↻ Rejouer le coffre au masque";
-    test.onclick = () => { if (marcChestBusy) return; seedMarcAdminTest(true); renderObjects(); }; v.appendChild(test);
+    test.onclick = () => { if (marcChestBusy) return; seedMarcAdminTest(true); renderObjects(); }; $(".ob-workspace", v).appendChild(test);
   }
   $$(".ob", v).forEach(bindObjectDrag);
+  $(".ob-scroll", v).scrollTop = scrollTop;
   renderObjectAssembly();
 }
 if (DEV) window.__objects = {
@@ -3848,7 +3849,13 @@ function syncHeldPosition() {
   heldEl.style.width = p.size + "px"; heldEl.style.height = p.size + "px";
   if (p.docked) try { localStorage.setItem(HELD_POS, JSON.stringify(p)); } catch {}
 }
-addEventListener("resize", syncHeldPosition);
+addEventListener("resize", () => {
+  if (tab === "objects") {
+    document.documentElement.style.setProperty("--upb", $("#up-bar").offsetHeight + "px");
+    renderObjectAssembly();
+  }
+  syncHeldPosition();
+});
 
 /* ───────── Œuvres de maîtres : la collection de toiles trouvées au fil des épreuves ─────────
    Base : data/oeuvres.json (61 œuvres, 19 artistes, 16 lieux, 5 questions par œuvre pour les épreuves à venir). Une toile trouvée = S.done["w:" + id] (étoiles POINTS.work), donc synchronisée comme le reste. */
