@@ -11,7 +11,8 @@ export function createLionCompanion({ map, getLion, getPlayer, recruited, visibl
   function update(now) {
     const W=getLion(),p=getPlayer();
     if(!recruited()) { state=null;lastTick=0;if(W?.marker){const el=W.marker.getElement();el.classList.remove("follows-player","lion-arriving");delete el.dataset.companionPhase;}return null; }
-    if(!W?.marker||!p)return null;
+    if(!W?.marker)return null;
+    if(!p){lastTick=0;return {...position(W),dx:0,dy:0};}
     if(!visible()){lastTick=0;return {...position(W),dx:0,dy:0};}
     const dest=target(p),dt=lastTick?Math.min(160,Math.max(0,now-lastTick)):0;lastTick=now;
     // Existing companions resume beside their player; only a new offering summons a flight.
