@@ -2375,3 +2375,15 @@ body.objects-open .menu-say{display:none!important}
  .marc-recipe-directions{font-size:clamp(16px,4.5vh,25px)}
 }
 .marc-inner-pages .marc-first-page{left:49%}
+
+/* Saint Marc : le livre tenu traverse la rencontre et doit toucher son portrait. */
+.wq.stmarc-offer .wq-marc-target{position:fixed;z-index:1;border:2px dashed #ffe4a1;border-radius:50%;background:radial-gradient(ellipse,rgba(255,230,141,.22),rgba(255,230,141,0) 70%);box-shadow:0 0 18px 5px rgba(255,222,134,.55);pointer-events:none;animation:marcOfferPulse 1.5s ease-in-out infinite alternate}
+.wq .wq-marc-hint{margin:0 0 12px;text-align:center;font-size:17px;line-height:1.3;color:#172c3e;text-shadow:0 0 7px #fffaf0,0 0 4px #fffaf0}
+.held-ob.marc-offering{z-index:1650;visibility:visible!important}
+.held-ob.marc-presented-book{filter:drop-shadow(0 0 18px #ffe59f) drop-shadow(0 0 9px #fff)}
+.wq.stmarc-thanks .wq-img{filter:drop-shadow(0 0 18px #ffe4a1)}
+@keyframes marcOfferPulse{to{box-shadow:0 0 26px 11px rgba(255,230,151,.85);transform:scale(1.07)}}
+.wq-marc-target.miss{animation:marcOfferMiss .45s ease-in-out}
+@keyframes marcOfferMiss{50%{transform:scale(1.15);border-color:#fff}}
+@media(max-height:650px){.wq.stmarc-offer .wq-txt{font-size:21px}.wq.stmarc-offer .wq-marc-hint{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.wq.stmarc-offer .wq-marc-target{animation:none}}

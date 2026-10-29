@@ -6,6 +6,7 @@ import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
 import { openCortoRendezvous } from "./corto-rendezvous.js";
 import { openGondolierRendezvous } from "./gondolier-rendezvous.js";
 import { MONTEVERDI_QUIZ, openMonteverdiStory } from "./monteverdi-rendezvous.js";
+import { ST_MARC_QUIZ, ST_MARC_BOOK } from "./data/stmarc-interaction.js";
 import { SCHIAVONI_GEMS, createSchiavoniGems } from "./schiavoni-gems.js";
 import { createGabrielMessages, isGabriel } from "./data/corto-gabriel.js";
 import { apiFetch } from "./api.js";
@@ -849,7 +850,7 @@ updateWalkScale();
 const WALKERS = [
   { id: "doge", name: "le doge", to: "au doge", de: "du doge", route: "doge-route.json", img: "img/doge-avatar.webp", big: "img/doge-big.webp", bigHappy: "img/doge-big-happy.webp", bigAngry: "img/doge-big-angry.webp", quiz: DOGE_QUIZ, h: 5.5, near: DOGE_NEAR, w: 50, msg: "Le doge te salue d'un air solennel… (il aura bientôt quelque chose à te raconter !)" },
   { id: "monteverdi", name: "Monteverdi", to: "à Monteverdi", de: "de Monteverdi", route: "monteverdi-frari-route.json", img: "img/monteverdi-avatar.webp", big: "img/monteverdi-avatar.webp", quiz: MONTEVERDI_QUIZ, h: 0.45, near: 60, w: 40 },
-  { id: "stmarc", name: "saint Marc", to: "à saint Marc", de: "de saint Marc", route: "stmarc-route.json", img: "img/stmarc-avatar.webp", h: 4, near: 60, w: 46, msg: "Saint Marc te salue, l'air soucieux… « As-tu vu mon lion ? Je le cherche partout ! » (il aura bientôt autre chose à te raconter)" },
+  { id: "stmarc", name: "saint Marc", to: "à saint Marc", de: "de saint Marc", route: "stmarc-route.json", img: "img/stmarc-avatar.webp", big: "img/stmarc-avatar.webp", quiz: ST_MARC_QUIZ, h: 4, near: 60, w: 46 },
   { id: "gondolier", name: "le gondolier", to: "au gondolier", de: "du gondolier", route: "gondolier-route.json", img: "img/gondolier-avatar.webp", h: 3, near: 60, w: 64, msg: "Le gondolier te salue d'un coup de chapeau… (il aura bientôt quelque chose à te raconter !)" },
   { id: "lion", name: "le lion ailé", to: "au lion ailé", de: "du lion ailé", route: "lion-route.json", farLines: ["Le lion ailé est dans les airs ! Lève les yeux et attends qu'il passe au-dessus de toi pour lui parler.", "Il vole haut, {g}. Bon courage ! Attends qu'il passe au-dessus de toi.", "Lève les yeux, {g} : le lion ailé survole Venise. Attends qu'il passe près de toi.", "Le lion ailé est en plein vol. Lève les yeux et bon courage pour l'attraper, {g} !", "Impossible de lui parler d'ici : il est dans le ciel. Attends qu'il passe au-dessus de toi."], motion: { cruise: 12, ramp: 8, period: 2160, landings: [{ at: 700, dur: 110 }, { at: 1650, dur: 90 }] }, heading: true, img: "img/lion-avatar.webp", rig: { body: "img/lion-body.webp", rear: "img/lion-rear.webp", front: "img/lion-front.webp", wings: "img/lion-wings.webp", ratio: "325/360" }, h: 5, near: 60, w: 50, msg: "Le lion ailé bat doucement des ailes et te regarde d'un air fier… (il aura bientôt quelque chose à te raconter !)" },
 ];
@@ -1039,6 +1040,9 @@ function walkerTap(W) {
   }
   if (W.quiz) openWalkerQuiz(W); else cortoSays(W.msg);
 }
+// Le livre doit être réellement trouvé et tenu en main sur la carte avant la remise à saint Marc.
+let marcDropHandler = null;
+const marcBookInHand = () => heldId === "evangile-marc" && !!heldEl && objectFoundFor("evangile-marc");
 // Rencontre en grand : le personnage grandit en haut de l'écran et pose sa question ; mauvaise réponse -> il se vexe, rapetisse et s'enfuit en courant.
 function openWalkerQuiz(W) {
   const el = W.marker.getElement(), r0 = el.getBoundingClientRect();
@@ -1049,12 +1053,71 @@ function openWalkerQuiz(W) {
   document.body.appendChild(ov);
   if (W.bigHappy) { new Image().src = W.bigHappy; new Image().src = W.bigAngry; } // visages préchargés : il sourit si on répond bien, fait la tête sinon
   const img = $(".wq-img", ov), txt = $(".wq-txt", ov), box = $(".wq-opts", ov);
+  let restoreMarcBook = null;
   const flip = (to) => { const b = img.getBoundingClientRect(), k = r0.width / b.width, dx = r0.left + r0.width / 2 - (b.left + b.width / 2), dy = r0.top + r0.height / 2 - (b.top + b.height / 2); return [`translate(${dx}px,${dy}px) scale(${k})`, "none"]; };
   const [from] = flip();
   el.style.visibility = "hidden";
   ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, fill: "both" });
   img.animate([{ transform: from }, { transform: "none" }], { duration: 520, easing: "cubic-bezier(.2,.9,.3,1.2)" });
-  const close = (cb) => { img.animate([{ transform: "none" }, { transform: from, opacity: 0.2 }], { duration: 420, easing: "ease-in", fill: "forwards" }); ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, fill: "forwards" }).onfinish = () => { ov.remove(); el.style.visibility = ""; if (cb) cb(); }; };
+  const close = (cb) => {
+    if (W.id === "stmarc") { marcDropHandler = null; restoreMarcBook?.(); }
+    img.animate([{ transform: "none" }, { transform: from, opacity: 0.2 }], { duration: 420, easing: "ease-in", fill: "forwards" });
+    ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, fill: "forwards" }).onfinish = () => { ov.remove(); el.style.visibility = ""; if (cb) cb(); };
+  };
+  const saintMarcRequest = () => {
+    if (has("story:stmarc:book")) {
+      txt.textContent = ST_MARC_BOOK.again;
+      box.innerHTML = '<button class="b-btn go-next wq-bye">À bientôt, saint Marc</button>';
+      $(".wq-bye", ov).onclick = () => close();
+      return;
+    }
+    txt.textContent = ST_MARC_BOOK.ask;
+    if (!marcBookInHand()) {
+      box.innerHTML = `<p class="wq-marc-hint">${esc(ST_MARC_BOOK.missing)}</p><button class="b-btn go-next wq-bye">Je reviendrai avec ton livre</button>`;
+      $(".wq-bye", ov).onclick = () => close();
+      return;
+    }
+    ov.classList.add("stmarc-offer");
+    box.innerHTML = `<p class="wq-marc-hint">${esc(ST_MARC_BOOK.offer)}</p><button class="b-btn go-next wq-bye">Plus tard</button>`;
+    $(".wq-bye", ov).onclick = () => close();
+    const book = heldEl, origin = { left: parseFloat(book.style.left), top: parseFloat(book.style.top) };
+    const target = document.createElement("span"); target.className = "wq-marc-target";
+    target.setAttribute("aria-hidden", "true"); ov.appendChild(target);
+    const placeTarget = () => {
+      if (!target.isConnected) return;
+      const r = img.getBoundingClientRect();
+      target.style.cssText = `left:${r.left + r.width * .27}px;top:${r.top + r.height * .07}px;width:${r.width * .48}px;height:${r.height * .57}px`;
+    };
+    placeTarget(); setTimeout(placeTarget, 550);
+    addEventListener("resize", placeTarget);
+    let restored = false;
+    restoreMarcBook = () => {
+      if (restored) return; restored = true;
+      removeEventListener("resize", placeTarget); target.remove();
+      if (!book.isConnected) return;
+      book.style.left = origin.left + "px"; book.style.top = origin.top + "px";
+      book.classList.remove("marc-presented-book");
+    };
+    book.style.visibility = ""; book.classList.add("marc-offering");
+    marcDropHandler = (dragged) => {
+      if (dragged !== book || !ov.isConnected || !marcBookInHand()) return false;
+      const r = target.getBoundingClientRect(), b = book.getBoundingClientRect();
+      const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+      if (cx < r.left - 18 || cx > r.right + 18 || cy < r.top - 18 || cy > r.bottom + 18) {
+        target.classList.remove("miss"); void target.offsetWidth; target.classList.add("miss");
+        return false;
+      }
+      marcDropHandler = null; target.remove(); ov.classList.remove("stmarc-offer"); ov.classList.add("stmarc-thanks");
+      book.classList.add("marc-presented-book");
+      if (!has("story:stmarc:book")) { award("story:stmarc:book", 0, meIdx()); save(); refreshAll(); }
+      txt.textContent = ST_MARC_BOOK.thanks;
+      box.innerHTML = '<button class="b-btn go-next wq-bye">À bientôt, saint Marc</button>';
+      $(".wq-bye", ov).onclick = () => close();
+      img.animate([{ transform: "scale(1)" }, { transform: "scale(1.07)" }, { transform: "scale(1)" }], { duration: 700, easing: "ease-in-out" });
+      setTimeout(() => restoreMarcBook?.(), 1200);
+      return true;
+    };
+  };
   box.addEventListener("click", (e) => {
     const b = e.target.closest(".wq-opt"); if (!b) return; const o = opts[+b.dataset.i]; if (!o) return;
     box.style.pointerEvents = "none";
@@ -1063,6 +1126,7 @@ function openWalkerQuiz(W) {
       if (!has("pn:" + W.id)) { award("pn:" + W.id, 3, meIdx()); save(); refreshAll(); starBurst(b, 3, true); }
       img.animate([{ transform: "scale(1)" }, { transform: "scale(1.06) rotate(-2deg)" }, { transform: "scale(1)" }], { duration: 500 });
       txt.textContent = W.quiz.good.replace(/\{g\}/g, gradeLc());
+      if (W.id === "stmarc") { box.style.pointerEvents = ""; saintMarcRequest(); return; }
       const isMonteverdi = W.id === "monteverdi";
       box.innerHTML = `<button class="b-btn go-next wq-bye">${isMonteverdi ? "Écouter Monteverdi" : "Merci, ô grand doge !"}</button>`; box.style.pointerEvents = "";
       $(".wq-bye", ov).onclick = () => close(isMonteverdi ? openMonteverdiStory : undefined);
@@ -3752,11 +3816,15 @@ function mountHeld(id, fromRect) {
   const zone = () => { let z = $("#ranger"); if (!z) { z = document.createElement("div"); z.id = "ranger"; z.innerHTML = '<b>Ranger</b><span></span>'; document.body.appendChild(z); } return z; };
   const inZone = () => { const z = $("#ranger"); if (!z) return false; const a = z.getBoundingClientRect(), b = el.getBoundingClientRect(); return Math.hypot(a.left + a.width / 2 - (b.left + b.width / 2), a.top + a.height / 2 - (b.top + b.height / 2)) < a.width / 2 + 10; };
   el.onpointerdown = (e) => { e.preventDefault(); const r = el.getBoundingClientRect(); st = { x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false }; try { el.setPointerCapture(e.pointerId); } catch {} };
-  el.onpointermove = (e) => { if (!st) return; if (tab === "objects") { if (Math.hypot(e.clientX - st.x, e.clientY - st.y) >= 6) st.blocked = true; return; } if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return; if (!st.moved && tab === "map") { const z = zone(); $("span", z).textContent = o.name; z.classList.add("on"); } st.moved = true; el.classList.add("drag"); const q = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy, size: parseFloat(el.style.width) }); el.style.left = q.left + "px"; el.style.top = q.top + "px"; const zz = $("#ranger"); if (zz) zz.classList.toggle("hot", inZone()); };
+  const offeringMarc = () => id === "evangile-marc" && !!marcDropHandler;
+  el.onpointermove = (e) => { if (!st) return; if (tab === "objects") { if (Math.hypot(e.clientX - st.x, e.clientY - st.y) >= 6) st.blocked = true; return; } if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return; if (!st.moved && tab === "map" && !offeringMarc()) { const z = zone(); $("span", z).textContent = o.name; z.classList.add("on"); } st.moved = true; el.classList.add("drag"); const q = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy, size: parseFloat(el.style.width) }); el.style.left = q.left + "px"; el.style.top = q.top + "px"; const zz = $("#ranger"); if (zz && !offeringMarc()) zz.classList.toggle("hot", inZone()); };
   const hideZone = () => { const z = $("#ranger"); if (z) z.classList.remove("on", "hot"); };
   const end = () => { if (!st) return; const moved = st.moved, blocked = st.blocked; st = null; el.classList.remove("drag"); if (blocked) return;
-    if (moved) { if (tab === "map" && inZone()) { storeHeld(el); hideZone(); return; } hideZone(); try { localStorage.setItem(HELD_POS, JSON.stringify({ left: parseFloat(el.style.left), top: parseFloat(el.style.top), size: parseFloat(el.style.width), docked: false })); } catch {} }
-    else if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
+    if (moved) {
+      if (offeringMarc()) { marcDropHandler(el); hideZone(); return; }
+      if (tab === "map" && inZone()) { storeHeld(el); hideZone(); return; }
+      hideZone(); try { localStorage.setItem(HELD_POS, JSON.stringify({ left: parseFloat(el.style.left), top: parseFloat(el.style.top), size: parseFloat(el.style.width), docked: false })); } catch {}
+    } else if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
   el.onpointerup = end; el.onpointercancel = () => { st = null; el.classList.remove("drag"); const z = $("#ranger"); if (z) z.classList.remove("on", "hot"); };
 }
 // Lâché dans la zone « Ranger » (en haut de la carte) : l'objet retourne dans le coffret (l'onglet Objets), il n'est plus en main.
@@ -3768,7 +3836,9 @@ function storeHeld(el) {
 visibleInterval(() => {
   if (!heldEl) return;
   const bare = tab === "map" && $("#sheet").hidden && $("#quest").hidden && $("#modal").hidden && !document.body.classList.contains("corto-talk") && !document.body.classList.contains("intro-open") && !document.querySelector(".cer,.wview,.pview,.mont,.finale,.doge-msg:not(.menu-say),.pf,.cam,.ocam,.wq,.in2,.plan-photo");
-  heldEl.style.visibility = bare || tab === "objects" ? "" : "hidden";
+  const showingMarcBook = heldId === "evangile-marc" && !!document.querySelector(".wq.stmarc-offer,.wq.stmarc-thanks");
+  heldEl.classList.toggle("marc-offering", showingMarcBook);
+  heldEl.style.visibility = showingMarcBook || bare || tab === "objects" ? "" : "hidden";
 }, 200);
 function releaseHeld() {
   if (!heldEl) { heldId = null; saveHeld(); return; }
