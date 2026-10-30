@@ -3066,6 +3066,25 @@ function openPlanPanel(plan, pl, onMusicFound = () => {}, preview = false) {
   if (window.ResizeObserver) { observer = new ResizeObserver(layout); observer.observe(stage); }
   panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, easing: "ease-out" });
 }
+function closeChapterInspectPhoto() {
+  $$("#sheet .chap-inspect-btn, #sheet .chap-inspect-view").forEach((element) => element.remove());
+}
+function showChapterInspectPhoto(step) {
+  closeChapterInspectPhoto();
+  if (!step.inspectImg) return;
+  const sh = $("#sheet"), button = document.createElement("button");
+  button.type = "button"; button.className = "chap-inspect-btn"; button.textContent = "⌕ Voir les runes";
+  button.setAttribute("aria-label", "Voir la photographie des runes avant de répondre");
+  button.onclick = () => {
+    const view = document.createElement("div"); view.className = "chap-inspect-view"; view.setAttribute("role", "dialog"); view.setAttribute("aria-modal", "true");
+    const photo = document.createElement("img"); photo.src = step.inspectImg; photo.alt = "Détail des runes du lion du Pirée sur un moulage";
+    const caption = document.createElement("p"); caption.textContent = "Moulage conservé à Stockholm : les runes y sont plus visibles. Photo : Jenny Nyberg / SHM, CC BY 4.0.";
+    const back = document.createElement("button"); back.type = "button"; back.textContent = "Retour à la question"; back.onclick = () => { view.remove(); button.focus(); };
+    view.addEventListener("keydown", (event) => { if (event.key === "Escape") back.click(); });
+    view.append(photo, caption, back); sh.appendChild(view); back.focus();
+  };
+  sh.appendChild(button);
+}
 async function runChapters(p, replay = false) {
   const myLoop = ++curLoop;
   const bsleep = async (ms) => { await sleep(ms); if (openId !== "bridges" && openId !== "chap" && !suspended) throw 0; if (myLoop !== curLoop) throw 0; }; // cette boucle meurt si une autre a pris le relais
@@ -3108,9 +3127,10 @@ async function runChapters(p, replay = false) {
           await say(el, `${lead} ${x.where || ""} ${x.q}`.replace(/\s+/g, " ").trim(), barHeight(x.opts)); lead = "";
           if (x.audio) chapAudioCard(x);
           if (x.loc) showLocBtn(el, x.loc);
+          if (x.inspectImg) showChapterInspectPhoto(x);
         }
         const cf = null; // les propositions se centrent d'elles-mêmes dans l'espace libre au-dessus de la bande de Corto (feuille de style)
-        const pts = x.pts ?? 10, r = await bridgeChoose(ch, replay ? 0 : pts, cf); closeLoc();
+        const pts = x.pts ?? 10, r = await bridgeChoose(ch, replay ? 0 : pts, cf); closeLoc(); closeChapterInspectPhoto();
         if (r.skip) break outer;
         if (r.pass) { deferItem(`chap:${p.id}`, String(x.idx)); todo.push(s); continue outer; }
         if (!replay) resolveDeferred(`chap:${p.id}`, String(x.idx));

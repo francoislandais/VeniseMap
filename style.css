@@ -2445,3 +2445,10 @@ body.intro-open > .history-replay-back{visibility:visible!important}
 .monteverdi-story .mv-answers button.chosen{background:#386a91;box-shadow:0 0 18px #e2c670}
 .monteverdi-story .mv-answers button:focus-visible{outline:2px solid #fff2bd;outline-offset:3px}
 @media(max-height:600px){.monteverdi-story .mv-answers{bottom:calc(env(safe-area-inset-bottom,0px) + 8dvh)}.monteverdi-story .mv-answers button{min-height:38px;padding:7px 13px}}
+
+/* Arsenal : observation des runes sur un moulage avant le QCM. */
+#sheet.chap .chap-inspect-btn{position:absolute;z-index:12;top:calc(var(--safe-t) + 12px);left:16px;min-height:34px;padding:7px 12px;border:1px solid rgba(255,255,255,.65);border-radius:999px;background:rgba(6,31,48,.9);color:#fff;font:700 13px/1.2 Arial,sans-serif}
+#sheet.chap .chap-inspect-view{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;box-sizing:border-box;padding:calc(var(--safe-t) + 18px) 18px calc(var(--safe-b) + 18px);background:rgba(4,19,30,.98);color:#fff;text-align:center}
+#sheet.chap .chap-inspect-view img{display:block;width:100%;max-width:700px;max-height:min(68vh,700px);object-fit:contain;border-radius:9px}
+#sheet.chap .chap-inspect-view p{max-width:480px;margin:0;font:15px/1.4 Georgia,serif}
+#sheet.chap .chap-inspect-view button{min-height:40px;padding:9px 15px;border:1px solid rgba(255,255,255,.7);border-radius:999px;background:#0c3350;color:#fff;font:700 14px Arial,sans-serif}

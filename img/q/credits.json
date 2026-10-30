@@ -54,5 +54,26 @@
     "author": "Ethan Doyle White",
     "license": "CC BY-SA 4.0 · image redimensionnée et convertie en WebP",
     "url": "https://commons.wikimedia.org/wiki/File:The_Leaning_Tower_of_Burano.JPG"
+  },
+  "arsenal-lion-piree.webp": {
+    "place": "arsenal",
+    "title": "Le lion du Pirée devant l’Arsenal de Venise",
+    "author": "Didier Descouens",
+    "license": "CC BY 4.0 · photographie originale au format WebP",
+    "url": "https://historiska.se/en/explore-history/history-hub/the-piraeus-lion-with-viking-tattoos/"
+  },
+  "arsenal-runes-flanc.webp": {
+    "place": "arsenal",
+    "title": "Moulage du lion du Pirée : runes du flanc",
+    "author": "Jenny Nyberg / Historiska museet (SHM)",
+    "license": "CC BY 4.0 · photographie originale au format WebP",
+    "url": "https://historiska.se/en/explore-history/history-hub/the-piraeus-lion-with-viking-tattoos/"
+  },
+  "arsenal-runes-patte.webp": {
+    "place": "arsenal",
+    "title": "Moulage du lion du Pirée : détail des runes",
+    "author": "Jenny Nyberg / Historiska museet (SHM)",
+    "license": "CC BY 4.0 · photographie originale au format WebP",
+    "url": "https://historiska.se/en/explore-history/history-hub/the-piraeus-lion-with-viking-tattoos/"
   }
 }
