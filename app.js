@@ -1,3 +1,4 @@
+import { openThorOracle, THOR_IMAGE } from "./thor-oracle.js";
 import { loadProfile, loadProfileFor, saveProfile, clearProfile, setProfilePlayerId, runIntro, cortoSays, editProfile, FACE } from "./intro.js";
 import { createMap, WC_URL, OFM_TILES, OFM_GLYPHS, FONTS, useStamen } from "./mapstyle.js";
 import { STORY, LEVELS, COLLECTIONS, AVATARS, PLACES, POINTS } from "./data.js";
@@ -2870,7 +2871,7 @@ function openChapters(p, replay = false, conclusionOnly = false, preview = false
 }
 // Fin d'épreuve : l'indice de Corto donne accès au trésor caché dans le plan.
 const endBravo = () => `Bravo, ${cortoAddress()} !`;
-const endSecret = (p) => p.id === "murano" ? "Un coquillage magique était caché sur cette île… et il vient d’apparaître ! Cherche-le sur ta carte, dans un coin tranquille de Murano, près de Santa Maria degli Angeli." : p.id === "squero" ? "Regarde sur la carte, entre le chantier et le pont des Poings : quatre fruits t'attendent sur le chemin." : p.id === "pugni" ? (pugniChestTaken() ? "Tu as déjà récupéré ce coffre." : "Regarde sur ta carte, tout près du pont : approche-toi du coffre pour le récupérer.") : p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
+const endSecret = (p) => p.id === "arsenal" ? "Cours vite le chercher sur ta carte !" : p.id === "murano" ? "Un coquillage magique était caché sur cette île… et il vient d’apparaître ! Cherche-le sur ta carte, dans un coin tranquille de Murano, près de Santa Maria degli Angeli." : p.id === "squero" ? "Regarde sur la carte, entre le chantier et le pont des Poings : quatre fruits t'attendent sur le chemin." : p.id === "pugni" ? (pugniChestTaken() ? "Tu as déjà récupéré ce coffre." : "Regarde sur ta carte, tout près du pont : approche-toi du coffre pour le récupérer.") : p.musicChallenge?.hint || p.reward?.hint || "Garde en mémoire ce que tu as découvert ici.";
 function conclusionEditor(sh, p, elements, defaults) {
   conclusionEditorAbort?.abort();
   const layout = (CONCLUSION_LAYOUT[p.id] ||= {});
@@ -2925,8 +2926,8 @@ async function chapEnd(p, replay, preview = false) {
   emblem.className = "chap-victory";
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
-  const hasSecret = p.id === "murano" || p.id === "squero" || p.id === "pugni" || !!(p.reward || p.musicChallenge || p.collectibleReward);
-  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.id === "squero" ? "Je crois qu'il y a de bonnes choses à ramasser dans les environs…" : p.id === "pugni" ? (pugniChestTaken() ? "Ce vieux coffre a déjà rejoint ton aventure." : "Il me semble apercevoir un vieux coffre qui flotte dans l'eau vaseuse, non loin du pont…") : p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
+  const hasSecret = p.id === "arsenal" || p.id === "murano" || p.id === "squero" || p.id === "pugni" || !!(p.reward || p.musicChallenge || p.collectibleReward);
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.id === "arsenal" ? "J’aperçois un trophée viking tout près des lions !" : p.id === "squero" ? "Je crois qu'il y a de bonnes choses à ramasser dans les environs…" : p.id === "pugni" ? (pugniChestTaken() ? "Ce vieux coffre a déjà rejoint ton aventure." : "Il me semble apercevoir un vieux coffre qui flotte dans l'eau vaseuse, non loin du pont…") : p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
@@ -2934,8 +2935,8 @@ async function chapEnd(p, replay, preview = false) {
   bubble.classList.remove("typing");
   bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span>${hasSecret ? `<span class="chap-secret-clue">${esc(defaults.secret)}</span>` : ""}`;
   fitChapTalk();
-  if (!preview && (p.reward || p.musicChallenge || (p.collectibleReward || p.id === "murano" || p.id === "squero" || p.id === "pugni") && complete(p)) && !has("fin:" + p.id)) {
-    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "squero") updateSqueroFruitMarkers(); if (p.id === "pugni") updatePugniChestMarker(); if (p.id === "dogana") updateDoganaMaskMarker(); if (p.id === "schiavoni") schiavoniGems.update();
+  if (!preview && (p.reward || p.musicChallenge || (p.collectibleReward || p.id === "arsenal" || p.id === "murano" || p.id === "squero" || p.id === "pugni") && complete(p)) && !has("fin:" + p.id)) {
+    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "squero") updateSqueroFruitMarkers(); if (p.id === "pugni") updatePugniChestMarker(); if (p.id === "dogana") updateDoganaMaskMarker(); if (p.id === "schiavoni") schiavoniGems.update(); if(p.id === "arsenal") updateThorMarker();
   }
   let planButton = null, photoButton = null;
   if (p.plan || p.musicChallenge || MONTAGES[p.id]) {
@@ -3177,7 +3178,7 @@ function renderQuest() {
     body = `<p class="q-text">${esc(p.story)}</p><div class="clue">${esc(p.clue)}</div><button class="btn blue wide" id="qgo">Commencer ➜</button>`;
   } else if (quest.phase === "end") {
     const gain = POINTS.arrive + p.tasks.reduce((n, t) => n + (t.pts ?? POINTS.task), 0);
-    body = `<div class="q-solved"><div class="pth pic xl" style="--img:url(${pic(p.id)})"></div><h2>Lieu terminé !</h2><p>Tu gagnes l'autocollant du lieu</p><p class="muted">${p.tasks.length} épreuves réussies · jusqu'à ${gain} ⭐</p></div><button class="btn blue wide" id="qdone">🗺️ Retour à la carte</button>`;
+    body = `<div class="q-solved">${p.id === "arsenal" ? '<img src="img/corto-content.webp" alt="Corto" style="height:110px;object-fit:contain"><p>J’aperçois un trophée viking tout près des lions ! Cours vite le chercher !</p>' : ""}<div class="pth pic xl" style="--img:url(${pic(p.id)})"></div><h2>Lieu terminé !</h2><p>Tu gagnes l'autocollant du lieu</p><p class="muted">${p.tasks.length} épreuves réussies · jusqu'à ${gain} ⭐</p></div><button class="btn blue wide" id="qdone">🗺️ Retour à la carte</button>`;
   } else {
     const i = quest.step, t = p.tasks[i];
     if (taskDone(p.id, i)) {
@@ -3191,7 +3192,7 @@ function renderQuest() {
   const nx = $("#qnext", q);
   if (nx) nx.onclick = () => { const pending = orderedPending(`place:${p.id}`, p.tasks.map((_, n) => n), String, (n) => taskDone(p.id, n)); if (!pending.length) { quest.phase = "end"; chime(true); confetti(140); } else { quest.step = pending[0]; } renderQuest(); };
   const pass = $("#qpass", q); if (pass) pass.onclick = () => { deferItem(`place:${p.id}`, String(quest.step)); const pending = orderedPending(`place:${p.id}`, p.tasks.map((_, n) => n), String, (n) => taskDone(p.id, n)); quest.step = pending[0]; renderQuest(); };
-  const dn = $("#qdone", q); if (dn) dn.onclick = closeQuest;
+  const dn = $("#qdone", q); if (dn) dn.onclick = () => { closeQuest(); if(p.id === "arsenal") { updateThorMarker(); cortoSays("J’aperçois un trophée viking tout près des lions ! Cours vite le chercher !"); } };
   if (quest.phase === "task" && !taskDone(p.id, quest.step)) bindTasks(p, $(".q-body", q), (i) => { if (p.tasks[i].t === "choice") setTimeout(() => quest && quest.id === p.id && renderQuest(), 800); else renderQuest(); }, renderQuest);
   hydrateThumbs(q);
 }
@@ -3902,6 +3903,7 @@ const BADGES = [
    Les trésors existants gardent leur clé tr:<lieu> ; les nouveaux utiliseront o:<id> quand une épreuve les remettra. */
 const PREVIEW_OBJECTS = DEV;
 const OBJECTS = [
+  {id:"marteau-thor",name:"Le marteau de Thor",img:"marteau-thor.png",key:"o:marteau-thor"},
   ...SCHIAVONI_GEMS,
   ...SQUERO_FRUITS.map((fruit) => ({ id: `fruit-squero-${fruit.id}`, name: fruit.name, img: fruit.img, key: fruit.key })),
   { id: "frari", name: "La coquille d’or", img: "coquille.svg", key: "tr:frari" },
@@ -4045,8 +4047,32 @@ function renderObjectAssembly() {
     piece.onpointercancel = () => { start = null; };
     piece.onclick = (e) => { if (e.detail === 0) { objectAssembly.delete(id); renderObjectAssembly(); } };
   });
+  tryThorOracle();
   tryMarcRecipe();
 }
+let thorBusy=false;
+function showThorOracle(replay=false,onClose=()=>{}) {
+  if(thorBusy)return;thorBusy=true;const owner=meIdx();
+  openThorOracle({gems:SCHIAVONI_GEMS.map(g=>({...g,owned:replay||objectList().some(o=>o.id===g.id&&o.found)})),
+    placed:g=>replay||has("craft:thor:socket:"+g.id),
+    place:g=>{if(owner!==meIdx())return;award("craft:thor:socket:"+g.id,0,owner);save();},
+    onReveal:()=>{if(!replay&&owner===meIdx()){award("story:thor:oracle",0,owner);save();}},
+    onClose:()=>{thorBusy=false;objectAssembly.delete("marteau-thor");if(tab==="objects")renderObjects();onClose();}});
+}
+function tryThorOracle(){if(!thorBusy&&objectAssembly.has("marteau-thor")&&objectList().some(o=>o.id==="marteau-thor"&&o.found))showThorOracle();}
+const THOR_SITE={lat:45.43442,lon:12.35067};let thorMarker=null,thorCollecting=false;
+function updateThorMarker(){
+ const available=JEU&&complete(place("arsenal"))&&!has("o:marteau-thor");
+ if(!available){thorMarker?.remove();thorMarker=null;return;}
+ if(!thorMarker){const el=document.createElement("button");el.className="dogana-mask-marker thor-map-marker";el.setAttribute("aria-label","Le trophée viking");el.innerHTML=`<img src="${THOR_IMAGE}" alt="">`;el.style.setProperty("--dogana-mask-size","62px");
+ thorMarker=new maplibregl.Marker({element:el,anchor:"center"}).setLngLat([THOR_SITE.lon,THOR_SITE.lat]).addTo(map);el.setAttribute("aria-label","Le trophée viking");el.onclick=async e=>{e.stopPropagation();if(thorCollecting||!mapWorkVisible())return;thorCollecting=true;const owner=meIdx();el.classList.add("is-searching");
+ try{const fix=await maskFix();if(owner!==meIdx())return;if(!fix||fix.acc>80){toast("Je ne parviens pas à vérifier ta position. Réessaie près du trophée.");return;}const distance=dist(fix.lat,fix.lon,THOR_SITE.lat,THOR_SITE.lon);if(distance>65+Math.min(fix.acc||0,20)){cortoSays(`Approche-toi du trophée viking. Il est encore à ${fmtD(distance)}.`);return;}
+ await el.querySelector("img").animate([{transform:"scale(1)"},{transform:"scale(1.8)",filter:"brightness(2)"},{transform:"scale(.1)",opacity:0}],{duration:1000}).finished;award("o:marteau-thor",0,owner);save();refreshAll();cortoSays("Ce trophée viking a trois emplacements… Regarde dans tes objets ce qui pourrait y prendre place.");
+ }finally{thorCollecting=false;el.classList.remove("is-searching");}};}
+ thorMarker.getElement().hidden=map.getZoom()<13;
+}
+map.on("zoom",updateThorMarker);
+if(DEV)window.__thor={update:updateThorMarker,status:()=>({available:JEU&&complete(place("arsenal")),done:doneTasks(place("arsenal")),tasks:place("arsenal").tasks.length,has:has("o:marteau-thor")})};
 let marcChestBusy = false, marcRewardFlight = Promise.resolve();
 function tryMarcRecipe() {
   if (marcChestBusy) return;
@@ -4188,6 +4214,7 @@ async function renderHistory() {
   add("gondolier-key", "L’échange avec le gondolier et sa clé", time("o:cle-gondolier"), ({close}) => openGondolierRendezvous({hasSeen:()=>true,hasKey:()=>false,getOwnedObjects:()=>objectList().filter(o=>o.found&&o.id!=="cle-gondolier").slice(0,12).concat([{id:"souvenir-relecture",name:"Un souvenir",img:"img/objets/coquille.svg"}]),onTrade:()=>({accepted:true,message:"Cette clé d’or est à toi."}),onKeyToBook:close}));
   add("monteverdi", "La rencontre avec Monteverdi", time("pn:monteverdi"), () => openMonteverdiStory());
   add("gold-mask", "La découverte du masque d’or", time(DOGANA_MASK_KEY), ({close}) => replayCollectible({img:DOGANA_MASK.img,title:"Le masque d’or",spin:true,onClose:close}));
+  add("thor-oracle", "Le marteau révèle le message du doge", time("story:thor:oracle"), ({close}) => {showThorOracle(true,close);return()=>document.querySelector(".thor-close")?.click();});
   add("chest", "Le masque d’or ouvre le coffre", time("craft:marc-chest:opened"), ({close}) => openMarcChest({canClaim:()=>true,onClaim:()=>true,onClose:close}));
   add("book", "La première page du livre de saint Marc", time("o:evangile-marc"), ({close}) => openMarcBook({onClose:close}));
   add("marc-book", "Le livre retrouvé de saint Marc", time("story:stmarc:book"), ({close}) => replayDialogue({img:"img/stmarc-avatar.webp",lines:[ST_MARC_BOOK.ask,ST_MARC_BOOK.thanks],onClose:close}));
@@ -4824,7 +4851,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateSqueroFruitMarkers(); updatePugniChestMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "history") renderHistory(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateSqueroFruitMarkers(); updatePugniChestMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); updateThorMarker(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "history") renderHistory(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");

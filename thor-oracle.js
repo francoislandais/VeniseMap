@@ -1,0 +1,21 @@
+export const THOR_IMAGE = 'img/objets/marteau-thor.png';
+export function openThorOracle({gems=[],placed=()=>false,place=()=>{},onReveal=()=>{},onClose=()=>{}}={}) {
+  if(document.querySelector('.thor-oracle'))return;
+  const root=document.createElement('div');root.className='thor-oracle';root.setAttribute('role','dialog');root.setAttribute('aria-label','Le marteau oracle');root.setAttribute('aria-modal','true');
+  root.innerHTML=`<button class="thor-close" aria-label="Fermer">✕</button><div class="thor-vision"><div class="thor-beam"></div><img class="thor-doge" src="img/doge-big.webp" alt="Le doge"><p class="thor-message">Je prends mon goûter à la serre cet après-midi.</p></div><div class="thor-stage"><img class="thor-hammer" src="${THOR_IMAGE}" alt="Marteau de Thor"><div class="thor-sockets"></div></div><div class="thor-gems"></div>`;
+  document.body.append(root);const previous=document.activeElement, controller=new AbortController();let timer,closed=false,revealed=false,drag=null;
+  const close=()=>{if(closed)return;closed=true;clearTimeout(timer);controller.abort();root.remove();previous?.focus?.();onClose();};
+  root.querySelector('.thor-close').onclick=close;root.querySelector('.thor-close').focus();
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopImmediatePropagation();close();}if(e.key==='Tab'){const bs=[...root.querySelectorAll('button:not(:disabled)')];if(!bs.length)return;e.preventDefault();let i=bs.indexOf(document.activeElement);bs[(i+(e.shiftKey?-1:1)+bs.length)%bs.length].focus();}},{capture:true,signal:controller.signal});
+  const activate=()=>{if(revealed||!gems.every(g=>placed(g)))return;revealed=true;root.classList.add('charging');timer=setTimeout(()=>{if(closed)return;root.classList.add('revealed');onReveal();},1800);};
+  const coords=[[23,82],[50,87],[77,82]];
+  gems.forEach((g,i)=>{const slot=document.createElement('button');slot.className='thor-slot';slot.style.cssText=`left:${coords[i][0]}%;top:${coords[i][1]}%`;slot.setAttribute('aria-label',`Placer ${g.short}`);root.querySelector('.thor-sockets').append(slot);
+    const b=document.createElement('button');b.className='thor-gem';b.innerHTML=`<img src="${g.img}" alt="${g.short}">`;b.disabled=!g.owned&&!placed(g);root.querySelector('.thor-gems').append(b);
+    const render=()=>{const done=placed(g);slot.innerHTML=done?`<img src="${g.img}" alt="${g.short}">`:'';slot.classList.toggle('set',done);b.hidden=done;};
+    const insert=()=>{if(!g.owned||placed(g)||closed)return;place(g);render();slot.animate([{transform:'translate(-50%,-50%) scale(1.6)',filter:'brightness(3)'},{transform:'translate(-50%,-50%) scale(1)',filter:'brightness(1)'}],{duration:600});activate();};
+    slot.onclick=insert;b.onclick=insert;
+    b.onpointerdown=e=>{if(b.disabled)return;e.preventDefault();b.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};};
+    b.onpointermove=e=>{if(!drag)return;drag.moved ||= Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8;b.style.transform=`translate(${e.clientX-drag.x}px,${e.clientY-drag.y}px)`;};
+    b.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;b.style.transform='';const r=slot.getBoundingClientRect();if(!d.moved||Math.hypot(e.clientX-r.left-r.width/2,e.clientY-r.top-r.height/2)<Math.max(40,r.width))insert();};b.onpointercancel=()=>{drag=null;b.style.transform='';};render();
+  });activate();return close;
+}

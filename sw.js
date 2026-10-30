@@ -1,4 +1,4 @@
-const VERSION = "v2.340.0";
+const VERSION = "v2.341.0";
 const SHELL = `vq-shell-${VERSION}`;
 // Cœur de l'appli précaché ; le reste peut être préparé depuis le profil du joueur.
 const FILES = ["./", "index.html", "style.css", "app.js", "data.js", "corto-lieux.js", "intro.js", "mapstyle.js", "config.js", "manifest.webmanifest", "vendor/maplibre-gl.js", "vendor/maplibre-gl.css", "fonts/special-elite-latin.woff2", "img/map-icon.webp", "img/objets/coquille.svg", "img/objets/perle.svg", "img/objets/plume.svg", "img/objets/coffre-code.svg", "img/objets/parchemin.svg", "img/objets/partition.svg", "img/objets/cle-bronze.svg", "img/objets/fiole-lagune.svg", "img/objets/verre-murano.svg", "img/objets/boussole.svg", "img/objets/masque.svg", "img/objets/sceau-lion.svg", "img/objets/diamant.svg", "img/objets/ruban-soie.svg", "img/objets/lanterne.svg", "img/intro/bg.webp", "img/home-icon.webp", "img/bridge-icon.webp", "data/petits-canaux.json", "data/outfits.json", "data/bridges.json", "data/facts.json", "icons/icon-192.png", "icons/icon-512.png", "img/corto-face.webp", "img/corto-content.webp", "img/corto-venise-pastel.webp"];
@@ -79,3 +79,5 @@ self.addEventListener("fetch", (e) => {
   }
   // Autres ressources externes : le cache HTTP normal du navigateur applique les règles du fournisseur.
 });
+
+FILES.push("thor-oracle.js", "img/objets/marteau-thor.png");
