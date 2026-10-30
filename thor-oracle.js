@@ -5,7 +5,7 @@ export function openThorOracle({gems=[],placed=()=>false,place=()=>{},onReveal=(
   root.innerHTML=`<button class="thor-close" aria-label="Fermer">✕</button><div class="thor-vision"><div class="thor-beam"></div><img class="thor-doge" src="img/doge-big.webp" alt="Le doge"><p class="thor-message">Je prends mon goûter à la serre cet après-midi.</p></div><div class="thor-stage"><img class="thor-hammer" src="${THOR_IMAGE}" alt="Marteau de Thor"><div class="thor-sockets"></div></div><div class="thor-gems"></div>`;
   document.body.append(root);const previous=document.activeElement, controller=new AbortController();let timer,closed=false,revealed=false,drag=null;
   const close=()=>{if(closed)return;closed=true;clearTimeout(timer);controller.abort();root.remove();previous?.focus?.();onClose();};
-  root.querySelector('.thor-close').onclick=close;root.querySelector('.thor-close').focus();
+  window.addEventListener('popstate',close,{signal:controller.signal});root.querySelector('.thor-close').onclick=close;root.querySelector('.thor-close').focus();
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopImmediatePropagation();close();}if(e.key==='Tab'){const bs=[...root.querySelectorAll('button:not(:disabled)')];if(!bs.length)return;e.preventDefault();let i=bs.indexOf(document.activeElement);bs[(i+(e.shiftKey?-1:1)+bs.length)%bs.length].focus();}},{capture:true,signal:controller.signal});
   const activate=()=>{if(revealed||!gems.every(g=>placed(g)))return;revealed=true;root.classList.add('charging');timer=setTimeout(()=>{if(closed)return;root.classList.add('revealed');onReveal();},1800);};
   const coords=[[23,82],[50,87],[77,82]];

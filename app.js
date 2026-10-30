@@ -4528,7 +4528,7 @@ async function ceremony(key, li, { record = false, replay = false, signal, onClo
 // Rattraper les grades royaux même si l’ancien compteur local les a déjà sautés.
 let ceremonyRetryAt = 0;
 function checkCeremony() {
-  if (document.body.classList.contains("history-replaying") || !gradeSynced || !PROFILE || ceremonyBusy || openId || tab !== "map" || scoreAnim || Date.now() < ceremonyRetryAt || $(".wq,.finale,.corto-say,.cam,.pf,.intro,.in2,.marc-magic,.croquette-ritual,.mont,.music-quest,.music-found,.doge-msg:not(.menu-say),.lion-arriving")) return;
+  if (document.body.classList.contains("history-replaying") || !gradeSynced || !PROFILE || ceremonyBusy || openId || tab !== "map" || scoreAnim || Date.now() < ceremonyRetryAt || $(".wq,.finale,.corto-say,.cam,.pf,.intro,.in2,.marc-magic,.croquette-ritual,.mont,.music-quest,.music-found,.doge-msg:not(.menu-say),.lion-arriving,.thor-oracle")) return;
   const li = level(pointsOf(meIdx())), k = `vq_cer4_${PLAYER_ID}`;
   const royal = [5, 6].find(j => j <= li && !has(`ceremony:grade:${OUTFIT_LEVELS[j]}:v1`));
   const run = j => ceremony(OUTFIT_LEVELS[j], j, { record: true }).catch(() => { ceremonyRetryAt = Date.now() + 30000; });
