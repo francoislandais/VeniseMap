@@ -4057,9 +4057,9 @@ function showThorOracle(replay=false,onClose=()=>{}) {
     placed:g=>replay||has("craft:thor:socket:"+g.id),
     place:g=>{if(owner!==meIdx())return;award("craft:thor:socket:"+g.id,0,owner);save();},
     onReveal:()=>{if(!replay&&owner===meIdx()){award("story:thor:oracle",0,owner);save();}},
-    onClose:()=>{thorBusy=false;objectAssembly.delete("marteau-thor");if(tab==="objects")renderObjects();onClose();}});
+    onClose:()=>{thorBusy=false;["marteau-thor",...SCHIAVONI_GEMS.map(g=>g.id)].forEach(id=>objectAssembly.delete(id));if(tab==="objects")renderObjects();onClose();}});
 }
-function tryThorOracle(){if(!thorBusy&&objectAssembly.has("marteau-thor")&&objectList().some(o=>o.id==="marteau-thor"&&o.found))showThorOracle();}
+function tryThorOracle(){const ids=["marteau-thor",...SCHIAVONI_GEMS.map(g=>g.id)],inventory=objectList();if(!thorBusy&&ids.every(id=>objectAssembly.has(id)&&inventory.some(o=>o.id===id&&o.found)))showThorOracle();}
 const THOR_SITE={lat:45.43442,lon:12.35067};let thorMarker=null,thorCollecting=false;
 function updateThorMarker(){
  const available=JEU&&complete(place("arsenal"))&&!has("o:marteau-thor");
