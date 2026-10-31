@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<base href="/">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#182d39">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Venise Admin">
+<title>Aperçu admin · Fables de Venise</title>
+<link rel="manifest" href="/admin/721c720c7e79f013efa736b311b69d47/manifest.webmanifest">
+<link rel="icon" href="icons/corto-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/corto-apple-touch-180.png">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="preload" href="fonts/special-elite-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="img/intro/bg.webp" as="image">
+<link rel="stylesheet" href="/admin/721c720c7e79f013efa736b311b69d47/preview-code/style.css?v=monteverdi-finale-3471">
+</head>
+<body>
+<div id="map" aria-label="Carte de Venise"></div>
+<div id="geo-gate" hidden role="alert"><div class="geo-gate-card"><h2>📍 Localisation requise</h2><p id="geo-gate-message">La localisation est nécessaire pour jouer.</p><geolocation id="geo-control" autolocate accuracymode="precise"><button type="button" class="btn blue" id="geo-retry">Autoriser la localisation</button></geolocation> <button type="button" class="btn ghost" id="geo-settings">Réglages du jeu</button></div></div>
+
+<div id="me-badge" class="me-badge" hidden></div>
+<header id="hud">
+  <button id="hud-kids" class="hud-kids" aria-label="Mon profil"></button>
+  <button id="hud-score" class="hud-score" aria-label="Points"></button>
+</header>
+<button id="next" class="next" hidden></button>
+<button id="bridge-btn" class="bridge-btn" aria-label="Je suis sur un pont"><img src="img/bridge-icon.webp" alt=""></button>
+<button id="corto-btn" class="bridge-btn corto-btn" aria-label="Parler à Corto"><img src="img/corto-content.webp" alt=""></button>
+<button id="home-btn" class="bridge-btn home-btn" aria-label="Mon espace"><img src="img/home-icon.webp" alt=""></button>
+<button id="map-btn" class="bridge-btn map-btn" aria-label="La carte"><img src="img/map-icon.webp" alt=""></button>
+<button id="dev-chap-help" type="button" hidden aria-label="Tester un lieu">Tester un lieu</button>
+
+<div id="up-bg" hidden></div>
+<section id="v-days" class="view" hidden></section>
+<section id="v-objects" class="view" hidden></section>
+<section id="v-bridges" class="view" hidden></section>
+<section id="v-photos" class="view" hidden></section>
+<section id="v-works" class="view" hidden></section>
+<section id="v-music" class="view" hidden></section>
+<section id="v-dev" class="view" hidden></section>
+<section id="v-settings" class="view" hidden></section>
+<section id="v-rewards" class="view" hidden></section>
+
+<div id="up-bar" class="up-bar" hidden>
+  <div class="up-top"><button id="up-me" class="up-me" aria-label="Modifier mon profil"></button></div>
+  <div class="up-tabs"><button data-tab="days">Défis</button><button data-tab="objects">Objets</button><button data-tab="bridges">Ponts</button><button data-tab="photos">Photos</button><button data-tab="works">Œuvres</button><button data-tab="music">Partitions</button><button data-tab="settings">Réglages</button><button data-tab="dev" id="tab-dev" hidden>Dév.</button></div>
+</div>
+
+<div id="sheet" class="sheet" hidden></div>
+<div id="quest" class="quest" hidden></div>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<canvas id="fx"></canvas>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script type="module" src="/admin/721c720c7e79f013efa736b311b69d47/preview-code/app.js?v=monteverdi-finale-3471"></script>
+</body>
+</html>

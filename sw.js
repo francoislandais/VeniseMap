@@ -1,9 +1,11 @@
-const VERSION = "v2.342.0";
+const VERSION = "v2.347.1";
 const SHELL = `vq-shell-${VERSION}`;
+const DOGE_FINALE_ASSETS = ['doge-finale.js', 'img/objets/coffre-doge-ferme.png', 'img/objets/coffre-doge-ouvert.png', 'img/objets/viole-monteverdi.png', ...[1, 2, 3, 4].map(n => `img/narrative/venise-lavis-0${n}.png`), 'img/doge-big-happy.webp', 'img/lion-avatar.webp', 'img/narrative/gondolier-gold-key.png'];
 // Cœur de l'appli précaché ; le reste peut être préparé depuis le profil du joueur.
 const FILES = ["./", "index.html", "style.css", "app.js", "data.js", "corto-lieux.js", "intro.js", "mapstyle.js", "config.js", "manifest.webmanifest", "vendor/maplibre-gl.js", "vendor/maplibre-gl.css", "fonts/special-elite-latin.woff2", "img/map-icon.webp", "img/objets/coquille.svg", "img/objets/perle.svg", "img/objets/plume.svg", "img/objets/coffre-code.svg", "img/objets/parchemin.svg", "img/objets/partition.svg", "img/objets/cle-bronze.svg", "img/objets/fiole-lagune.svg", "img/objets/verre-murano.svg", "img/objets/boussole.svg", "img/objets/masque.svg", "img/objets/sceau-lion.svg", "img/objets/diamant.svg", "img/objets/ruban-soie.svg", "img/objets/lanterne.svg", "img/intro/bg.webp", "img/home-icon.webp", "img/bridge-icon.webp", "data/petits-canaux.json", "data/outfits.json", "data/bridges.json", "data/facts.json", "icons/icon-192.png", "icons/icon-512.png", "img/corto-face.webp", "img/corto-content.webp", "img/corto-venise-pastel.webp"];
 FILES.push("data/music-challenges.json", "data/conclusion-layout.json", "data/music-layout.json", "img/montage/murano.webp", "img/q/credits.json", ...[1, 2, 3, 4].map((n) => `img/q/torcello-${n}.webp`), ...["burano-lace.webp", "burano-galuppi.webp", "burano-bussola.webp", "buranotour-leaning.webp"].map((name) => `img/q/${name}`));
 FILES.push("data/murano-island.geojson", "img/plan/salute.svg");
+FILES.push(...["mousse-hat.webp", "mousse-col.webp", "marin-hat.webp", "marin-col.webp", "capitaine-hat.webp", "capitaine-col.webp", "amiral-hat.webp", "amiral-col.webp", "altesse-hat.png", "altesse-col.png", "serenissime-hat.png", "serenissime-col.png"].map((name) => `img/outfit/${name}`));
 FILES.push("data/arbres.json", ...["olivier_torcello", "palmier_san_servolo", "fevier_giardini_reali", "micocoulier_piazzale_roma"].flatMap((id) => [256, 512].map((size) => `img/arbres/${id}_${size}.png`)));
 FILES.push("img/arbres/olivier-torcello-photo.webp", "img/objets/olive-torcello.webp");
 FILES.push("img/objets/datte-san-servolo.svg", "img/objets/gousse-fevier.svg", "img/objets/micocoule.svg");
@@ -12,11 +14,7 @@ FILES.push("img/objets/rubis-burano.svg");
 FILES.push("img/objets/masque-or.webp");
 FILES.push("img/montage/schiavoni.jpg");
 FILES.push("fonts/caveat.ttf", "fonts/caveat-OFL.txt");
-FILES.push("data/outfits.json", ...["altesse-hat.png", "altesse-col.png", "serenissime-hat.png", "serenissime-col.png"].map(name => "img/outfit/" + name));
-FILES.push("story-replay.js");
-FILES.push(...["arsenal-lion-piree.webp", "arsenal-runes-flanc.webp", "arsenal-runes-patte.webp"].map(name => "img/q/" + name));
-FILES.push("lion-companion.js", "marc-recipe.js", "img/objets/croquette-sacree.svg");
-FILES.push("marc-chest.js", "img/objets/coffre-masque.png", "img/objets/evangile-marc.png");
+FILES.push("marc-chest.js", "marc-recipe.js", "img/objets/coffre-masque.png", "img/objets/evangile-marc.png", "img/objets/croquette-sacree.svg");
 FILES.push("data/corto-gabriel.js", "api.js", "photo-sync.js");
 FILES.push("schiavoni-gems.js", "data/schiavoni-sources.json", "data/oeuvres.json", "img/places/schiavoni.webp", "img/places/credits.json", "img/objets/gemmes-LICENSE.txt", ...["amethyste", "emeraude", "saphir"].map((name) => `img/objets/schiavoni-${name}.svg`), ...["SCH01", "SCH02"].flatMap((id) => [`img/oeuvres/${id}.webp`, `img/oeuvres/t/${id}.webp`]));
 FILES.push("data/masques.json", "img/masque-venitien-transparent.png", "audio/mask-triumph.mp3");
@@ -27,6 +25,11 @@ FILES.push("stmarc-route.json");
 FILES.push("monteverdi-rendezvous.js", "monteverdi-frari-route.json", "img/monteverdi-avatar.webp", "img/narrative/venise-lavis-03.png");
 FILES.push("corto-rendezvous.js", "corto-rendezvous-editor.js", "gondolier-rendezvous.js", "gondolier-rendezvous-editor.js", "data/corto-rendezvous-layout.json", "data/gondolier-rendezvous-layout.json", "img/intro/e1.webp", "img/narrative/corto-tempete.png", "img/narrative/corto-gondolier-fin.png", "img/narrative/gondolier-gold-key.png", "img/narrative/gondolier-debut-tempete.png");
 FILES.push("corto-sound.js", "audio/corto-wind.mp3", "audio/corto-thunder.mp3");
+FILES.push("lion-companion.js");
+FILES.push("data/outfits.json", ...["altesse-hat.png", "altesse-col.png", "serenissime-hat.png", "serenissime-col.png"].map(name => "img/outfit/" + name));
+FILES.push("story-replay.js");
+FILES.push(...["arsenal-lion-piree.webp", "arsenal-runes-flanc.webp", "arsenal-runes-patte.webp"].map(name => "img/q/" + name));
+FILES.push(...DOGE_FINALE_ASSETS);
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(SHELL).then((c) => Promise.all(FILES.map((f) => c.add(f).catch(() => {})))).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith("vq-shell-") && k !== SHELL).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 function tileFresh(response) {
@@ -80,4 +83,10 @@ self.addEventListener("fetch", (e) => {
   // Autres ressources externes : le cache HTTP normal du navigateur applique les règles du fournisseur.
 });
 
-FILES.push("thor-oracle.js", "img/objets/marteau-thor.png");
+FILES.push("thor-oracle.js", "img/objets/marteau-thor.png", "audio/hologram.mp3");
+
+FILES.push("monteverdi-finale.js", "audio/ave-maris-stella-intro.mp3", "audio/vepres-depart.mp3", "img/places/frari.webp", "img/q/frari-q10.webp");
+
+FILES.push("monteverdi-celebration.js", "audio/finale-samba-de-janeiro.mp3");
+
+FILES.push("img/narrative/festival-dragon.svg");

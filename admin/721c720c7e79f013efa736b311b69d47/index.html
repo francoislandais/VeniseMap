@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#182d39">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Venise Admin">
+  <title>Administration · Fables de Venise</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+  <header><span class="mark" aria-hidden="true">⚙️</span><div><h1>Fables de Venise</h1><p>Administration</p></div></header>
+  <main>
+    <section id="login" class="panel">
+      <h2>Accès administrateur</h2>
+      <p>Entre ton code à quatre chiffres pour ouvrir les réglages du jeu.</p>
+      <form id="login-form"><label for="pin">Code administrateur</label><input id="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required><button type="submit">Ouvrir l’administration</button></form>
+      <p id="login-error" class="error" role="alert" hidden></p>
+    </section>
+    <div id="dashboard" hidden>
+      <section class="panel"><div class="head-row"><div><h2>Joueurs</h2><p>Un joueur, un score et une progression.</p></div><button id="refresh" class="secondary" type="button">Actualiser</button></div><div id="players"></div></section>
+      <section class="panel"><h2>Cachettes</h2><p>Choisis l’épreuve qui débloque un fragment ou un objet pour un joueur.</p>
+        <form id="reward-form"><label for="reward-player">Joueur</label><select id="reward-player"></select><label for="reward-item">Fragment ou objet</label><select id="reward-item"></select><label for="reward-target">Épreuve</label><select id="reward-target"></select><button type="submit">Enregistrer la cachette</button></form><p id="reward-status" role="status"></p><div id="reward-summary"></div>
+      </section>
+      <section class="panel"><h2>Réglages et outils avancés</h2><p>L’aperçu admin donne accès aux réglages du jeu, à la carte et à l’onglet Dév. Le mode de test s’active dans cet onglet.</p><a class="button" href="./preview.html">Ouvrir l’aperçu administrateur</a></section>
+      <section class="panel"><h2>Les deux applications</h2><p>Le jeu et l’administration s’installent séparément sur ton écran d’accueil.</p><a class="button secondary-link" href="/" target="_blank" rel="noopener">Ouvrir l’application joueur</a><button id="install" type="button" hidden>Installer l’application admin</button><p id="install-help" class="small"></p></section>
+    </div>
+  </main>
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>

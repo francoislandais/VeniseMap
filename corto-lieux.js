@@ -55,7 +55,7 @@ export const PLACE_FAR = {
     "Plus que {dist} pour atteindre {la}, {g} : compte {min} de marche.",
     "{la} n'est pas encore à portée, {g}. {dist} à parcourir, soit {min} de marche.",
     "Courage, {g} ! {dist} te séparent {de}, soit {min} de marche.",
-    "Je scrute l'horizon… pas de {g} en vue ! Encore {dist} pour atteindre {la} ({min}).",
+    "Je scrute l'horizon… je ne te vois pas encore, {g} ! Encore {dist} pour atteindre {la} ({min}).",
     "Pour arriver {a}, il te reste {dist} : {min} de marche.",
     "Pas encore, {g} ! {la} est à {dist} d'ici, soit {min} de marche.",
     "Le vent ne te porte pas encore jusqu'{a}… {dist}, {min} de route.",

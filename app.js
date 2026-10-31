@@ -7,6 +7,7 @@ import { DOGE_NEAR, DOGE_QUIZ } from "./data/doge-interaction.js";
 import { openCortoRendezvous } from "./corto-rendezvous.js";
 import { openGondolierRendezvous } from "./gondolier-rendezvous.js";
 import { MONTEVERDI_QUIZ, openMonteverdiStory } from "./monteverdi-rendezvous.js";
+import { openMonteverdiFinale, MONTEVERDI_FINALE_STARS } from "./monteverdi-finale.js";
 import { ST_MARC_QUIZ, ST_MARC_BOOK, ST_MARC_CROQUETTE } from "./data/stmarc-interaction.js";
 import { SCHIAVONI_GEMS, createSchiavoniGems } from "./schiavoni-gems.js";
 import { createGabrielMessages, isGabriel } from "./data/corto-gabriel.js";
@@ -14,6 +15,7 @@ import { apiFetch } from "./api.js";
 import { createPhotoLibrary } from "./photo-sync.js";
 import { openMarcChest, openMarcBook } from "./marc-chest.js";
 import { openSacredCroquette } from "./marc-recipe.js";
+import { openDogeFinale, openDogeChest } from "./doge-finale.js?v=doge-fireworks-3439";
 import { createLionCompanion } from "./lion-companion.js";
 import { playHistoryScene, closeHistoryReplay, replayDialogue, replayCollectible, replayLion } from "./story-replay.js";
 
@@ -305,7 +307,47 @@ function modal(html, onClose) {
 }
 
 let adminUnlocked = ADMIN_CONTEXT, adminPromptOpen = false, adminPlayers = [], adminRewards = {}, adminCode = "";
-if (ADMIN_CONTEXT) apiFetch("api/admin/session", { headers: apiHeaders() }).then((r) => r.ok ? r.json() : Promise.reject()).then((data) => { adminPlayers = data.players || []; adminRewards = data.rewards || {}; if (tab === "settings") renderSettings(); }).catch(() => { location.replace(location.pathname.replace(/preview\.html$/, "") + "?open-preview=1"); });
+let adminInventoryReady = !ADMIN_CONTEXT;
+let adminInventoryError = '';
+const ADMIN_POCKET_BASELINE = 'vq_admin_gabriel_pocket_v1';
+const pocketStateKey = (key) => /^(o:|tr:|craft:|trade:gondolier:spent:object:|story:stmarc:|story:doge:|grant:[^:]+:object:)/.test(key);
+function applyGabrielPreviewInventory(snapshot, force = false) {
+  if (!ADMIN_CONTEXT || !snapshot?.done) return false;
+  let previous = null; try { previous = localStorage.getItem(ADMIN_POCKET_BASELINE); } catch {}
+  if (force || previous !== snapshot.playerId) {
+    cancelPocketGesture();
+    S.done = { ...Object.fromEntries(Object.entries(S.done).filter(([key]) => !pocketStateKey(key))), ...JSON.parse(JSON.stringify(snapshot.done)) };
+    objectAssembly.clear(); heldEl?.remove(); heldEl = null; heldId = null; saveHeld();
+    try { localStorage.removeItem(HELD_POS); localStorage.setItem(ADMIN_POCKET_BASELINE, snapshot.playerId); } catch {}
+    save();
+  }
+  adminInventoryReady = true; refreshAll();
+  if (tab === 'objects') renderObjects();
+  return true;
+}
+async function loadAdminPreviewSession() {
+  adminInventoryError = '';
+  try {
+    const response = await apiFetch('api/admin/session', { headers: apiHeaders() });
+    if (response.status === 401 || response.status === 403) {
+      adminInventoryError = 'La session administrateur a expiré.';
+      modal(`<h2>Accès administrateur</h2><p>Rouvre l’administration pour entrer ton code.</p><a class="btn blue" href="${location.pathname.replace(/preview\.html$/, '')}">Ouvrir l’administration</a><button class="btn ghost" data-close>Fermer</button>`);
+      return;
+    }
+    if (!response.ok) throw new Error(`Session admin : ${response.status}`);
+    const data = await response.json();
+    adminPlayers = data.players || []; adminRewards = data.rewards || {};
+    if (!applyGabrielPreviewInventory(data.previewInventory)) throw new Error('Inventaire de Gabriel indisponible');
+    if (tab === 'settings') renderSettings();
+  } catch (error) {
+    console.error('Chargement de l’aperçu admin interrompu', error);
+    adminInventoryError = 'Les objets de Gabriel n’ont pas pu être chargés : réessaie dans quelques instants.';
+    toast(adminInventoryError, 6000);
+  } finally {
+    if (tab === 'objects' && !adminInventoryReady) renderObjects();
+  }
+}
+if (ADMIN_CONTEXT) loadAdminPreviewSession();
 function requestAdminAccess(target) {
   if (adminPromptOpen) return;
   adminPromptOpen = true;
@@ -625,12 +667,13 @@ function onPos(lat, lon, acc, manual = false) {
     if (DEV) userMarker.on("dragend", () => { const p = userMarker.getLngLat(); devPinned = true; onPos(p.lat, p.lng, 10, true); });
   }
   if (!userMarker.isDragging || !userMarker.isDragging()) userMarker.setLngLat([lon, lat]);
-  // Un nouveau fix GPS rapproche immédiatement Monteverdi, même au zoom où les marcheurs se mettent à jour lentement.
-  if (monteverdiNearPlayer()) {
-    const monteverdi = WALKERS.find((walker) => walker.id === "monteverdi");
-    if (monteverdi?.marker) {
-      const nearby = walkerAt(monteverdi);
-      monteverdi.marker.setLngLat([nearby.lon, nearby.lat]);
+  // Actualiser le rendez-vous du Doge dès le nouveau fix, même aux faibles zooms.
+  adjCache = [];
+  if (dogeNearPlayer()) {
+    const doge = WALKERS.find((walker) => walker.id === "doge");
+    if (doge?.marker) {
+      const nearby = walkerAt(doge);
+      doge.marker.setLngLat([nearby.lon, nearby.lat]);
     }
   }
   if (boatMarker) updateBoatInteraction(boatAt());
@@ -904,12 +947,26 @@ function motionSpeed(M, t) {
 const CLK = { t0: Date.now(), p0: performance.now() };
 function nowMs() { const v = CLK.t0 + (performance.now() - CLK.p0); if (Math.abs(v - Date.now()) > 1500) { CLK.t0 = Date.now(); CLK.p0 = performance.now(); return CLK.t0; } return v; }
 const GONDOLIER_VISIT = { until: Date.parse("2026-10-28T08:00:00+01:00"), lat: 45.43174, lon: 12.32853, shore: 5 };
-// Monteverdi est à portée de tous les joueurs localisés, quel que soit leur profil ou leur progression.
-function monteverdiNearPlayer() { return !!pos; }
+// Rendez-vous de Gabriel et Anton avec le Doge ; disponible aussi en aperçu admin.
+// À partir du 31 octobre à midi (heure de Venise), rendez-vous personnel pour chaque joueur.
+const MONTEVERDI_VISIT_FROM = Date.parse('2026-10-31T12:00:00+01:00');
+function monteverdiNearPlayer(t = nowMs()) {
+  return t >= MONTEVERDI_VISIT_FROM && !!pos && Number.isFinite(pos.lat) && Number.isFinite(pos.lon) && Number.isFinite(pos.acc) && pos.acc <= 80 && !has('story:monteverdi:rest');
+}
+function dogeNearPlayer() {
+  return !!pos && (["p-228c5f8e73ff4943aaacba24b21ac699", "p-17946b1ed1df4412b6a7d7749fd491c2"].includes(PLAYER_ID) || ADMIN_CONTEXT);
+}
 function rawAt(W, t) {
-  if (W.id === "monteverdi" && monteverdiNearPlayer()) {
-    // Environ 45 m de la position GPS : visible et touchable, sans masquer le joueur.
-    return { lat: pos.lat + 0.00019, lon: pos.lon + 0.00048, shore: 0 };
+  if (W.id === 'monteverdi' && monteverdiNearPlayer(t)) {
+    // À environ 38 m au nord-ouest, séparé du Doge ; même vexé, il reste accessible.
+    const west = 35 + Math.min(10, Math.max(0, huffOff(W, t)));
+    return {lat:pos.lat + 14 / 111320, lon:pos.lon - west / (111320 * Math.cos(pos.lat * Math.PI / 180)), shore:0};
+  }
+  if (W.id === "doge" && dogeNearPlayer()) {
+    // À 41 m au nord-est : dans les 60 m de dialogue, sans recouvrir le joueur.
+    // Le Doge conserve sa fuite habituelle après une mauvaise réponse.
+    const east = 36 + huffOff(W, t);
+    return { lat: pos.lat + 20 / 111320, lon: pos.lon + east / (111320 * Math.cos(pos.lat * Math.PI / 180)), shore: 0 };
   }
   if (W.id === "gondolier" && t < GONDOLIER_VISIT.until) return { lat: GONDOLIER_VISIT.lat, lon: GONDOLIER_VISIT.lon, shore: GONDOLIER_VISIT.shore };
   const R = W.R, f = ((t / 3600000) % W.h) / W.h, target = ((W.motion ? motionDist(W.motion, t) : f * R.total) + huffOff(W, t)) % R.total;
@@ -1006,8 +1063,24 @@ function farLine(W) {
   return L[i].replace(/\{G\}/g, cap(g)).replace(/\{g\}/g, g).replace(/\{N\}/g, cap(W.name)).replace(/\{n\}/g, W.name).replace(/\{to\}/g, W.to).replace(/\{de\}/g, W.de);
 }
 function walkerTap(W) {
+  if (W.id === 'monteverdi' && (monteverdiFinaleBusy || has('story:monteverdi:rest'))) return;
   const d = walkerAt(W), m = pos ? dist(pos.lat, pos.lon, d.lat, d.lon) : Infinity;
-  if (W.id !== "gondolier" && m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
+  const previewDogeFinale = ADMIN_CONTEXT && W.id === 'doge';
+  if (!previewDogeFinale && W.id !== "gondolier" && m > W.near + Math.min(pos ? pos.acc : 0, 40)) { dogeMsg(d.shore > SHORE_MAX ? offshoreLine(W) : farLine(W)); return; }
+  if (W.id === 'doge' && (previewDogeFinale || has(LION_FOLLOW_KEY))) {
+    openDogeFinale({
+      hasChest: has('story:doge:lion-chest'),
+      onClaimChest: () => {
+        if (!has('story:doge:lion-chest')) {
+          award('story:doge:lion-chest', 0, meIdx());
+          award('o:coffre-doge', 0, meIdx()); save(); refreshAll();
+        }
+        setTab('objects');
+        return true;
+      },
+    });
+    return;
+  }
   if (W.id === "gondolier") {
     openGondolierRendezvous({
       editable: LOCAL_DEV,
@@ -1023,7 +1096,7 @@ function walkerTap(W) {
         if (LOCAL_DEV) for (let i = 1; i <= 3; i++) items.push({ id: `diamant-test-${i}`, name: `Diamant de test ${i}`, img: "img/objets/diamant.svg" });
         return items;
       },
-      hasKey: () => !LOCAL_DEV && objectFoundFor("cle-gondolier"),
+      hasKey: () => objectFoundFor("cle-gondolier"),
       onTrade: (selectedIds) => {
         const offered = [...new Set(selectedIds)].map(id => {
           const item = objectList().find(object => object.id === id && (LOCAL_DEV || object.found));
@@ -1033,9 +1106,11 @@ function walkerTap(W) {
         });
         const validOffer = offered.length === 1 && offered[0] && offered[0].id !== "cle-gondolier";
         const refusal = { accepted: false, message: "Choisis un seul objet de ton livre, celui que tu veux m’offrir. Il me suffit pour faire l’échange !" };
-        if (LOCAL_DEV) return validOffer
-          ? { accepted: true, message: "Voilà un échange qui me convient. Cette clé d'or est à toi." }
-          : refusal;
+        if (LOCAL_DEV) {
+          if (!validOffer) return refusal;
+          if (!objectFoundFor('cle-gondolier')) { award('o:cle-gondolier', 0, meIdx()); save(); refreshAll(); }
+          return { accepted: true, message: "Voilà un échange qui me convient. Cette clé d'or est à toi." };
+        }
         if (objectFoundFor("cle-gondolier")) return { accepted: false, message: "Tu as déjà ma clé, moussaillon. Garde tes trésors !" };
         if (!validOffer) return refusal;
         const player = meIdx();
@@ -1074,7 +1149,76 @@ function walkerTap(W) {
   if (W.quiz) openWalkerQuiz(W); else cortoSays(W.msg);
 }
 // Le livre doit être réellement trouvé et tenu en main sur la carte avant la remise à saint Marc.
-let marcDropHandler = null;
+let marcDropHandler = null, monteverdiFinaleBusy = false;
+function dropVioleOnMonteverdi(dragged, event) {
+  if (tab !== 'map' || heldId !== 'viole-monteverdi' || monteverdiFinaleBusy || has('story:monteverdi:rest') || !objectFoundFor('viole-monteverdi')) return false;
+  const W = WALKERS.find(w => w.id === 'monteverdi');
+  if (!W?.marker || document.querySelector('.wq,.corto-rendezvous')) return false;
+  const marker = W.marker.getElement(), target = (marker.querySelector('.doge-av') || marker).getBoundingClientRect(), item = dragged.getBoundingClientRect();
+  const hit = (x, y) => x >= target.left - 20 && x <= target.right + 20 && y >= target.top - 20 && y <= target.bottom + 20;
+  if (!hit(event.clientX, event.clientY) && !hit(item.left + item.width / 2, item.top + item.height / 2)) return false;
+  const at = walkerAt(W);
+  if (!pos || !Number.isFinite(pos.acc) || pos.acc > 80 || dist(pos.lat, pos.lon, at.lat, at.lon) > W.near + Math.min(pos.acc, 20)) { cortoSays('Approche-toi de Monteverdi avec une position GPS précise pour lui rendre sa viole.'); return true; }
+  return startMonteverdiFinale({dragged});
+}
+function startMonteverdiFinale({preview = false, dragged = heldEl} = {}) {
+  const W = WALKERS.find(w => w.id === 'monteverdi');
+  if (monteverdiFinaleBusy || !W?.marker || !W.R?.pts?.length) { toast('Monteverdi se prépare… Réessaie dans un instant.'); return false; }
+  if (preview && !(ADMIN_CONTEXT || LOCAL_DEV)) return false;
+  if (!preview && has('story:monteverdi:rest')) return false;
+  setTab('map');
+  const owner = meIdx(), player = PLAYER_ID, reset = S.resetAt || 0;
+  monteverdiFinaleBusy = true; W.finaleControlled = true; if (dragged) dragged.style.visibility = 'hidden';
+  const original = W.marker.getLngLat(), originalVisibility = W.marker.getElement().style.visibility;
+  const marker = W.marker.getElement();
+  const valid = () => owner === meIdx() && player === PLAYER_ID && reset === (S.resetAt || 0);
+  const travel = signal => new Promise((resolve, reject) => {
+    const pts = W.R.pts, entrance = [45.43687, 12.32623];
+    const nearest = p => pts.reduce((best, q, i) => dist(...q, ...p) < dist(...pts[best], ...p) ? i : best, 0);
+    const start = nearest([original.lat, original.lng]), end = nearest(entrance), n = pts.length;
+    const direction = (end - start + n) % n <= (start - end + n) % n ? 1 : -1;
+    const path = [[original.lat, original.lng]];
+    for (let i = start, count = 0; count < n; count++, i = (i + direction + n) % n) { path.push(pts[i]); if (i === end) break; }
+    path.push(entrance); const cum = [0]; for (let i = 1; i < path.length; i++) cum.push(cum[i - 1] + dist(...path[i - 1], ...path[i]));
+    map.easeTo({center:[12.32623,45.43687],zoom:17.3,duration:1600});marker.classList.add('mf-returning');marker.style.visibility='';
+    let elapsed = 0, last = performance.now(), frame;
+    const abort = () => { cancelAnimationFrame(frame); reject(new Error('Finale interrompue')); };
+    signal.addEventListener('abort', abort, {once:true});
+    const tick = now => {
+      if (!valid()) { abort(); return; }
+      if (!document.hidden) elapsed += Math.min(80, now-last); last=now;
+      const f = Math.min(1, elapsed / 6500), distance = cum.at(-1) * f; let i = 1;
+      while (i < cum.length - 1 && cum[i] < distance) i++;
+      const k = (distance - cum[i-1]) / Math.max(.001, cum[i]-cum[i-1]);
+      W.marker.setLngLat([path[i-1][1]+(path[i][1]-path[i-1][1])*k,path[i-1][0]+(path[i][0]-path[i-1][0])*k]);
+      if (f < 1) { frame=requestAnimationFrame(tick); return; }
+      signal.removeEventListener('abort',abort);
+      const image=marker.querySelector('.doge-av') || marker;
+      image.animate([{opacity:1,transform:'scale(1)'},{opacity:0,transform:'scale(.05)'}],{duration:1000}).finished.then(()=>{marker.style.visibility='hidden';resolve();},reject);
+    }; frame=requestAnimationFrame(tick);
+  });
+  openMonteverdiFinale({name:myName(),travel,map,maskImages:MASK_IMAGES,
+    getCharacters:()=>[
+      {id:'corto',name:'Corto',img:'img/corto-content.webp',from:boatMarker?[boatMarker.getLngLat().lng,boatMarker.getLngLat().lat]:[12.342,45.433]},
+      ...WALKERS.map(w=>{const at=w.marker?.getLngLat();return {id:w.id,name:w.name,img:w.img,from:at?[at.lng,at.lat]:[12.342,45.433]};})
+    ],
+    getMasks:async()=>{if(maskSites.length)return maskSites.slice();const response=await fetch('data/masques.json');if(!response.ok)throw new Error('Masques indisponibles');const data=await response.json();return data.points.filter(s=>s.id&&Number.isFinite(s.lat)&&Number.isFinite(s.lon));},
+    onMaskBurst:id=>{
+      if(!valid())return 0;
+      if(!scoreAnim)scoreAnim={shown:Number($('#hud-score .sc-n b')?.textContent)||0,left:1};
+      if(preview)return 50;
+      const key=`bonus:finale:mask:${id}`;if(has(key))return 0;
+      award(key,50,owner);
+      if(!has(maskKey(id,owner))){award(maskKey(id,owner),0,owner);S.done[maskKey(id,owner)].kind='stars';}
+      save();return 50;
+    },
+    onCoinArrive:amount=>{if(!scoreAnim||!valid())return;scoreAnim.shown+=amount;const now=performance.now();if(now-(scoreAnim.painted||0)>30){const number=$('#hud-score .sc-n b');if(number)number.textContent=Math.round(scoreAnim.shown);scoreAnim.painted=now;}},
+    onReward:()=>{if(preview){const base=Number($('#hud-score .sc-n b')?.textContent)||0;return starsToCounter(innerWidth/2,innerHeight*.45,MONTEVERDI_FINALE_STARS,false,{rain:true}).then(()=>{scoreAnim={shown:base+MONTEVERDI_FINALE_STARS,left:1};const n=$('#hud-score .sc-n b');if(n)n.textContent=Math.round(scoreAnim.shown);});}if(!valid() || has('bonus:monteverdi:finale'))return;award('bonus:monteverdi:finale',MONTEVERDI_FINALE_STARS,owner);save();refreshAll();return starsToCounter(innerWidth/2,innerHeight*.45,MONTEVERDI_FINALE_STARS,true,{rain:true});},
+    onComplete:()=>{if(scoreAnim){const n=$('#hud-score .sc-n b');if(n)n.textContent=Math.round(scoreAnim.shown);}if(preview || !valid())return;award('story:monteverdi:rest',0,owner);award('craft:monteverdi:viole-returned',0,owner);heldEl?.remove();heldEl=null;heldId=null;saveHeld();save();refreshAll();},
+    onExit:completed=>{monteverdiFinaleBusy=false;W.finaleControlled=false;marker.classList.remove('mf-returning');if(preview || !completed){W.marker.setLngLat(original);marker.style.visibility=originalVisibility;if(dragged?.isConnected)dragged.style.visibility='';}else marker.style.visibility='hidden';scoreAnim=null;renderHud();if(completed&&valid())cortoSays(`Bravo, ${myName()} ! Grâce à ta bravoure, ta curiosité et ta ténacité, Venise a retrouvé sa musique. Quelle aventure ! Tu peux être fier de toi.`);}
+  });
+  return true;
+}
 const marcBookInHand = () => heldId === "evangile-marc" && !!heldEl && objectFoundFor("evangile-marc");
 function giveSacredCroquetteToMarc() {
   if (has(LION_FOLLOW_KEY) || !objectList().some((item) => item.id === 'croquette-sacree' && item.found)) return false;
@@ -1273,6 +1417,7 @@ async function startWalker(W) {
   el.addEventListener("click", (e) => { e.stopPropagation(); walkerTap(W); });
   const d = walkerAt(W);
   W.marker = new maplibregl.Marker({ element: el, anchor: "bottom", subpixelPositioning: true }).setLngLat([d.lon, d.lat]).addTo(map);
+  if (W.id === "monteverdi" && has("story:monteverdi:rest")) el.style.visibility = "hidden";
 }
 let walkLast = 0;
 // Une douzaine de positions par seconde suffit pour des trajets lents sur la carte.
@@ -1293,6 +1438,8 @@ function walkTick(ts) {
   const smooth = map.getZoom() >= 16.5 || WALKERS.some((W) => W.huff && now - W.huff.t0 < (HUFF_RUN + 1) * 1000);
   const slow = ts - walkLast > 5000; if (slow) walkLast = ts;
   for (const W of WALKERS) if (W.marker && (smooth || slow || W.motion)) {
+    if (W.id === 'monteverdi' && has('story:monteverdi:rest')) { W.marker.getElement().style.visibility = 'hidden'; continue; }
+    if (W.finaleControlled) continue;
     const following = W.id === "lion" ? lionCompanion.update(ts) : null;
     W.companionHeading = following;
     const q = following || (W.id === "lion" ? smoothAdj(W, now) : walkerAt(W, now));
@@ -1501,7 +1648,7 @@ const BURANO_RUBY_MASK_ID = "m079";
 let maskSites = [];
 const maskKey = (id, player = meIdx()) => `mask:${player}:${id}`;
 const maskGemKey = (id, player = meIdx()) => `o:mask-gem:${player}:${id}`;
-const maskState = (id, player = meIdx()) => !has(maskKey(id, player)) ? "mask" : S.done[maskKey(id, player)].kind === "gem" && !has(maskGemKey(id, player)) ? "gem" : "done";
+const maskState = (id, player = meIdx()) => has(`bonus:finale:mask:${id}`) ? "done" : !has(maskKey(id, player)) ? "mask" : S.done[maskKey(id, player)].kind === "gem" && !has(maskGemKey(id, player)) ? "gem" : "done";
 let maskAudioContext, maskAudioPromise;
 function armMaskSound() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -1741,6 +1888,69 @@ async function collectMuranoShell() {
   }
   flight.remove(); record.busy = false; updateMuranoShellMarker();
   toast("Coquillage magique rangé dans ton livre ! +50 ⭐", 5000);
+}
+
+// Après la librairie, un vieux papier attend sur un passage public tout proche.
+// Son dessin de lion sert seul d'indice : aucun texte n'en révèle la destination.
+const ACQUALTA_PARCHMENT = { lat: 45.43817, lon: 12.34240, radius: 38, img: "img/objets/parchemin-lion-arsenal.png?v=treasure-map-3", key: "o:parchemin-lion" };
+let acqualtaParchmentMarker = null;
+function updateAcqualtaParchmentMarker() {
+  const available = JEU && has("fin:acquaalta") && !has(ACQUALTA_PARCHMENT.key) && !has(grantKey(meIdx(), "object:parchemin-lion"));
+  if (!available) {
+    if (acqualtaParchmentMarker && !acqualtaParchmentMarker.busy) { acqualtaParchmentMarker.marker.remove(); acqualtaParchmentMarker = null; }
+    return;
+  }
+  if (!acqualtaParchmentMarker) {
+    const el = document.createElement("button"); el.type = "button"; el.className = "acqualta-parchment-marker";
+    el.setAttribute("aria-label", "Ramasser le vieux papier");
+    const img = document.createElement("img"); img.src = ACQUALTA_PARCHMENT.img; img.alt = ""; img.draggable = false; el.appendChild(img);
+    const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true }).setLngLat([ACQUALTA_PARCHMENT.lon, ACQUALTA_PARCHMENT.lat]).addTo(map);
+    acqualtaParchmentMarker = { marker, el, img, busy: false };
+    el.addEventListener("pointerdown", (event) => event.stopPropagation());
+    el.addEventListener("click", (event) => { event.stopPropagation(); collectAcqualtaParchment(); });
+  }
+  const zoom = map.getZoom();
+  acqualtaParchmentMarker.el.hidden = zoom < 14;
+  acqualtaParchmentMarker.el.style.setProperty("--acqualta-paper-size", Math.round(Math.min(62, Math.max(42, 35 * 1.38 ** (zoom - 15)))) + "px");
+}
+map.on("zoom", updateAcqualtaParchmentMarker);
+async function collectAcqualtaParchment() {
+  const record = acqualtaParchmentMarker;
+  if (!record || record.busy || !mapWorkVisible() || !has("fin:acquaalta") || has(ACQUALTA_PARCHMENT.key)) return;
+  record.busy = true; record.el.classList.add("is-searching");
+  const player = meIdx(), [fix] = await Promise.all([maskFix(), sleep(650)]);
+  record.el.classList.remove("is-searching");
+  if (!record.el.isConnected || player !== meIdx()) { record.busy = false; return; }
+  if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.acc) || fix.acc > 80) {
+    record.busy = false; cortoSays("Je n’arrive pas à vérifier ta position. Réessaie près du vieux papier."); return;
+  }
+  const distance = dist(fix.lat, fix.lon, ACQUALTA_PARCHMENT.lat, ACQUALTA_PARCHMENT.lon);
+  if (distance > ACQUALTA_PARCHMENT.radius + Math.min(fix.acc, 15)) {
+    record.busy = false; cortoSays(`Le vieux papier est encore à ${fmtD(distance)}. Approche-toi pour le ramasser !`); return;
+  }
+  const box = record.el.getBoundingClientRect(), from = { left: box.left, top: box.top, width: box.width, height: box.height };
+  award(ACQUALTA_PARCHMENT.key, 0, player); save(); refreshAll();
+  const flight = record.img.cloneNode(); flight.className = "acqualta-parchment-flight";
+  flight.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px`;
+  document.body.appendChild(flight);
+  const book = $("#home-btn")?.getBoundingClientRect();
+  if (book) {
+    const dx = book.left + book.width / 2 - (from.left + from.width / 2), dy = book.top + book.height / 2 - (from.top + from.height / 2);
+    await flight.animate([{ transform: "scale(1) rotate(0)", opacity: 1 }, { transform: "scale(1.1) rotate(-8deg)", opacity: 1, offset: .22 }, { transform: `translate(${dx}px,${dy}px) scale(.12) rotate(18deg)`, opacity: 0 }], { duration: 1050, easing: "cubic-bezier(.3,0,.4,1)", fill: "forwards" }).finished.catch(() => {});
+  }
+  flight.remove(); record.busy = false; updateAcqualtaParchmentMarker();
+  showAcqualtaParchment();
+}
+function showAcqualtaParchment() {
+  if ($(".acqualta-paper-reveal")) return;
+  const overlay = document.createElement("section"); overlay.className = "acqualta-paper-reveal";
+  overlay.setAttribute("role", "dialog"); overlay.setAttribute("aria-modal", "true"); overlay.setAttribute("aria-label", "Vieux parchemin illustré");
+  overlay.innerHTML = `<img class="acqualta-paper-art" src="${ACQUALTA_PARCHMENT.img}" alt="Un dessin ancien représentant un grand lion de pierre"><button type="button" class="acqualta-paper-close">Ranger le parchemin dans mes objets</button>`;
+  document.body.appendChild(overlay);
+  const close = () => { overlay.remove(); scheduleGeoSync(); toast("Le vieux papier rejoint tes objets.", 4000); };
+  $(".acqualta-paper-close", overlay).onclick = close;
+  overlay.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
+  $(".acqualta-paper-close", overlay).focus({ preventScroll: true });
 }
 
 // Quatre fruits des arbres remarquables, à découvrir sur le chemin après l'épreuve du squero.
@@ -2101,8 +2311,12 @@ function renderProfileBar() {
   $("#up-me").innerHTML = `<span class="mb-av${photo ? " up-avatar-frame" : ""}">${photo ? `<span class="me ph up-avatar">${profileHtml()}</span>` : profileHtml()}</span><span class="up-n"><b>${esc(myName())}</b><small>${cur.name}</small></span>`;
 }
 $("#up-me").onclick = async () => {
-  if (ADMIN_CONTEXT) return;
   const cur = { ...PROFILE, name: myName(), avatar: me().avatar };
+  if (ADMIN_CONTEXT) {
+    const p = await editProfile(cur); if (!p) return;
+    if (p.photo && p.photo === PROFILE?.photo) Object.assign(p, Object.fromEntries(["outfit", "outfitPhoto", "outfitOverlay", "outfitOverlayHat", "outfitOverlayBody", "outfitLayout", "outfitOverlayVersion", "outfitShift"].filter((key) => PROFILE[key] !== undefined).map((key) => [key, PROFILE[key]])));
+    applyProfile(p); return;
+  }
   let others = [], switchTo = null;
   const [boardResult, pairResult] = await Promise.allSettled([
     apiFetch("api/board", { headers: apiHeaders() }),
@@ -2143,7 +2357,7 @@ $("#hud-score").onclick = () => { if (DEV && !openId && !$(".wq") && !$(".cer"))
 function devStarMenu() {
   const old = $(".dev-menu"); if (old) { old.remove(); return; }
   const m = document.createElement("div"); m.className = "dev-menu";
-  m.innerHTML = `<b>Mode dev</b>${Object.entries(OUTFIT_LEVELS).map(([li, key]) => `<button data-li="${li}" data-k="${key}">Tester la cérémonie : ${esc(LEVELS[li].name.toLowerCase())}</button>`).join("")}`;
+  m.innerHTML = `<b>Mode dev</b>${Object.entries(CEREMONY_LEVELS).map(([li, key]) => `<button data-li="${li}" data-k="${key}">Tester la cérémonie : ${esc(LEVELS[li].name.toLowerCase())}</button>`).join("")}`;
   document.body.appendChild(m);
   const off = (e) => { if (m.contains(e.target) && e.target.tagName === "BUTTON") return; m.remove(); removeEventListener("pointerdown", off, true); };
   setTimeout(() => addEventListener("pointerdown", off, true), 0);
@@ -2530,26 +2744,49 @@ if (DEV) window.__stars = (n) => starsToCounter(innerWidth / 2, innerHeight * 0.
 function starBurst(el, n, counted = false) { const r = el.getBoundingClientRect(); starsToCounter(r.left + r.width / 2, r.top + r.height / 2, n, counted); }
 function starsToCounter(cx, cy, n, counted = false, options = {}) {
   const box = $("#hud-score"), sc = $(".sc-n", box), num = $("b", sc), svg = $("svg", sc); if (!sc) return;
-  const N = Math.max(1, Math.min(n, options.rain ? 60 : 14)), per = n / N, flights = [];
+  const N = Math.max(1, Math.min(n, options.fireworks ? 240 : options.vortex ? 50 : options.rain ? 60 : 14)), per = n / N, flights = [];
   if (!scoreAnim) scoreAnim = { shown: parseFloat(num.textContent) || 0, left: 0 };
   if (counted) { scoreAnim.shown = Math.max(0, scoreAnim.shown - n); num.textContent = Math.round(scoreAnim.shown); }
   scoreAnim.left += N; sc.classList.add("rx"); box.classList.add("rx");
-  const t = svg.getBoundingClientRect(), tx = t.left + t.width / 2, ty = t.top + t.height / 2, sz = 30;
+  const t = svg.getBoundingClientRect(), tx = t.left + t.width / 2, ty = t.top + t.height / 2, sz = options.fireworks ? 22 : options.vortex ? 19 : 30;
   for (let i = 0; i < N; i++) {
     const s = document.createElement("div"); s.className = "fly-star"; s.innerHTML = STAR_SVG; const ox = options.rain ? innerWidth * (.08 + Math.random() * .84) : cx, oy = options.rain ? -30 - Math.random() * 90 : cy;
     s.style.cssText = `left:${ox - sz / 2}px;top:${oy - sz / 2}px;width:${sz}px;height:${sz}px`; document.body.appendChild(s);
-    const a0 = (i / N) * Math.PI * 2 + Math.random() * 0.4, R = 46 + (i % 3) * 18, dx = tx - ox, dy = ty - oy, bx = Math.cos(a0) * R + cx - ox, by = Math.sin(a0) * R + cy - oy;
-    flights.push(s.animate([
+    const a0 = (i / N) * Math.PI * 2 + Math.random() * 0.4, R = options.fireworks ? 90 + Math.random() * 190 : 46 + (i % 3) * 18, dx = tx - ox, dy = ty - oy, bx = Math.cos(a0) * R + cx - ox, by = Math.sin(a0) * R + cy - oy;
+    const fireworks = options.fireworks ? (() => {
+      const a1 = a0 + 1.8 + Math.random() * 1.2, a2 = a0 + 3.6 + Math.random() * 1.2;
+      return [
+        { transform: "translate(0,0) scale(.12) rotate(0deg)", opacity: 0 },
+        { transform: `translate(${Math.cos(a0) * R * .48}px,${Math.sin(a0) * R * .48 - 35}px) scale(1.2) rotate(240deg)`, opacity: 1, offset: .16 },
+        { transform: `translate(${Math.cos(a1) * R * .78}px,${Math.sin(a1) * R * .65 - 28}px) scale(.95) rotate(560deg)`, opacity: 1, offset: .38 },
+        { transform: `translate(${Math.cos(a2) * R * .55}px,${Math.sin(a2) * R * .42 + 80}px) scale(.7) rotate(930deg)`, opacity: .95, offset: .60 },
+        { transform: `translate(${dx * .58}px,${dy * .58 - 28}px) scale(.82) rotate(1120deg)`, opacity: 1, offset: .83 },
+        { transform: `translate(${dx}px,${dy}px) scale(.28) rotate(1380deg)`, opacity: 1 },
+      ];
+    })() : null;
+    const vortex = options.vortex ? [
+      { transform: "translate(0,0) scale(.2) rotate(0deg)", opacity: 0 },
+      { transform: `translate(${Math.cos(a0) * 125}px,${Math.sin(a0) * 105}px) scale(1.15) rotate(160deg)`, opacity: 1, offset: .22 },
+      { transform: `translate(${Math.cos(a0 + Math.PI) * 100}px,${Math.sin(a0 + Math.PI) * 84}px) scale(1) rotate(340deg)`, opacity: 1, offset: .43 },
+      { transform: `translate(${Math.cos(a0 + Math.PI * 2.1) * 62}px,${Math.sin(a0 + Math.PI * 2.1) * 54}px) scale(.85) rotate(570deg)`, opacity: 1, offset: .62 },
+      { transform: `translate(${dx * .62}px,${dy * .62 - 24}px) scale(.75) rotate(720deg)`, opacity: 1, offset: .82 },
+      { transform: `translate(${dx}px,${dy}px) scale(.35) rotate(900deg)`, opacity: 1 },
+    ] : null;
+    flights.push(s.animate(fireworks || vortex || [
       { transform: "translate(0,0) scale(.3) rotate(0deg)", opacity: 0 },
       { transform: `translate(${bx}px,${by}px) scale(1.15) rotate(120deg)`, opacity: 1, offset: 0.28 },
       { transform: `translate(${bx + (dx - bx) * 0.55}px,${by + (dy - by) * 0.55 - 30}px) scale(1) rotate(300deg)`, opacity: 1, offset: 0.65 },
       { transform: `translate(${dx}px,${dy}px) scale(.55) rotate(480deg)`, opacity: 1 },
-    ], { duration: options.rain ? 1600 : 1000, delay: options.rain ? i * 26 : 120 + i * 85, easing: "cubic-bezier(.45,0,.35,1)", fill: "both" }).finished.then(() => {
+    ], { duration: options.fireworks ? 2600 : options.vortex ? 1700 : options.rain ? 1600 : 1000, delay: options.fireworks ? i * 9 + Math.random() * 180 : options.vortex ? i * 24 : options.rain ? i * 26 : 120 + i * 85, easing: options.fireworks ? "cubic-bezier(.22,.65,.28,1)" : "cubic-bezier(.45,0,.35,1)", fill: "both" }).finished.then(() => {
       s.remove(); scoreAnim.shown += per; num.textContent = Math.round(scoreAnim.shown);
-      svg.animate([{ transform: "scale(1) rotate(0)", filter: "brightness(1)" }, { transform: "scale(1.5) rotate(-16deg)", filter: "brightness(1.5) drop-shadow(0 0 10px #ffd34d)", offset: 0.3 }, { transform: "scale(1.25) rotate(12deg)", offset: 0.6 }, { transform: "scale(1) rotate(0)", filter: "brightness(1)" }], { duration: 300 });
-      num.animate([{ transform: "scale(1)" }, { transform: "scale(1.35)", color: "#b07a00", offset: 0.35 }, { transform: "scale(1)" }], { duration: 300 });
-      const ring = document.createElement("i"); ring.className = "sc-ring"; ring.style.cssText = `left:${tx}px;top:${ty}px`; document.body.appendChild(ring);
-      ring.animate([{ transform: "translate(-50%,-50%) scale(.4)", opacity: 0.9 }, { transform: "translate(-50%,-50%) scale(2.6)", opacity: 0 }], { duration: 520, easing: "ease-out" }).finished.then(() => ring.remove());
+      if (!options.fireworks || i % 10 === 0) {
+        svg.animate([{ transform: "scale(1) rotate(0)", filter: "brightness(1)" }, { transform: "scale(1.5) rotate(-16deg)", filter: "brightness(1.5) drop-shadow(0 0 10px #ffd34d)", offset: 0.3 }, { transform: "scale(1.25) rotate(12deg)", offset: 0.6 }, { transform: "scale(1) rotate(0)", filter: "brightness(1)" }], { duration: 300 });
+        num.animate([{ transform: "scale(1)" }, { transform: "scale(1.35)", color: "#b07a00", offset: 0.35 }, { transform: "scale(1)" }], { duration: 300 });
+      }
+      if (!options.fireworks || i % 5 === 0) {
+        const ring = document.createElement("i"); ring.className = "sc-ring"; ring.style.cssText = `left:${tx}px;top:${ty}px`; document.body.appendChild(ring);
+        ring.animate([{ transform: "translate(-50%,-50%) scale(.4)", opacity: 0.9 }, { transform: "translate(-50%,-50%) scale(2.6)", opacity: 0 }], { duration: 520, easing: "ease-out" }).finished.then(() => ring.remove());
+      }
       if (--scoreAnim.left <= 0) { // dernière étoile : l'étoile du compteur rayonne, puis le vrai total est affiché
         sc.classList.remove("rx"); box.classList.remove("rx"); scoreAnim = null; renderHud();
         for (let k = 0; k < 8; k++) { const sp = document.createElement("i"); sp.className = "sc-spark"; sp.style.cssText = `left:${tx}px;top:${ty}px`; document.body.appendChild(sp); const an = (k / 8) * Math.PI * 2; sp.animate([{ transform: "translate(-50%,-50%) scale(1)", opacity: 1 }, { transform: `translate(${Math.cos(an) * 34 - 4}px,${Math.sin(an) * 34 - 4}px) scale(.2)`, opacity: 0 }], { duration: 700, easing: "ease-out" }).finished.then(() => sp.remove()); }
@@ -2927,7 +3164,7 @@ async function chapEnd(p, replay, preview = false) {
   emblem.innerHTML = `<p class="chap-victory-bravo"></p><p class="chap-victory-line"></p><div class="chap-victory-emblem${icon ? "" : " is-photo"}"><span class="chap-victory-halo"></span><span class="chap-victory-art"><img src="${icon ? icon.src : pic(p.id)}" alt=""></span><span class="chap-victory-stars chap-victory-stars-outer" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span><span class="chap-victory-stars chap-victory-stars-inner" aria-hidden="true"><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span></div>`;
   sh.appendChild(emblem);
   const hasSecret = p.id === "arsenal" || p.id === "murano" || p.id === "squero" || p.id === "pugni" || !!(p.reward || p.musicChallenge || p.collectibleReward);
-  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.id === "arsenal" ? "J’aperçois un trophée viking tout près des lions !" : p.id === "squero" ? "Je crois qu'il y a de bonnes choses à ramasser dans les environs…" : p.id === "pugni" ? (pugniChestTaken() ? "Ce vieux coffre a déjà rejoint ton aventure." : "Il me semble apercevoir un vieux coffre qui flotte dans l'eau vaseuse, non loin du pont…") : p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
+  const defaults = { bravo: endBravo(), completion: "Tu as mené toutes ces épreuves jusqu'au bout.", lead: p.id === "arsenal" ? "J’aperçois un trophée viking tout près des lions !" : p.id === "acquaalta" ? "Oh ! J’ai vu tomber un vieux papier, juste là. Ramasse-le pour voir…" : p.id === "squero" ? "Je crois qu'il y a de bonnes choses à ramasser dans les environs…" : p.id === "pugni" ? (pugniChestTaken() ? "Ce vieux coffre a déjà rejoint ton aventure." : "Il me semble apercevoir un vieux coffre qui flotte dans l'eau vaseuse, non loin du pont…") : p.collectibleReward ? (p.collectibleReward.lead || "Le masque d’or est à toi !") : hasSecret ? "À présent, je vais te confier un secret." : "Continue ton enquête ailleurs.", secret: hasSecret ? (p.collectibleReward?.hint || endSecret(p)) : "", plan: p.plan ? "Ouvre le plan de l'église." : "Découvrir le fragment de musique" };
   $(".chap-victory-bravo", emblem).textContent = defaults.bravo;
   $(".chap-victory-line", emblem).textContent = defaults.completion;
   const bt = $("#b-talk", sh); bt.classList.add("chap-hint-pending");
@@ -2935,8 +3172,8 @@ async function chapEnd(p, replay, preview = false) {
   bubble.classList.remove("typing");
   bubble.innerHTML = `<span class="chap-secret-lead">${esc(defaults.lead)}</span>${hasSecret ? `<span class="chap-secret-clue">${esc(defaults.secret)}</span>` : ""}`;
   fitChapTalk();
-  if (!preview && (p.reward || p.musicChallenge || (p.collectibleReward || p.id === "arsenal" || p.id === "murano" || p.id === "squero" || p.id === "pugni") && complete(p)) && !has("fin:" + p.id)) {
-    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "squero") updateSqueroFruitMarkers(); if (p.id === "pugni") updatePugniChestMarker(); if (p.id === "dogana") updateDoganaMaskMarker(); if (p.id === "schiavoni") schiavoniGems.update(); if(p.id === "arsenal") updateThorMarker();
+  if (!preview && (p.reward || p.musicChallenge || (p.collectibleReward || p.id === "arsenal" || p.id === "murano" || p.id === "squero" || p.id === "pugni" || p.id === "acquaalta") && complete(p)) && !has("fin:" + p.id)) {
+    award("fin:" + p.id, 0, meIdx()); save(); if (p.id === "murano") updateMuranoShellMarker(); if (p.id === "squero") updateSqueroFruitMarkers(); if (p.id === "pugni") updatePugniChestMarker(); if (p.id === "dogana") updateDoganaMaskMarker(); if (p.id === "schiavoni") schiavoniGems.update(); if(p.id === "arsenal") updateThorMarker(); if (p.id === "acquaalta") updateAcqualtaParchmentMarker();
   }
   let planButton = null, photoButton = null;
   if (p.plan || p.musicChallenge || MONTAGES[p.id]) {
@@ -3192,7 +3429,7 @@ function renderQuest() {
   const nx = $("#qnext", q);
   if (nx) nx.onclick = () => { const pending = orderedPending(`place:${p.id}`, p.tasks.map((_, n) => n), String, (n) => taskDone(p.id, n)); if (!pending.length) { quest.phase = "end"; chime(true); confetti(140); } else { quest.step = pending[0]; } renderQuest(); };
   const pass = $("#qpass", q); if (pass) pass.onclick = () => { deferItem(`place:${p.id}`, String(quest.step)); const pending = orderedPending(`place:${p.id}`, p.tasks.map((_, n) => n), String, (n) => taskDone(p.id, n)); quest.step = pending[0]; renderQuest(); };
-  const dn = $("#qdone", q); if (dn) dn.onclick = () => { closeQuest(); if(p.id === "arsenal") { updateThorMarker(); cortoSays("J’aperçois un trophée viking tout près des lions ! Cours vite le chercher !"); } };
+  const dn = $("#qdone", q); if (dn) dn.onclick = () => { closeQuest(); if(p.id === "arsenal") { updateThorMarker(); cortoSays("J’aperçois un trophée viking tout près des lions ! Cours vite le chercher !"); } else if (p.id === "acquaalta") { updateAcqualtaParchmentMarker(); cortoSays("Oh ! J’ai vu tomber un vieux papier, juste là. Ramasse-le pour voir…"); } };
   if (quest.phase === "task" && !taskDone(p.id, quest.step)) bindTasks(p, $(".q-body", q), (i) => { if (p.tasks[i].t === "choice") setTimeout(() => quest && quest.id === p.id && renderQuest(), 800); else renderQuest(); }, renderQuest);
   hydrateThumbs(q);
 }
@@ -3213,6 +3450,7 @@ function returnToMap() {
   if (back && !menuReturnPending) { menuReturnPending = true; history.back(); }
 }
 function setTab(t) {
+  cancelPocketGesture();
   if (t === "trophies") t = "map";
   if (!ADMIN_CONTEXT && (t === "settings" || t === "dev" || t === "rewards")) t = "map";
   if ((t === "settings" || t === "dev" || t === "rewards") && !adminUnlocked) { requestAdminAccess(t); return; }
@@ -3901,7 +4139,7 @@ const BADGES = [
 /* ───────── Objets de poche : les trois trésors du parcours et douze futurs objets à collectionner. ─────────
    PREVIEW_OBJECTS présente le catalogue entier sans attribuer les objets au joueur ni les synchroniser.
    Les trésors existants gardent leur clé tr:<lieu> ; les nouveaux utiliseront o:<id> quand une épreuve les remettra. */
-const PREVIEW_OBJECTS = DEV;
+const PREVIEW_OBJECTS = DEV && !ADMIN_CONTEXT;
 const OBJECTS = [
   {id:"marteau-thor",name:"Le marteau de Thor",img:"marteau-thor.png",key:"o:marteau-thor"},
   ...SCHIAVONI_GEMS,
@@ -3912,6 +4150,9 @@ const OBJECTS = [
   { id: "coffre-masque", name: "Le coffre au masque d’or", img: "coffre-masque.png", key: "o:coffre-masque" },
   { id: "evangile-marc", name: "L’Évangile selon saint Marc", img: "evangile-marc.png", key: "o:evangile-marc" },
   { id: "croquette-sacree", name: "La croquette sacrée", img: "croquette-sacree.svg", key: "o:croquette-sacree" },
+  { id: "coffre-doge", name: "Le vieux coffre du doge", img: "coffre-doge-ferme.png", key: "o:coffre-doge" },
+  { id: "viole-monteverdi", name: "La viole de Monteverdi", img: "viole-monteverdi.png", key: "o:viole-monteverdi" },
+  { id: "parchemin-lion", name: "Le vieux papier", img: ACQUALTA_PARCHMENT.img, key: ACQUALTA_PARCHMENT.key },
   { id: "masque-or", name: "Le masque d’or", img: "masque-or.webp", key: DOGANA_MASK_KEY },
   { id: "cle-gondolier", name: "La clé du gondolier", img: "img/narrative/gondolier-gold-key.png", key: "o:cle-gondolier" },
   { id: "miracoli", name: "La perle du miracle", img: "perle.svg", key: "tr:miracoli" },
@@ -3935,7 +4176,7 @@ const objectFoundFor = (id, player = meIdx()) => {
 };
 const maskGemObjects = () => Object.keys(S.done).filter((key) => /^o:mask-gem:\d+:m\d+$/.test(key) && has(key) && S.done[key].w === meIdx()).map((key) => ({ id: key.replace(/[^a-z0-9-]/g, "-"), name: "Gemme du carnaval", img: "diamant.svg", key }));
 const oliveObjects = () => [0, 1, 2].map((index) => ({ id: `olive-torcello-${index + 1}`, name: `Olive de Torcello ${index + 1}`, img: "olive-torcello.webp", key: oliveKey(index) })).filter((object) => has(object.key) && S.done[object.key].w === meIdx());
-const objectList = () => [...OBJECTS, ...maskGemObjects(), ...oliveObjects()].map((o) => ({ ...o, img: o.img.startsWith("img/") ? o.img : "img/objets/" + o.img, found: o.id === "coffre-masque" && has("craft:marc-chest:opened") || has(`craft:marc-recipe:spent:${o.id}`) ? false : objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
+const objectList = () => [...OBJECTS, ...maskGemObjects(), ...oliveObjects()].map((o) => ({ ...o, img: o.img.startsWith("img/") ? o.img : "img/objets/" + o.img, found: o.id === "viole-monteverdi" && has("craft:monteverdi:viole-returned") || o.id === "coffre-masque" && has("craft:marc-chest:opened") || o.id === "coffre-doge" && has("craft:doge-chest:opened") || has(`craft:marc-recipe:spent:${o.id}`) ? false : objectFoundFor(o.id) || (has(o.key) && S.done[o.key].w === meIdx()) }));
 const objectArtwork = (o) => o.id === "coffre-masque" ? '<span class="marc-chest-sprite" aria-hidden="true"></span>' : `<img src="${o.img}" alt="">`;
 // Objet « pris » : il quitte sa case et se pose entre les étoiles et les onglets. Il y reste sur la carte et après un rechargement.
 const HELD_KEY = `vq_held:${PLAYER_ID}`, HELD_SIZE = 88;
@@ -3959,35 +4200,73 @@ const heldSpot = () => {
   } catch {}
   return tab === "objects" ? heldDock() : clampHeld({ left: innerWidth - HELD_SIZE - 8, top: Math.round(innerHeight * 0.36), size: HELD_SIZE });
 };
-function mountHeld(id, fromRect) {
+function mountHeld(id) {
+  cancelPocketGesture();
   const o = objectList().find((x) => x.id === id && (x.found || PREVIEW_OBJECTS)); if (!o) { heldId = null; saveHeld(); return; }
   if (heldEl) heldEl.remove();
   const el = document.createElement("div"); el.className = "held-ob"; el.dataset.o = id; el.innerHTML = o.img ? objectArtwork(o) : `<span class="ob-em">${o.emoji}</span>`;
   const p = heldSpot(); el.style.cssText = `left:${p.left}px;top:${p.top}px;width:${p.size}px;height:${p.size}px`;
   if (p.docked) try { localStorage.setItem(HELD_POS, JSON.stringify(p)); } catch {}
   document.body.appendChild(el); heldEl = el;
-  if (fromRect) el.animate([{ transform: `translate(${fromRect.left + fromRect.width / 2 - (p.left + p.size / 2)}px, ${fromRect.top + fromRect.height / 2 - (p.top + p.size / 2)}px) scale(${fromRect.width / p.size})` }, { transform: "scale(1.12)", offset: 0.7 }, { transform: "none" }], { duration: 560, easing: "cubic-bezier(.2,.9,.3,1)" }).onfinish = () => el.classList.add("wob"); else el.classList.add("wob");
+  el.classList.add("wob");
   // L'enfant peut le déplacer où il veut avec le doigt (il restera là où il le lâche) ; un simple toucher, dans l'onglet Objets, le repose.
   el.style.touchAction = "none"; let st = null;
   const zone = () => { let z = $("#ranger"); if (!z) { z = document.createElement("div"); z.id = "ranger"; z.innerHTML = '<b>Ranger</b><span></span>'; document.body.appendChild(z); } return z; };
   const inZone = () => { const z = $("#ranger"); if (!z) return false; const a = z.getBoundingClientRect(), b = el.getBoundingClientRect(); return Math.hypot(a.left + a.width / 2 - (b.left + b.width / 2), a.top + a.height / 2 - (b.top + b.height / 2)) < a.width / 2 + 10; };
-  el.onpointerdown = (e) => { e.preventDefault(); const r = el.getBoundingClientRect(); st = { x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false }; try { el.setPointerCapture(e.pointerId); } catch {} };
-  const offeringMarc = () => !!marcDropHandler && id === (marcDropHandler.objectId || "evangile-marc");
+  el.onpointerdown = (e) => {
+    if (st || pocketGesture || (e.button != null && e.button !== 0)) return;
+    e.preventDefault();
+    const visual = el.getBoundingClientRect();
+    el.getAnimations().forEach((animation) => animation.cancel()); el.classList.remove("wob", "drag");
+    el.style.removeProperty("translate"); el.style.removeProperty("rotate"); el.style.removeProperty("scale");
+    el.style.left = visual.left + "px"; el.style.top = visual.top + "px";
+    const r = el.getBoundingClientRect();
+    st = { pointerId: e.pointerId, origin: { left: el.style.left, top: el.style.top }, x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false };
+    pocketGesture = { source: el, pointerId: e.pointerId, cancel: () => el.onpointercancel({ pointerId: st?.pointerId }) };
+    try { el.setPointerCapture(e.pointerId); } catch {}
+  };
+  const offeringMarc = () => !!marcDropHandler && id === marcDropHandler.objectId;
   el.onpointermove = (e) => { if (!st) return; if (tab === "objects") { if (Math.hypot(e.clientX - st.x, e.clientY - st.y) >= 6) st.blocked = true; return; } if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return; if (!st.moved && tab === "map" && !offeringMarc()) { const z = zone(); $("span", z).textContent = o.name; z.classList.add("on"); } st.moved = true; el.classList.add("drag"); const q = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy, size: parseFloat(el.style.width) }); el.style.left = q.left + "px"; el.style.top = q.top + "px"; const zz = $("#ranger"); if (zz && !offeringMarc()) zz.classList.toggle("hot", inZone()); };
   const hideZone = () => { const z = $("#ranger"); if (z) z.classList.remove("on", "hot"); };
-  const end = (e) => { if (!st) return; const moved = st.moved, blocked = st.blocked; st = null; el.classList.remove("drag"); if (blocked) return;
+  const moveHeld = el.onpointermove;
+  el.onpointermove = (e) => {
+    if (st?.pointerId !== e.pointerId) return;
+    if (tab !== 'objects') { moveHeld(e); return; }
+    if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 7) return;
+    st.moved = true; el.classList.add('drag');
+    const point = clampHeld({ left: e.clientX - st.dx, top: e.clientY - st.dy, size: parseFloat(el.style.width) });
+    el.style.left = point.left + 'px'; el.style.top = point.top + 'px';
+  };
+  const end = (e) => { if (!st || st.pointerId !== e.pointerId) return; const moved = st.moved, blocked = st.blocked; st = null; if (pocketGesture?.source === el) pocketGesture = null; el.classList.remove("drag"); if (blocked) { el.classList.add("wob"); return; }
     if (moved) {
-      if (offeringMarc()) { marcDropHandler(el); hideZone(); return; }
+      if (tab === 'objects' && tryDogeChestDrop(id, e.clientX, e.clientY)) { hideZone(); return; }
+      if (tab === 'objects' && insideAssembly($('#ob-assembly'), e.clientX, e.clientY)) {
+        objectAssembly.set(id, assemblyDropPoint($('#ob-assembly'), e.clientX, e.clientY, id));
+        heldEl = null; heldId = null; saveHeld(); el.remove();
+        try { localStorage.removeItem(HELD_POS); } catch {}
+        $$("#v-objects .ob.away").forEach((item) => item.classList.remove('away'));
+        renderObjectAssembly(); return;
+      }
+      if (offeringMarc()) { marcDropHandler(el); hideZone(); if (el.isConnected) el.classList.add("wob"); return; }
       if (dropCroquetteOnMarc(el, e)) { hideZone(); return; }
+      if (dropVioleOnMonteverdi(el, e)) { hideZone(); return; }
       if (tab === "map" && inZone()) { storeHeld(el); hideZone(); return; }
       hideZone(); try { localStorage.setItem(HELD_POS, JSON.stringify({ left: parseFloat(el.style.left), top: parseFloat(el.style.top), size: parseFloat(el.style.width), docked: false })); } catch {}
-    } else if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); } };
-  el.onpointerup = end; el.onpointercancel = () => { st = null; el.classList.remove("drag"); const z = $("#ranger"); if (z) z.classList.remove("on", "hot"); };
+    } else if (tab === "objects") { const b = $(`.ob[data-o="${id}"]`); if (b) holdObject(b); }
+    if (el.isConnected) el.classList.add("wob");
+  };
+  el.onpointerup = end;
+  el.onpointercancel = el.onlostpointercapture = (e) => {
+    if (!st || st.pointerId !== e.pointerId) return;
+    el.style.left = st.origin.left; el.style.top = st.origin.top; st = null;
+    if (pocketGesture?.source === el) pocketGesture = null;
+    el.classList.remove("drag"); el.classList.add("wob"); hideZone();
+  };
 }
 // Lâché dans la zone « Ranger » (en haut de la carte) : l'objet retourne dans le coffret (l'onglet Objets), il n'est plus en main.
 function storeHeld(el) {
-  const z = $("#ranger"), zr = z ? z.getBoundingClientRect() : null, r = el.getBoundingClientRect(); heldEl = null; heldId = null; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} el.classList.remove("wob");
-  el.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${zr ? zr.left + zr.width / 2 - (r.left + r.width / 2) : 0}px, ${zr ? zr.top + zr.height / 2 - (r.top + r.height / 2) : 0}px) scale(.2)`, opacity: 0 }], { duration: 340, easing: "ease-in", fill: "forwards" }).onfinish = () => el.remove();
+  heldEl = null; heldId = null; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} el.classList.remove("wob");
+  el.getAnimations().forEach((animation) => animation.cancel()); el.remove();
 }
 // L'objet en main n'est visible que sur la carte nue et dans l'onglet Objets (jamais dans une fiche, un défi, une conversation, un autre onglet…)
 visibleInterval(() => {
@@ -4000,12 +4279,14 @@ visibleInterval(() => {
 function releaseHeld() {
   if (!heldEl) { heldId = null; saveHeld(); return; }
   const el = heldEl, id = heldId, b = $(`.ob[data-o="${id}"]`); heldEl = null; heldId = null; saveHeld(); el.classList.remove("wob"); try { localStorage.removeItem(HELD_POS); } catch {}
-  if (b) { b.classList.remove("away"); const from = el.getBoundingClientRect(), to = b.getBoundingClientRect(); el.animate([{ transform: "none" }, { transform: `translate(${to.left + to.width / 2 - (from.left + from.width / 2)}px, ${to.top + to.height / 2 - (from.top + from.height / 2)}px) scale(${to.width / from.width})` }], { duration: 380, easing: "ease-in-out", fill: "forwards" }).onfinish = () => el.remove(); } else el.remove();
+  b?.classList.remove("away"); el.getAnimations().forEach((animation) => animation.cancel()); el.remove();
 }
 function holdObject(btn) {
   const id = btn.dataset.o; if (heldId === id) { releaseHeld(); return; }
   if (heldId) releaseHeld();
-  heldId = id; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} btn.classList.add("away"); mountHeld(id, btn.getBoundingClientRect());
+  objectAssembly.delete(id);
+  $$("#v-objects .ob.away").forEach((item) => item.classList.remove("away"));
+  heldId = id; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} btn.classList.add("away"); mountHeld(id);
 }
 // Zone de mélange locale : un objet déposé quitte sa case et reste entièrement dans le cercle.
 const OBJECT_PIECE_SIZE = 54;
@@ -4030,52 +4311,147 @@ function assemblyPlace(piece, board, point) {
   piece.style.left = `${board.clientWidth / 2 - OBJECT_PIECE_SIZE / 2 + point.x * radius}px`;
   piece.style.top = `${board.clientHeight / 2 - OBJECT_PIECE_SIZE / 2 + point.y * radius}px`;
 }
+function assemblyDropPoint(board, x, y, id) {
+  const desired = assemblyPoint(board, x, y), radius = assemblyRadius(board);
+  const others = [...objectAssembly].filter(([key]) => key !== id).map(([, point]) => point);
+  const clearance = (point) => others.length ? Math.min(...others.map((other) => Math.hypot(point.x - other.x, point.y - other.y) * radius)) : Infinity;
+  const candidates = [desired, { x: 0, y: 0 }];
+  for (const ring of [.5, 1]) for (let i = 0; i < 24; i++) candidates.push({ x: ring * Math.cos(i * Math.PI / 12), y: ring * Math.sin(i * Math.PI / 12) });
+  candidates.sort((a, b) => Math.hypot(a.x - desired.x, a.y - desired.y) - Math.hypot(b.x - desired.x, b.y - desired.y));
+  return candidates.find((point) => clearance(point) >= OBJECT_PIECE_SIZE * .88) || candidates.reduce((a, b) => clearance(a) >= clearance(b) ? a : b);
+}
 function renderObjectAssembly() {
+  cancelPocketGesture();
   const board = $("#ob-assembly"); if (!board) return;
   board.classList.toggle("filled", objectAssembly.size > 0);
   $$(".ob", $("#v-objects")).forEach((button) => button.classList.toggle("in-assembly", objectAssembly.has(button.dataset.o)));
   board.querySelectorAll(".ob-piece").forEach((piece) => piece.remove());
   objectAssembly.forEach((point, id) => {
     const object = objectList().find((o) => o.id === id); if (!object) return;
-    const piece = document.createElement("button"); piece.type = "button"; piece.className = "ob-piece";
+    const piece = document.createElement("button"); piece.type = "button"; piece.className = "ob-piece"; piece.dataset.o = id;
     piece.setAttribute("aria-label", `Remettre ${object.name} dans les objets`); piece.title = object.name; piece.innerHTML = object.img ? objectArtwork(object) : `<span class="ob-em">${esc(object.emoji || "📜")}</span>`;
     board.appendChild(piece); assemblyPlace(piece, board, point);
-    let start = null;
-    piece.onpointerdown = (e) => { e.preventDefault(); start = { x: e.clientX, y: e.clientY, moved: false }; try { piece.setPointerCapture(e.pointerId); } catch {} };
-    piece.onpointermove = (e) => { if (!start) return; if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) return; start.moved = true; const next = assemblyPoint(board, e.clientX, e.clientY); objectAssembly.set(id, next); assemblyPlace(piece, board, next); };
-    piece.onpointerup = () => { if (!start) return; const moved = start.moved; start = null; if (!moved) { objectAssembly.delete(id); renderObjectAssembly(); } };
-    piece.onpointercancel = () => { start = null; };
-    piece.onclick = (e) => { if (e.detail === 0) { objectAssembly.delete(id); renderObjectAssembly(); } };
+    bindPocketGesture(piece, {
+      tap: () => { objectAssembly.delete(id); renderObjectAssembly(); },
+      drop: (x, y) => {
+        if (tryDogeChestDrop(id, x, y)) return;
+        if (insideAssembly(board, x, y)) objectAssembly.set(id, assemblyDropPoint(board, x, y, id));
+        else objectAssembly.delete(id);
+        renderObjectAssembly();
+      },
+    });
   });
+  const progress = $("#ob-recipe-progress"), inventory = objectList();
+  if (progress) {
+    const selection = MARC_RECIPE_GROUPS.map((group) => group.ids.find((id) => objectAssembly.has(id)) || null);
+    const recognized = selection.filter(Boolean).length;
+    const missing = MARC_RECIPE_GROUPS.filter((_, i) => !selection[i]).map((group) => group.name);
+    const notOwned = selection.filter(Boolean).filter((id) => !inventory.some((item) => item.id === id && item.found));
+    if (objectAssembly.has('coffre-doge')) progress.textContent = objectAssembly.has('cle-gondolier') ? 'La clé d’or et le coffre sont réunis…' : 'Glisse la clé d’or sur le coffre, ou dépose-la aussi dans le cercle.';
+    else if (objectAssembly.has('cle-gondolier')) progress.textContent = 'La clé d’or attend le vieux coffre du doge : réunis-les dans le cercle.';
+    else if (!recognized) progress.textContent = "Recette : une olive, une datte, une gousse de févier, une micocoule et du rubis.";
+    else if (missing.length) progress.textContent = `${recognized}/5 ingrédients reconnus. Il manque : ${missing.join(", ")}.`;
+    else if (notOwned.length) progress.textContent = "Les cinq ingrédients sont posés, mais certains sont seulement visibles pour le test admin. Appuie sur « Tester la recette » pour les obtenir.";
+    else progress.textContent = "Les cinq ingrédients sont réunis. Le mélange commence…";
+  }
   tryThorOracle();
   tryMarcRecipe();
 }
 let thorBusy=false;
 function showThorOracle(replay=false,onClose=()=>{}) {
   if(thorBusy)return;thorBusy=true;const owner=meIdx();
-  openThorOracle({gems:SCHIAVONI_GEMS.map(g=>({...g,owned:replay||objectList().some(o=>o.id===g.id&&o.found)})),
+  openThorOracle({gems:SCHIAVONI_GEMS.map(g=>({...g,owned:replay||(ADMIN_CONTEXT&&PREVIEW_OBJECTS)||objectList().some(o=>o.id===g.id&&o.found)})),
     placed:g=>replay||has("craft:thor:socket:"+g.id),
     place:g=>{if(owner!==meIdx())return;award("craft:thor:socket:"+g.id,0,owner);save();},
     onReveal:()=>{if(!replay&&owner===meIdx()){award("story:thor:oracle",0,owner);save();}},
     onClose:()=>{thorBusy=false;["marteau-thor",...SCHIAVONI_GEMS.map(g=>g.id)].forEach(id=>objectAssembly.delete(id));if(tab==="objects")renderObjects();onClose();}});
 }
-function tryThorOracle(){const ids=["marteau-thor",...SCHIAVONI_GEMS.map(g=>g.id)],inventory=objectList();if(!thorBusy&&ids.every(id=>objectAssembly.has(id)&&inventory.some(o=>o.id===id&&o.found)))showThorOracle();}
+function tryThorOracle(){const ids=["marteau-thor",...SCHIAVONI_GEMS.map(g=>g.id)],inventory=objectList();if(!thorBusy&&ids.every(id=>objectAssembly.has(id)&&inventory.some(o=>o.id===id&&(o.found||(ADMIN_CONTEXT&&PREVIEW_OBJECTS)))))showThorOracle();}
 const THOR_SITE={lat:45.43442,lon:12.35067};let thorMarker=null,thorCollecting=false;
+async function presentThorTrophy(markerImage,owner){
+ const source=markerImage.getBoundingClientRect(),reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+ const scene=document.createElement("div");scene.className="thor-claim";scene.tabIndex=0;scene.setAttribute("role","button");scene.setAttribute("aria-label","Ranger le trophée viking dans le livre");
+ scene.innerHTML=`<div class="thor-claim-art"><img src="${THOR_IMAGE}" alt="Le trophée viking">${Array.from({length:16},(_,i)=>`<i style="--i:${i}">✦</i>`).join("")}</div><p class="thor-claim-hint">Touchez pour ranger le trophée dans le livre</p>`;
+ document.body.appendChild(scene);document.body.classList.add("thor-claim-active");
+ const art=scene.querySelector(".thor-claim-art"),target=art.getBoundingClientRect(),cx=target.left+target.width/2,cy=target.top+target.height/2;
+ const sx=source.left+source.width/2-cx,sy=source.top+source.height/2-cy,scale=Math.max(.08,source.width/Math.max(target.width,1));
+ try{
+  markerImage.style.visibility="hidden";
+  if(!reduced){const growth=art.animate([
+   {transform:`translate(-50%,-50%) translate(${sx}px,${sy}px) scale(${scale})`,opacity:.75,filter:"brightness(1)"},
+   {transform:"translate(-50%,-50%) scale(1.12)",opacity:1,filter:"brightness(2) drop-shadow(0 0 34px #ffe7a1)",offset:.78},
+   {transform:"translate(-50%,-50%) scale(1)",opacity:1,filter:"brightness(1.15) drop-shadow(0 0 20px #fff0b6)"}
+  ],{duration:1150,easing:"cubic-bezier(.17,.76,.22,1)",fill:"both"});await growth.finished.catch(()=>{});growth.cancel();}
+  if(owner!==meIdx())return;
+  if(!has("bonus:thor:trophy")){award("bonus:thor:trophy",50,owner);save();refreshAll();await starsToCounter(cx,cy,50,true,{vortex:true});}
+  scene.classList.add("ready");scene.focus({preventScroll:true});
+  await new Promise(resolve=>{scene.onclick=()=>resolve();scene.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();resolve();}};});
+  if(owner!==meIdx())return;
+  scene.classList.add("storing");const book=$("#home-btn")?.getBoundingClientRect();
+  if(book&&!reduced){const dx=book.left+book.width/2-cx,dy=book.top+book.height/2-cy;await art.animate([
+   {transform:"translate(-50%,-50%) scale(1)",opacity:1},
+   {transform:"translate(-50%,-50%) scale(1.1)",opacity:1,offset:.18},
+   {transform:`translate(-50%,-50%) translate(${dx}px,${dy}px) scale(.08)`,opacity:0}
+  ],{duration:900,easing:"cubic-bezier(.3,0,.4,1)",fill:"forwards"}).finished.catch(()=>{});}
+  award("o:marteau-thor",0,owner);save();refreshAll();cortoSays("Ce trophée viking a trois emplacements… Regarde dans tes objets ce qui pourrait y prendre place.");
+ }finally{scene.remove();document.body.classList.remove("thor-claim-active");markerImage.style.visibility="";}
+}
 function updateThorMarker(){
  const available=JEU&&complete(place("arsenal"))&&!has("o:marteau-thor");
  if(!available){thorMarker?.remove();thorMarker=null;return;}
- if(!thorMarker){const el=document.createElement("button");el.className="dogana-mask-marker thor-map-marker";el.setAttribute("aria-label","Le trophée viking");el.innerHTML=`<img src="${THOR_IMAGE}" alt="">`;el.style.setProperty("--dogana-mask-size","62px");
- thorMarker=new maplibregl.Marker({element:el,anchor:"center"}).setLngLat([THOR_SITE.lon,THOR_SITE.lat]).addTo(map);el.setAttribute("aria-label","Le trophée viking");el.onclick=async e=>{e.stopPropagation();if(thorCollecting||!mapWorkVisible())return;thorCollecting=true;const owner=meIdx();el.classList.add("is-searching");
- try{const fix=await maskFix();if(owner!==meIdx())return;if(!fix||fix.acc>80){toast("Je ne parviens pas à vérifier ta position. Réessaie près du trophée.");return;}const distance=dist(fix.lat,fix.lon,THOR_SITE.lat,THOR_SITE.lon);if(distance>65+Math.min(fix.acc||0,20)){cortoSays(`Approche-toi du trophée viking. Il est encore à ${fmtD(distance)}.`);return;}
- await el.querySelector("img").animate([{transform:"scale(1)"},{transform:"scale(1.8)",filter:"brightness(2)"},{transform:"scale(.1)",opacity:0}],{duration:1000}).finished;award("o:marteau-thor",0,owner);save();refreshAll();cortoSays("Ce trophée viking a trois emplacements… Regarde dans tes objets ce qui pourrait y prendre place.");
+ if(!thorMarker){const el=document.createElement("button");el.type="button";el.className="dogana-mask-marker thor-map-marker";el.setAttribute("aria-label","Le trophée viking");el.innerHTML=`<img src="${THOR_IMAGE}" alt="">`;el.style.setProperty("--dogana-mask-size","62px");
+ thorMarker=new maplibregl.Marker({element:el,anchor:"center"}).setLngLat([THOR_SITE.lon,THOR_SITE.lat]).addTo(map);el.addEventListener("pointerdown",e=>e.stopPropagation());el.onclick=async e=>{e.stopPropagation();if(thorCollecting||!mapWorkVisible())return;thorCollecting=true;const owner=meIdx();el.classList.add("is-searching");
+ try{const fix=await maskFix();if(owner!==meIdx())return;if(!fix||!Number.isFinite(fix.lat)||!Number.isFinite(fix.lon)||!Number.isFinite(fix.acc)||fix.acc>80){toast("Je ne parviens pas à vérifier ta position. Réessaie près du trophée.");return;}const distance=dist(fix.lat,fix.lon,THOR_SITE.lat,THOR_SITE.lon);if(distance>65+Math.min(fix.acc,20)){cortoSays(`Approche-toi du trophée viking. Il est encore à ${fmtD(distance)}.`);return;}
+ await presentThorTrophy(el.querySelector("img"),owner);
  }finally{thorCollecting=false;el.classList.remove("is-searching");}};}
  thorMarker.getElement().hidden=map.getZoom()<13;
 }
 map.on("zoom",updateThorMarker);
 if(DEV)window.__thor={update:updateThorMarker,status:()=>({available:JEU&&complete(place("arsenal")),done:doneTasks(place("arsenal")),tasks:place("arsenal").tasks.length,has:has("o:marteau-thor")})};
 let marcChestBusy = false, marcRewardFlight = Promise.resolve();
+function beginDogeChestOpening() {
+  if (marcChestBusy || thorBusy || document.querySelector('.doge-finale') || has('craft:doge-chest:opened')) return false;
+  const inventory = objectList();
+  const chest = inventory.some(item => item.id === 'coffre-doge' && item.found);
+  const key = inventory.some(item => item.id === 'cle-gondolier' && item.found);
+  if (!chest || !key) return false;
+  marcChestBusy = true;
+  if (['coffre-doge', 'cle-gondolier'].includes(heldId)) releaseHeld();
+  openDogeChest({
+    onReward: async (cx, cy) => {
+      const rewardKey = 'craft:doge-chest:fireworks-500';
+      if (has(rewardKey)) return false;
+      award(rewardKey, 500, meIdx()); save();
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) { renderHud(); return true; }
+      document.body.classList.add('df-reward-active');
+      try { await starsToCounter(cx, cy, 500, false, { fireworks: true }); }
+      finally { document.body.classList.remove('df-reward-active'); }
+      return true;
+    },
+    onClaim: () => {
+      if (has('craft:doge-chest:opened')) return false;
+      award('craft:doge-chest:opened', 0, meIdx());
+      award('o:viole-monteverdi', 0, meIdx());
+      objectAssembly.delete('coffre-doge'); objectAssembly.delete('cle-gondolier');
+      save(); refreshAll(); return true;
+    },
+    onClose: () => {
+      marcChestBusy = false;
+      objectAssembly.delete('coffre-doge'); objectAssembly.delete('cle-gondolier');
+      if (tab === 'objects') renderObjects();
+    },
+  });
+  return true;
+}
+function tryDogeChestDrop(id, x, y) {
+  if (tab !== 'objects' || !['coffre-doge', 'cle-gondolier'].includes(id)) return false;
+  const other = id === 'coffre-doge' ? 'cle-gondolier' : 'coffre-doge';
+  const target = document.elementsFromPoint(x, y).some(element => element.closest('.ob,.ob-piece,.held-ob')?.dataset.o === other);
+  return target && beginDogeChestOpening();
+}
 function tryMarcRecipe() {
   if (marcChestBusy) return;
+  if (['coffre-doge', 'cle-gondolier'].every(id => objectAssembly.has(id)) && beginDogeChestOpening()) return;
   if (objectAssembly.has("evangile-marc") && objectList().some(o => o.id === "evangile-marc" && o.found)) {
     marcChestBusy = true;
     openMarcBook({ onClose: () => {
@@ -4135,44 +4511,111 @@ function seedMarcAdminTest(replay = false) {
   for (const key of ["o:coffre-masque", DOGANA_MASK_KEY, "test:marc-chest:v1"]) award(key, 0, meIdx());
   objectAssembly.clear(); save();
 }
+// Un seul geste possède le pointeur et son image. L'état n'est modifié qu'au dépôt.
+var pocketGesture;
+function cancelPocketGesture() { pocketGesture?.cancel(); }
+function insideAssembly(board, x, y) {
+  if (!board || board.closest('[hidden]')) return false;
+  const r = board.getBoundingClientRect();
+  return Math.hypot(x - r.left - r.width / 2, y - r.top - r.height / 2) <= Math.min(r.width, r.height) / 2;
+}
+function bindPocketGesture(source, { tap, drop }) {
+  source.ondragstart = (event) => event.preventDefault();
+  source.onpointerdown = (event) => {
+    if (event.button !== 0 || pocketGesture || marcChestBusy) return;
+    event.preventDefault();
+    const r = source.getBoundingClientRect();
+    const gesture = { source, pointerId: event.pointerId, x: event.clientX, y: event.clientY, moved: false, ghost: null };
+    const finish = () => {
+      if (pocketGesture !== gesture) return;
+      pocketGesture = null;
+      gesture.ghost?.remove(); source.classList.remove('pocket-drag-source');
+      try { if (source.hasPointerCapture(gesture.pointerId)) source.releasePointerCapture(gesture.pointerId); } catch {}
+    };
+    gesture.cancel = finish; pocketGesture = gesture;
+    gesture.move = (e) => {
+      if (e.pointerId !== gesture.pointerId) return;
+      if (!gesture.moved && Math.hypot(e.clientX - gesture.x, e.clientY - gesture.y) < 7) return;
+      gesture.moved = true;
+      if (!gesture.ghost) {
+        const ghost = document.createElement('div'); ghost.className = 'ob-ghost'; ghost.setAttribute('aria-hidden', 'true');
+        ghost.innerHTML = source.innerHTML; ghost.style.width = r.width + 'px'; ghost.style.height = r.height + 'px';
+        document.body.appendChild(ghost); gesture.ghost = ghost; source.classList.add('pocket-drag-source');
+      }
+      // Le point saisi reste sous le doigt, sans changement de taille ni saut au départ.
+      gesture.ghost.style.left = (e.clientX - gesture.x + r.left + r.width / 2) + 'px';
+      gesture.ghost.style.top = (e.clientY - gesture.y + r.top + r.height / 2) + 'px';
+    };
+    gesture.end = (e) => {
+      if (e.pointerId !== gesture.pointerId) return;
+      const moved = gesture.moved; finish();
+      if (moved) drop(e.clientX, e.clientY); else tap();
+    };
+    try { source.setPointerCapture(event.pointerId); } catch {}
+  };
+  source.onpointermove = (e) => { if (pocketGesture?.source === source) pocketGesture.move(e); };
+  source.onpointerup = (e) => { if (pocketGesture?.source === source) pocketGesture.end(e); };
+  source.onpointercancel = source.onlostpointercapture = (e) => { if (pocketGesture?.source === source && pocketGesture.pointerId === e.pointerId) cancelPocketGesture(); };
+  source.onclick = (e) => { e.preventDefault(); if (e.detail === 0 && !pocketGesture && !marcChestBusy) tap(); };
+}
+addEventListener('blur', cancelPocketGesture);
+document.addEventListener('visibilitychange', () => { if (document.hidden) cancelPocketGesture(); });
 function bindObjectDrag(button) {
-  let start = null, ghost = null;
-  const removeGhost = () => { if (ghost) ghost.remove(); ghost = null; };
-  button.onpointerdown = (e) => {
-    if (e.button !== 0) return;
-    e.preventDefault(); start = { x: e.clientX, y: e.clientY, moved: false };
-    try { button.setPointerCapture(e.pointerId); } catch {}
-  };
-  button.onpointermove = (e) => {
-    if (!start) return;
-    if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 7) return;
-    start.moved = true;
-    if (!ghost) { ghost = document.createElement("div"); ghost.className = "ob-ghost"; ghost.innerHTML = objectArtwork(objectList().find(o => o.id === button.dataset.o)); document.body.appendChild(ghost); }
-    ghost.style.left = `${e.clientX}px`; ghost.style.top = `${e.clientY}px`;
-  };
-  button.onpointerup = (e) => {
-    if (!start) return;
-    const moved = start.moved; start = null; removeGhost();
-    if (!moved) { holdObject(button); return; }
-    const board = $("#ob-assembly"), r = board?.getBoundingClientRect();
-    if (r && Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) <= Math.min(r.width, r.height) / 2) {
-      if (heldId === button.dataset.o) { heldEl?.remove(); heldEl = null; heldId = null; saveHeld(); try { localStorage.removeItem(HELD_POS); } catch {} }
-      objectAssembly.set(button.dataset.o, assemblyPoint(board, e.clientX, e.clientY));
+  bindPocketGesture(button, {
+    tap: () => holdObject(button),
+    drop: (x, y) => {
+      if (tryDogeChestDrop(button.dataset.o, x, y)) return;
+      const board = $('#ob-assembly');
+      if (!insideAssembly(board, x, y)) return;
+      if (heldId === button.dataset.o) { heldEl?.remove(); heldEl = null; heldId = null; saveHeld(); }
+      objectAssembly.set(button.dataset.o, assemblyDropPoint(board, x, y, button.dataset.o));
       renderObjectAssembly();
-    }
-  };
-  button.onpointercancel = () => { start = null; removeGhost(); };
-  button.onclick = (e) => { if (e.detail === 0) holdObject(button); };
+    },
+  });
 }
 function renderObjects() {
-  if (ADMIN_CONTEXT) seedMarcAdminTest();
+  cancelPocketGesture();
+  if (ADMIN_CONTEXT && !adminInventoryReady) {
+    $('#v-objects').innerHTML = `<p class="muted">${esc(adminInventoryError || 'Chargement des objets de Gabriel…')}</p>${adminInventoryError ? '<button type="button" class="btn ghost" id="admin-inventory-retry">Réessayer</button>' : ''}`;
+    const retry = $('#admin-inventory-retry');
+    if (retry) retry.onclick = () => { retry.disabled = true; loadAdminPreviewSession(); };
+    return;
+  }
   const v = $("#v-objects"), scrollTop = $(".ob-scroll", v)?.scrollTop || 0, objects = objectList();
-  const shown = (PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found)).filter(o => o.id === "evangile-marc" ? o.found : o.id === "coffre-masque" ? !has("craft:marc-chest:opened") : true);
-  menuSay(shown.length ? "Collectionne ces objets ici et vois ce que tu peux faire avec." : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
-  v.innerHTML = `<div class="ob-scroll" tabindex="0" role="region" aria-label="Objets de l’inventaire"><div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? objectArtwork(o) : `<span class="ob-em">${esc(o.emoji || "📜")}</span>`}</button>`).join("")}</div>${shown.length ? "" : '<p class="muted">Tu n’as encore trouvé aucun objet.</p>'}</div><div class="ob-workspace"><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Combine tes objets ici</span></div></div>`;
-  if (ADMIN_CONTEXT || LOCAL_DEV) {
+  const shown = (PREVIEW_OBJECTS ? objects : objects.filter((o) => o.found)).filter(o => ["evangile-marc", "coffre-doge", "viole-monteverdi"].includes(o.id) ? o.found : o.id === "coffre-masque" ? !has("craft:marc-chest:opened") : true);
+  menuSay(objects.some(item => item.id === 'coffre-doge' && item.found) ? "Le coffre du doge est fermé : glisse la clé d’or dessus, ou réunis les deux objets dans le cercle." : shown.length ? "Collectionne ces objets ici et vois ce que tu peux faire avec." : "Tu n'as encore trouvé aucun objet. Cherche bien dans les lieux : ils pourront te servir !");
+  v.innerHTML = `<div class="ob-scroll" tabindex="0" role="region" aria-label="Objets de l’inventaire"><div class="ogrid">${shown.map((o) => `<button type="button" class="ob${o.id === heldId ? " away" : ""}${objectAssembly.has(o.id) ? " in-assembly" : ""}" data-o="${o.id}" aria-label="${esc(o.name)}" title="${esc(o.name)}">${o.img ? objectArtwork(o) : `<span class="ob-em">${esc(o.emoji || "📜")}</span>`}</button>`).join("")}</div>${shown.length ? "" : '<p class="muted">Tu n’as encore trouvé aucun objet.</p>'}</div><div class="ob-workspace"><div id="ob-assembly" class="ob-assembly" aria-label="Zone de mélange"><span class="ob-workhint">Dépose les ingrédients ici</span></div><p id="ob-recipe-progress" class="ob-recipe-progress" role="status" aria-live="polite"></p></div>`;
+  if (LOCAL_DEV && !ADMIN_CONTEXT) {
     const test = document.createElement("button"); test.type = "button"; test.className = "btn ghost marc-test"; test.textContent = ADMIN_CONTEXT ? "↻ Rejouer le coffre au masque" : "↻ Tester coffre + masque";
     test.onclick = () => { if (marcChestBusy) return; seedMarcAdminTest(true); renderObjects(); }; $(".ob-workspace", v).appendChild(test);
+    const recipeTest = document.createElement("button"); recipeTest.type = "button"; recipeTest.className = "btn ghost marc-test"; recipeTest.textContent = "↻ Tester la recette : obtenir les ingrédients";
+    recipeTest.onclick = () => {
+      if (marcChestBusy) return;
+      for (const key of Object.keys(S.done)) if (key.startsWith("craft:marc-recipe:") || key.startsWith("trade:gondolier:spent:object:fruit-squero-") || key === "trade:gondolier:spent:object:rubis-burano") unaward(key);
+      ["o:croquette-sacree", "story:stmarc:lion-follower"].forEach(unaward);
+      award(oliveKey(0), 0, meIdx());
+      SQUERO_FRUITS.filter((fruit) => ["olive", "datte", "gousse", "micocoule"].includes(fruit.id)).forEach((fruit) => award(fruit.key, 0, meIdx()));
+      award(BURANO_RUBY_KEY, 0, meIdx()); objectAssembly.clear();
+      if (heldId === "croquette-sacree") { heldEl?.remove(); heldEl = null; heldId = null; saveHeld(); }
+      save(); refreshAll(); renderObjects();
+    };
+    $(".ob-workspace", v).appendChild(recipeTest);
+  }
+  if (ADMIN_CONTEXT) {
+    const restore = document.createElement('button'); restore.type = 'button'; restore.className = 'btn ghost marc-test';
+    restore.textContent = '↻ Reprendre les objets actuels de Gabriel';
+    restore.onclick = async () => {
+      if (marcChestBusy || thorBusy) return;
+      restore.disabled = true;
+      try {
+        const response = await apiFetch('api/admin/session', { headers: apiHeaders() });
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        if (!applyGabrielPreviewInventory(data.previewInventory, true)) throw new Error();
+        toast('Les objets actuels de Gabriel ont été repris dans cet aperçu.');
+      } catch { restore.disabled = false; toast('Impossible de reprendre les objets de Gabriel pour le moment.'); }
+    };
+    $('.ob-workspace', v).appendChild(restore);
   }
   $$(".ob", v).forEach(bindObjectDrag);
   $(".ob-scroll", v).scrollTop = scrollTop;
@@ -4343,7 +4786,7 @@ function enterFs() { const de = document.documentElement, f = de.requestFullscre
 for (const ev of ["pointerup", "touchend", "click"]) addEventListener(ev, () => { if (!fsDone && fsPref()) enterFs(); }, { capture: true, passive: true });
 /* ───────── Tenues de grade : chapeau + col posés sur la tête enregistrée ───────── */
 // Les accessoires (img/outfit/<grade>-hat|col.webp) sont détourés des dessins de référence ; data/outfits.json donne leurs points d'ancrage.
-const GRADE_KEYS = { Mousse: "mousse", Marin: "marin", Capitaine: "capitaine", Amiral: "amiral", Altesse: "altesse", "Sérénissime Altesse": "serenissime", "Sérénissime altesse": "serenissime" }; // les tenues de grade (grades sans tenue : pas de cérémonie d'habillage)
+const GRADE_KEYS = { Mousse: "mousse", Marin: "marin", Capitaine: "capitaine", Amiral: "amiral", "Sérénissime Altesse": "serenissime", Altesse: "altesse", "Sérénissime altesse": "serenissime" };
 let OUTFITS = null; const imgCache = {};
 const loadImg = (src) => (imgCache[src] ||= new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }));
 function headMetrics(img, cut, frame) {
@@ -4359,7 +4802,7 @@ function headMetrics(img, cut, frame) {
 }
 async function composeOutfit(photo, cut, key, o = {}, frame = false) {
   const cfg = OUTFITS[key];
-  if (!cfg) throw new Error(`Tenue inconnue : ${key}`);
+  if (!cfg) throw new Error(`Tenue de grade inconnue : ${key}`);
   const [head, hat, col] = await Promise.all([loadImg(photo), loadImg(cfg.hat.src || `img/outfit/${key}-hat.webp`), loadImg(cfg.col.src || `img/outfit/${key}-col.webp`)]);
   const m = headMetrics(head, cut, frame), W = head.naturalWidth, H = head.naturalHeight, pad = Math.round(m.Wh * 0.9);
   const ad = cfg.adj || {}, hs = (o.hs ?? 1.25) * (ad.hs ?? 1), hy = (o.hy ?? 0) + (ad.hy ?? 0), cw = (o.cw ?? 3.1) * (ad.cw ?? 1), cyy = (o.cy ?? 0) + (ad.cy ?? 0); // adj : retouche propre à chaque tenue (data/outfits.json)
@@ -4390,6 +4833,7 @@ async function composeOutfit(photo, cut, key, o = {}, frame = false) {
 }
 /* ───────── Cérémonie de changement de grade ───────── */
 const OUTFIT_LEVELS = { 1: "mousse", 2: "marin", 3: "capitaine", 4: "amiral", 5: "altesse", 6: "serenissime" }; // index de grade (LEVELS) -> tenue
+const CEREMONY_LEVELS = OUTFIT_LEVELS;
 const CER_TEXT = {
   mousse: "Tu n'es plus un simple touriste : te voilà MOUSSE ! Le capitaine compte sur toi.",
   marin: "Hissez haut ! Tu deviens MARIN, un vrai loup de mer.",
@@ -4423,7 +4867,9 @@ async function ceremony(key, li, { record = false, replay = false, signal, onClo
   signal?.addEventListener("abort", abortReplay, { once: true });
   try {
     OUTFITS ||= await (await fetch("data/outfits.json")).json();
-    const P = PROFILE, name = myName(), canDress = !!(P && P.photo && OUTFITS[key]);
+    const P = PROFILE || {}, name = myName();
+    const demoPhoto = ADMIN_CONTEXT && !P.photo ? "img/outfit/_test-doge-framed.webp" : "";
+    const ceremonyPhoto = P.photo || demoPhoto, canDress = !!(ceremonyPhoto && OUTFITS[key]);
     ov = document.createElement("div"); ov.className = "cer"; ov.tabIndex = 0;
     ov.innerHTML = `<div class="cer-top"><p class="cer-label">Un nouveau grade</p><p class="cer-message" aria-live="polite"></p></div><div class="cer-stage"></div><p class="cer-hint">Touche l'écran pour continuer</p>`;
     document.body.appendChild(ov);
@@ -4440,16 +4886,17 @@ async function ceremony(key, li, { record = false, replay = false, signal, onClo
     if (signal?.aborted) return;
     ov.classList.add("cer-dressing");
     if (canDress) {
-      const had = P.outfit && OUTFITS[P.outfit] && P.outfit !== key ? P.outfit : null, f = P.frame || false;
-      const cls = P.cut ? ` cut${f ? " frame" : ""}` : "";
+      const photo = ceremonyPhoto, cut = demoPhoto ? true : !!P.cut, f = demoPhoto ? true : P.frame || false;
+      const had = !demoPhoto && P.outfit && OUTFITS[P.outfit] && P.outfit !== key ? P.outfit : null;
+      const cls = cut ? ` cut${f ? " frame" : ""}` : "";
       const portrait = document.createElement("span"); portrait.className = "avatar-dressed cer-avatar";
-      portrait.innerHTML = `<img class="avatar-base${cls}" src="${P.photo}" alt="">`;
+      portrait.innerHTML = `<img class="avatar-base${cls}" src="${photo}" alt="">`;
       const base = $(".avatar-base", portrait); if (base.decode) await base.decode().catch(() => {});
       const gear = async (grade, options = {}, shift = {}) => {
-        const canvas = await composeOutfit(P.photo, !!P.cut, grade, { garmentsOnly: true, ...options }, f);
+        const canvas = await composeOutfit(photo, cut, grade, { garmentsOnly: true, ...options }, f);
         const im = document.createElement("img"), webp = canvas.toDataURL("image/webp", 0.9);
         im.className = "avatar-gear"; im.src = webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png");
-        im.style.cssText = outfitStyle(canvas.outfitLayout, !!P.cut, f, shift);
+        im.style.cssText = outfitStyle(canvas.outfitLayout, cut, f, shift);
         if (im.decode) await im.decode().catch(() => {});
         return { im, canvas };
       };
@@ -4473,7 +4920,7 @@ async function ceremony(key, li, { record = false, replay = false, signal, onClo
       body.style.opacity = "0"; hat.style.opacity = "0"; clothes.append(body, hat); portrait.appendChild(clothes);
       await body.animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], { duration: 700, fill: "forwards", easing: "ease-out" }).finished; body.style.opacity = "1";
       await hat.animate([{ opacity: 0, transform: "translateY(-48px) rotate(-6deg)" }, { opacity: 1, transform: "translateY(5px) rotate(2deg)", offset: 0.75 }, { opacity: 1, transform: "none" }], { duration: 850, fill: "forwards", easing: "cubic-bezier(.3,.7,.4,1)" }).finished; hat.style.opacity = "1";
-      if (!replay) await wearOutfit(key); confetti(100);
+      if (!replay && !demoPhoto) await wearOutfit(key); confetti(100);
       say(`Magnifique, ${LEVELS[li].name.toLowerCase()} ${name} ! Cet uniforme te va comme un gant.`);
       const hint = $(".cer-hint", ov); hint.textContent = "Glisse le chapeau ou le col pour l'ajuster · touche ailleurs pour terminer";
       ov.classList.add("cer-adjusting");
@@ -4490,7 +4937,7 @@ async function ceremony(key, li, { record = false, replay = false, signal, onClo
         const w = portrait.getBoundingClientRect().width || 1, piece = shift[drag.part];
         piece.x = Math.round(Math.max(-30, Math.min(30, drag.x + (e.clientX - drag.px) / w * 100)) * 10) / 10;
         piece.y = Math.round(Math.max(-25, Math.min(25, drag.y + (e.clientY - drag.py) / w * 100)) * 10) / 10;
-        drag.image.style.cssText = outfitStyle(drag.canvas.outfitLayout, !!P.cut, f, piece);
+        drag.image.style.cssText = outfitStyle(drag.canvas.outfitLayout, cut, f, piece);
       };
       stage.addEventListener("pointerdown", (e) => {
         if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -4516,7 +4963,7 @@ async function ceremony(key, li, { record = false, replay = false, signal, onClo
         const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); finish(); } };
         releaseWait = finish; ov.addEventListener("click", finish); ov.addEventListener("keydown", onKey);
       });
-      if (!replay) { P.outfitShift = shift; saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker(); }
+      if (!replay && !demoPhoto) { P.outfitShift = shift; saveProfile(P); renderBadge(); renderHud(); renderProfileBar(); refreshUserMarker(); }
     }
     await ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" }).finished;
     if (record && !replay && !signal?.aborted && ceremonyPlayer === PLAYER_ID && ceremonyReset === (S.resetAt || 0) && pointsOf(meIdx()) >= LEVELS[li].min) {
@@ -4528,7 +4975,7 @@ async function ceremony(key, li, { record = false, replay = false, signal, onClo
 // Rattraper les grades royaux même si l’ancien compteur local les a déjà sautés.
 let ceremonyRetryAt = 0;
 function checkCeremony() {
-  if (document.body.classList.contains("history-replaying") || !gradeSynced || !PROFILE || ceremonyBusy || openId || tab !== "map" || scoreAnim || Date.now() < ceremonyRetryAt || $(".wq,.finale,.corto-say,.cam,.pf,.intro,.in2,.marc-magic,.croquette-ritual,.mont,.music-quest,.music-found,.doge-msg:not(.menu-say),.lion-arriving,.thor-oracle")) return;
+  if (document.body.classList.contains("history-replaying") || !gradeSynced || !PROFILE || ceremonyBusy || openId || tab !== "map" || scoreAnim || Date.now() < ceremonyRetryAt || $(".wq,.finale,.corto-say,.cam,.pf,.intro,.in2,.marc-magic,.croquette-ritual,.mont,.music-quest,.music-found,.doge-msg:not(.menu-say),.lion-arriving,.thor-oracle,.monteverdi-finale")) return;
   const li = level(pointsOf(meIdx())), k = `vq_cer4_${PLAYER_ID}`;
   const royal = [5, 6].find(j => j <= li && !has(`ceremony:grade:${OUTFIT_LEVELS[j]}:v1`));
   const run = j => ceremony(OUTFIT_LEVELS[j], j, { record: true }).catch(() => { ceremonyRetryAt = Date.now() + 30000; });
@@ -4851,7 +5298,7 @@ function removeUnearnedOutfit() {
 }
 function refreshAll() {
   if (removeUnearnedOutfit()) { renderBadge(); refreshUserMarker(); }
-  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateSqueroFruitMarkers(); updatePugniChestMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); updateThorMarker(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "history") renderHistory(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
+  renderBadge(); renderHud(); renderMap(); updateMaskMarkers(); updateMuranoShellMarker(); updateAcqualtaParchmentMarker(); updateSqueroFruitMarkers(); updatePugniChestMarker(); updateBuranoRubyMarker(); updateDoganaMaskMarker(); schiavoniGems.update(); updateThorMarker(); renderNext(); if (tab === "days") renderDays(); if (tab === "bridges") renderBridges(); if (tab === "music") renderMusicCollection(); if (tab === "objects") renderObjects(); if (tab === "works") renderWorks(); if (tab === "history") renderHistory(); if (tab === "photos") renderPhotos(false); if (openId) renderSheet();
 }
 refreshAll();
 setTab("map");
@@ -4904,11 +5351,11 @@ if (ADMIN_CONTEXT) {
     finally { help.disabled = false; }
   };
 }
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+if (!ADMIN_CONTEXT && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 startFlow();
 visibleInterval(() => { if (JEU && !ADMIN_CONTEXT) loadRewardPlacements(); }, 60000);
 async function startFlow() {
-  if (ADMIN_CONTEXT) { PROFILE = { name: "Administrateur", avatar: "🦁" }; S.kids = [{ name: "Administrateur", avatar: "🦁" }]; S.onboarded = true; renderBadge(); renderHud(); startGeo(); return; }
+  if (ADMIN_CONTEXT) { PROFILE = PROFILE?.name ? PROFILE : { name: "Administrateur", avatar: "🦁" }; S.kids = [{ name: PROFILE.name, avatar: PROFILE.avatar || "🦁" }]; S.onboarded = true; renderBadge(); renderHud(); startGeo(); return; }
   try { await migrateLegacyPhotos(); } catch (error) { console.warn("Migration des photos indisponible", error); }
   if (!DEV) startGeo();
   if (!PROFILE && S.onboarded) PROFILE = { name: myName(), avatar: me().avatar || "🙂" };
@@ -4960,3 +5407,12 @@ function resumeForegroundWork() {
 document.addEventListener("visibilitychange", () => { if (document.hidden) suspendBackgroundWork(); else resumeForegroundWork(); });
 addEventListener("pagehide", suspendBackgroundWork);
 addEventListener("pageshow", () => { if (!document.hidden && document.documentElement.classList.contains("vq-background")) resumeForegroundWork(); });
+
+// Relecture intégrale réservée aux aperçus : aucun objet consommé ni récompense enregistrée.
+if (ADMIN_CONTEXT || LOCAL_DEV) {
+  const finaleTest = document.createElement('button');
+  finaleTest.id = 'admin-finale-test'; finaleTest.type = 'button';
+  finaleTest.textContent = '▶ Tester la finale de Monteverdi';
+  finaleTest.onclick = () => startMonteverdiFinale({preview:true});
+  document.body.append(finaleTest);
+}
